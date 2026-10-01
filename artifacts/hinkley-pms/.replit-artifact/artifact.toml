@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Hinkley Homes PMS"
+description = "A property operations dashboard prototype for Hinkley Homes, with an at-a-glance view of revenue, occupancy, reservations, guest activity, and room operations."
+version = "1.0.0"
+id = "artifacts/hinkley-pms"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22706
+
+[services.development]
+run = "pnpm --filter @workspace/hinkley-pms run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/hinkley-pms", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/hinkley-pms/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22706"
+BASE_PATH = "/"
