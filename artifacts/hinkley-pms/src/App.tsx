@@ -1,62 +1,172 @@
-import { type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
+import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import {
-  Route,
-  Switch,
-  useLocation,
-  Router as WouterRouter,
-} from 'wouter';
+  Activity, ArrowDownRight, ArrowUpRight, BedDouble, Bell, CalendarDays, Check, CheckCheck, ChevronDown,
+  CircleDollarSign, ClipboardCheck, Clock3, Coffee, DoorOpen, Download, Ellipsis, Filter, LayoutDashboard,
+  Menu, Moon, MoreHorizontal, Plus, Search, Settings2, Sparkles, Users, Utensils, Wallet, X, House,
+  Boxes, Brush, CalendarCheck, ReceiptText, ConciergeBell, PanelLeftClose, LogOut, TrendingUp, CalendarRange,
+  UserRound, Bed, CircleHelp, Building2,
+} from 'lucide-react';
 
-const queryClient = new QueryClient();
+type Guest={id:string;name:string;email:string;phone:string};
+type Reservation={id:string;guestId:string;room:string;arrival:string;departure:string;status:string;totalPhp:number};
+type Room={id:string;number:string;type:string;status:string;ratePhp:number};
+type FunctionRoomBooking={id:string;space:string;guest:string;startsAt:string;endsAt:string;status:string};
+type CheckIn={reservationId:string;guest:string;room:string;arrival:string;status:string};
+type Payment={id:string;guest:string;reservationId:string;amountPhp:number;status:string;method:string;date:string};
+type MenuOrder={id:string;guest:string;items:string;totalPhp:number;status:string;createdAt:string};
+type HousekeepingTask={id:string;room:string;assignedTo:string;status:string;priority:string};
+type InventoryItem={id:string;name:string;category:string;onHand:number;reorderAt:number;unit:string};
+type Store={guests:Guest[];reservations:Reservation[];rooms:Room[];functions:FunctionRoomBooking[];checkins:CheckIn[];payments:Payment[];orders:MenuOrder[];tasks:HousekeepingTask[];inventory:InventoryItem[]};
+const today='2026-09-18';
+const seeded:Store={
+ guests:[
+  {id:'G-1042',name:'Gian Celso Tamano',email:'gian.tamano@email.com',phone:'+63 917 245 8831'},
+  {id:'G-1043',name:'Isabel de Vera',email:'isabel.dv@email.com',phone:'+63 917 408 1120'},
+  {id:'G-1044',name:'Marco Villanueva',email:'marco.v@email.com',phone:'+63 905 221 7614'},
+  {id:'G-1045',name:'Celina Ramos',email:'celina.r@email.com',phone:'+63 917 893 4412'},
+  {id:'G-1046',name:'Rafael Santiago',email:'rafael.s@email.com',phone:'+63 998 062 1955'},
+  {id:'G-1047',name:'Leah Bautista',email:'leah.b@email.com',phone:'+63 917 680 3143'},
+  {id:'G-1048',name:'Andres Cruz',email:'andres.c@email.com',phone:'+63 905 440 8072'},
+  {id:'G-1049',name:'Mikaela Flores',email:'mikaela.f@email.com',phone:'+63 917 231 0018'},
+ ],
+ reservations:[
+  {id:'RES-24091',guestId:'G-1042',room:'201',arrival:today,departure:'2026-09-21',status:'Confirmed',totalPhp:12600},
+  {id:'RES-24092',guestId:'G-1043',room:'104',arrival:today,departure:'2026-09-20',status:'Checked in',totalPhp:9800},
+  {id:'RES-24093',guestId:'G-1044',room:'305',arrival:today,departure:'2026-09-22',status:'Confirmed',totalPhp:15400},
+  {id:'RES-24094',guestId:'G-1045',room:'208',arrival:'2026-09-19',departure:'2026-09-21',status:'Pending',totalPhp:11200},
+  {id:'RES-24095',guestId:'G-1046',room:'102',arrival:today,departure:'2026-09-19',status:'Checked in',totalPhp:5400},
+  {id:'RES-24096',guestId:'G-1047',room:'301',arrival:'2026-09-20',departure:'2026-09-23',status:'Confirmed',totalPhp:16800},
+  {id:'RES-24097',guestId:'G-1048',room:'203',arrival:'2026-09-18',departure:'2026-09-19',status:'Confirmed',totalPhp:5900},
+  {id:'RES-24098',guestId:'G-1049',room:'105',arrival:'2026-09-19',departure:'2026-09-22',status:'Pending',totalPhp:14700},
+ ],
+ rooms:[
+  {id:'R101',number:'101',type:'Deluxe Queen',status:'Ready',ratePhp:4200},{id:'R102',number:'102',type:'Standard Twin',status:'Occupied',ratePhp:2700},
+  {id:'R103',number:'103',type:'Deluxe King',status:'Dirty',ratePhp:4500},{id:'R104',number:'104',type:'Garden Suite',status:'Occupied',ratePhp:4900},
+  {id:'R105',number:'105',type:'Standard Queen',status:'Ready',ratePhp:3100},{id:'R201',number:'201',type:'Deluxe Queen',status:'Occupied',ratePhp:4200},
+  {id:'R202',number:'202',type:'Standard Twin',status:'Ready',ratePhp:2700},{id:'R203',number:'203',type:'Garden Suite',status:'Reserved',ratePhp:4900},
+  {id:'R204',number:'204',type:'Deluxe King',status:'Dirty',ratePhp:4500},{id:'R205',number:'205',type:'Standard Queen',status:'Ready',ratePhp:3100},
+  {id:'R301',number:'301',type:'Garden Suite',status:'Reserved',ratePhp:5600},{id:'R305',number:'305',type:'Deluxe King',status:'Occupied',ratePhp:5100},
+ ],
+ functions:[{id:'FR-1108',space:'The Garden Pavilion',guest:'Celina Ramos',startsAt:'2026-09-18 18:00',endsAt:'2026-09-18 22:00',status:'Confirmed'},{id:'FR-1109',space:'Hinkley Hall',guest:'Marco Villanueva',startsAt:'2026-09-19 11:00',endsAt:'2026-09-19 15:00',status:'Setup'},{id:'FR-1110',space:'The Garden Pavilion',guest:'Leah Bautista',startsAt:'2026-09-21 17:00',endsAt:'2026-09-21 21:00',status:'Pending'}],
+ checkins:[{reservationId:'RES-24091',guest:'Gian Celso Tamano',room:'201',arrival:'2:00 PM',status:'Expected'},{reservationId:'RES-24092',guest:'Isabel de Vera',room:'104',arrival:'12:30 PM',status:'Checked in'},{reservationId:'RES-24093',guest:'Marco Villanueva',room:'305',arrival:'3:30 PM',status:'Expected'},{reservationId:'RES-24095',guest:'Rafael Santiago',room:'102',arrival:'11:45 AM',status:'Checked in'},{reservationId:'RES-24097',guest:'Andres Cruz',room:'203',arrival:'4:00 PM',status:'Expected'},{reservationId:'RES-24088',guest:'Nina Mercado',room:'205',arrival:'11:00 AM',status:'Checked out'}],
+ payments:[{id:'PAY-8011',guest:'Gian Celso Tamano',reservationId:'RES-24091',amountPhp:6000,status:'Deposit due',method:'Card',date:today},{id:'PAY-8012',guest:'Isabel de Vera',reservationId:'RES-24092',amountPhp:9800,status:'Paid',method:'Cash',date:today},{id:'PAY-8013',guest:'Marco Villanueva',reservationId:'RES-24093',amountPhp:15400,status:'Pending',method:'Bank transfer',date:'2026-09-17'},{id:'PAY-8014',guest:'Celina Ramos',reservationId:'RES-24094',amountPhp:5600,status:'Paid',method:'Card',date:'2026-09-16'},{id:'PAY-8015',guest:'Rafael Santiago',reservationId:'RES-24095',amountPhp:2700,status:'Paid',method:'Cash',date:'2026-09-18'},{id:'PAY-8016',guest:'Leah Bautista',reservationId:'RES-24096',amountPhp:16800,status:'Pending',method:'Online',date:'2026-09-18'}],
+ orders:[{id:'MO-3021',guest:'Isabel de Vera',items:'2 × Breakfast set, brewed coffee',totalPhp:890,status:'Preparing',createdAt:'12:18 PM'},{id:'MO-3022',guest:'Rafael Santiago',items:'Adobo rice bowl, iced tea',totalPhp:540,status:'Ready',createdAt:'12:06 PM'},{id:'MO-3023',guest:'Gian Celso Tamano',items:'Club sandwich, calamansi juice',totalPhp:720,status:'Delivered',createdAt:'11:42 AM'},{id:'MO-3024',guest:'Room 301',items:'Fruit plate, sparkling water',totalPhp:680,status:'Preparing',createdAt:'11:25 AM'}],
+ tasks:[{id:'HK-551',room:'103',assignedTo:'M. Dizon',status:'In progress',priority:'High'},{id:'HK-552',room:'204',assignedTo:'A. Santos',status:'To do',priority:'Normal'},{id:'HK-553',room:'208',assignedTo:'R. Lopez',status:'To do',priority:'High'},{id:'HK-554',room:'101',assignedTo:'J. Cruz',status:'Completed',priority:'Normal'},{id:'HK-555',room:'202',assignedTo:'M. Dizon',status:'To do',priority:'Normal'}],
+ inventory:[{id:'I-01',name:'Bath towels',category:'Linen',onHand:18,reorderAt:24,unit:'pcs'},{id:'I-02',name:'Shampoo 30ml',category:'Guest amenities',onHand:42,reorderAt:30,unit:'bottles'},{id:'I-03',name:'Coffee sachets',category:'Food & beverage',onHand:16,reorderAt:40,unit:'packs'},{id:'I-04',name:'Queen bed sheets',category:'Linen',onHand:26,reorderAt:20,unit:'sets'},{id:'I-05',name:'Toilet tissue',category:'Guest amenities',onHand:21,reorderAt:36,unit:'rolls'},{id:'I-06',name:'Dish soap',category:'Housekeeping',onHand:9,reorderAt:12,unit:'bottles'}]
+};
+const STORAGE='hinkley-pms-demo-v1';
+const navGroups=[{label:'CORE',items:[['/','Overview',LayoutDashboard]]},{label:'FRONT DESK',items:[['/guests','Guests',Users],['/reservations','Reservations',CalendarDays],['/function-rooms','Function rooms',Building2],['/check-ins','Check-ins',DoorOpen],['/payments','Payments',Wallet],['/menu-orders','Menu orders',Utensils]]},{label:'ROOMS & SERVICE',items:[['/rooms','Rooms',BedDouble],['/housekeeping','Housekeeping',Brush],['/inventory','Inventory',Boxes]]}] as const;
+const routeInfo:Record<string,{title:string;subtitle:string;group:string}>={
+ '/guests':{title:'Guest directory',subtitle:'Guest profiles and contact details',group:'Front desk'},
+ '/reservations':{title:'Reservations',subtitle:'Manage bookings, stays and guest requests',group:'Front desk'},
+ '/function-rooms':{title:'Function rooms',subtitle:'Event spaces, bookings and setup readiness',group:'Front desk'},
+ '/check-ins':{title:'Arrivals & departures',subtitle:'A clear view of today’s front desk flow',group:'Front desk'},
+ '/payments':{title:'Payments',subtitle:'Track collections and outstanding balances',group:'Finance'},
+ '/menu-orders':{title:'Menu orders',subtitle:'Room service orders and fulfillment',group:'Food & beverage'},
+ '/rooms':{title:'Room status',subtitle:'Availability and housekeeping readiness',group:'Rooms & service'},
+ '/housekeeping':{title:'Housekeeping',subtitle:'Room turns and daily service tasks',group:'Rooms & service'},
+ '/inventory':{title:'Inventory',subtitle:'Supplies on hand and reorder attention',group:'Operations'}
+};
+const peso=(n:number)=>'PHP '+n.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const pretty=(s:string)=>s;
+const initials=(s:string)=>s.split(' ').map(a=>a[0]).slice(0,2).join('').toUpperCase();
+const statusClass=(s:string)=>s.toLowerCase().replaceAll(' ','-');
+const queryClient=new QueryClient();
 
-function Home() {
-  return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Replit Agent is building...
-        </h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Your app will appear here once it's ready.
-        </p>
-      </div>
-    </div>
-  );
+function AppShell(){
+ const [path,setPath]=useLocation();
+ const [data,setData]=useState<Store>(()=>{try{const saved=localStorage.getItem(STORAGE);return saved?{...seeded,...JSON.parse(saved)}:seeded}catch{return seeded}});
+ const [global,setGlobal]=useState(''); const [branch,setBranch]=useState('Hinkley Homes'); const [range,setRange]=useState('This month');
+ const [query,setQuery]=useState('');const [filter,setFilter]=useState('All');const [modal,setModal]=useState(false);const [toast,setToast]=useState('');const [sideOpen,setSideOpen]=useState(false);
+ useEffect(()=>{localStorage.setItem(STORAGE,JSON.stringify(data))},[data]);
+ useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(''),2600);return()=>clearTimeout(t)},[toast]);
+ useEffect(()=>{setQuery('');setFilter('All');setSideOpen(false)},[path]);
+ const flash=(message:string)=>setToast(message);
+ const patch=<K extends keyof Store>(key:K,fn:(value:Store[K])=>Store[K])=>setData(prev=>({...prev,[key]:fn(prev[key])}));
+ const saveReservation=(event:React.FormEvent<HTMLFormElement>)=>{event.preventDefault();const f=new FormData(event.currentTarget);const guestName=String(f.get('guest')||'');const g:Guest={id:'G-'+Math.floor(1050+Math.random()*800),name:guestName,email:String(f.get('email')||'guest@email.com'),phone:String(f.get('phone')||'—')};const r:Reservation={id:'RES-'+Math.floor(25000+Math.random()*700),guestId:g.id,room:String(f.get('room')),arrival:String(f.get('arrival')),departure:String(f.get('departure')),status:'Confirmed',totalPhp:Number(f.get('total'))||0};setData(p=>({...p,guests:[g,...p.guests],reservations:[r,...p.reservations],rooms:p.rooms.map(room=>room.number===r.room?{...room,status:'Reserved'}:room),checkins:[{reservationId:r.id,guest:g.name,room:r.room,arrival:'3:00 PM',status:'Expected'},...p.checkins]}));setModal(false);flash('Reservation created and saved')};
+ const updateStatus=(kind:keyof Store,id:string,status:string)=>{if(kind==='checkins'){const record=data.checkins.find(x=>x.reservationId===id);setData(prev=>({...prev,checkins:prev.checkins.map(x=>x.reservationId===id?{...x,status}:x),reservations:prev.reservations.map(x=>x.id===id?{...x,status:status==='Checked in'?'Checked in':status==='Checked out'?'Completed':x.status}:x),rooms:record?prev.rooms.map(r=>r.number===record.room?{...r,status:status==='Checked in'?'Occupied':status==='Checked out'?'Dirty':r.status}:r):prev.rooms}));}else patch(kind,(rows:any)=>rows.map((row:any)=>{const key=row.id??row.reservationId;return key===id?{...row,status}:row}));flash('Status updated')};
+ const todayArrivals=data.checkins.filter(c=>c.status==='Expected').length;
+ const occupied=data.rooms.filter(r=>r.status==='Occupied').length, ready=data.rooms.filter(r=>r.status==='Ready').length;
+ const revenue=data.payments.filter(p=>p.status==='Paid').reduce((n,p)=>n+p.amountPhp,0);
+ const moneyPending=data.payments.filter(p=>p.status!=='Paid').reduce((n,p)=>n+p.amountPhp,0);
+ const nav=<>{navGroups.map(group=><div className="nav-group" key={group.label}><div className="nav-label">{group.label}</div>{group.items.map(([href,label,Icon])=><Link href={href} key={href} className={'nav-link '+(path===href?'active':'')} data-testid={`link-nav-${label.toLowerCase().replaceAll(' ','-')}`}><Icon size={15}/><span>{label}</span></Link>)}</div>)}</>;
+ const globalResults=global.trim()?[
+  ...data.guests.filter(x=>`${x.name} ${x.email} ${x.phone}`.toLowerCase().includes(global.toLowerCase())).slice(0,3).map(x=>({label:x.name,detail:`Guest · ${x.email}`,href:'/guests'})),
+  ...data.reservations.filter(x=>x.id.toLowerCase().includes(global.toLowerCase())).slice(0,2).map(x=>({label:x.id,detail:`Reservation · Room ${x.room}`,href:'/reservations'}))
+ ]:[];
+ return <div className="app-shell">
+  {sideOpen&&<div className="mobile-overlay show" onClick={()=>setSideOpen(false)}/>}
+  <aside className={'sidebar '+(sideOpen?'open':'')}><Link href="/" className="brand" data-testid="link-brand"><span className="brand-mark"><House size={17}/></span><span className="brand-name">Hinkley Homes<span className="brand-sub">Property operations</span></span></Link>
+   <div className="nav-scroll">{nav}</div><div className="side-foot"><div className="avatar">GT</div><div>Gian Celso Tamano<small>Front desk · Demo account</small></div><button className="icon-btn" title="Sign out" onClick={()=>flash('Demo session is active')}><LogOut size={14}/></button></div>
+  </aside>
+  <div className="main-area">
+   <header className="topbar"><button className="icon-btn mobile-toggle" onClick={()=>setSideOpen(true)} aria-label="Open navigation"><Menu size={19}/></button>
+    <div className="global-search"><Search size={15}/><input value={global} onChange={e=>setGlobal(e.target.value)} placeholder="Search guests, reservations…" aria-label="Global search" data-testid="input-global-search"/>{global&&<button className="icon-btn" onClick={()=>setGlobal('')}><X size={13}/></button>}</div>
+    <div className="top-spacer"/><select className="top-branch" value={branch} onChange={e=>setBranch(e.target.value)} aria-label="Branch"><option>Hinkley Homes</option><option>All branches</option><option>Hinkley Garden Wing</option></select><button className="icon-btn" title="Notifications" onClick={()=>flash('You’re all caught up')}><Bell size={17}/></button><button className="icon-btn" title="Settings" onClick={()=>flash('Settings are managed for this demo')}><Settings2 size={17}/></button><div className="avatar">GT</div>
+    {globalResults.length>0&&<div style={{position:'absolute',top:52,left:62,width:390,maxWidth:'calc(100vw - 85px)',background:'#fff',border:'1px solid #e4e9ed',borderRadius:8,boxShadow:'0 12px 34px #1b29361c',zIndex:50,padding:5}}>{globalResults.map((r,i)=><Link href={r.href} key={i} onClick={()=>setGlobal('')} style={{display:'block',padding:'9px 10px',textDecoration:'none',color:'#344256',borderRadius:5}}><b style={{fontSize:11}}>{r.label}</b><span style={{display:'block',fontSize:9,color:'#8793a0',marginTop:3}}>{r.detail}</span></Link>)}</div>}
+   </header>
+   <main className="content">
+    <Switch>
+     <Route path="/" component={()=> <Dashboard data={data} setRange={setRange} range={range} arrivals={todayArrivals} occupied={occupied} ready={ready} revenue={revenue} pending={moneyPending} openReservation={()=>setModal(true)} branch={branch}/>}/>
+     <Route path="/guests" component={()=> <Guests data={data} query={query} setQuery={setQuery}/>}/>
+     <Route path="/reservations" component={()=> <Reservations data={data} query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} add={()=>setModal(true)} update={updateStatus}/>}/>
+     <Route path="/function-rooms" component={()=> <FunctionRooms data={data} query={query} setQuery={setQuery} update={updateStatus}/>}/>
+     <Route path="/check-ins" component={()=> <CheckIns data={data} query={query} setQuery={setQuery} update={updateStatus}/>}/>
+     <Route path="/payments" component={()=> <Payments data={data} query={query} setQuery={setQuery} update={updateStatus}/>}/>
+     <Route path="/menu-orders" component={()=> <Orders data={data} query={query} setQuery={setQuery} update={updateStatus}/>}/>
+     <Route path="/rooms" component={()=> <Rooms data={data} patch={patch} flash={flash}/>}/>
+     <Route path="/housekeeping" component={()=> <Housekeeping data={data} update={updateStatus}/>}/>
+     <Route path="/inventory" component={()=> <Inventory data={data} query={query} setQuery={setQuery} patch={patch}/>}/>
+     <Route component={NotFound}/>
+    </Switch>
+   </main>
+  </div>
+  {modal&&<ReservationModal data={data} close={()=>setModal(false)} submit={saveReservation}/>}
+  {toast&&<div className="toast-msg" role="status">{toast}</div>}
+ </div>
 }
-
-function Router() {
-  return (
-    // Keep a shared shell (sidebar, navbar) outside the boundary so it
-    // survives a page crash.
-    <RoutedErrorBoundary>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route component={NotFound} />
-      </Switch>
-    </RoutedErrorBoundary>
-  );
+function PageHeader({title,subtitle,eyebrow,children}:{title:string;subtitle:string;eyebrow?:string;children?:ReactNode}){return <div className="page-head"><div><div className="eyebrow">{eyebrow||'Hinkley Homes · Operations'}</div><h1 className="page-title">{title}</h1><p className="page-sub">{subtitle}</p></div><div className="head-actions">{children}</div></div>}
+function Dashboard({data,setRange,range,arrivals,occupied,ready,revenue,pending,openReservation,branch}:{data:Store;setRange:(v:string)=>void;range:string;arrivals:number;occupied:number;ready:number;revenue:number;pending:number;openReservation:()=>void;branch:string}){
+ const todayCheckins=data.checkins.filter(c=>c.status==='Expected'||c.status==='Checked in').slice(0,5);
+ const percent=Math.round((occupied/data.rooms.length)*100);
+ return <><div className="dashboard-hero"><PageHeader title="Operations overview" subtitle={`Your day at ${branch} · Friday, 18 September 2026`} eyebrow="Good afternoon, Gian"/><div className="head-actions"><span className="demo-pill">DEMO DATA</span></div></div>
+  <div className="metrics">
+   <Metric title="Collected revenue" value={peso(revenue)} note="Payments received" icon={<CircleDollarSign size={15}/>} trend="+8.4%"/>
+   <Metric title="Booking value" value={peso(data.reservations.reduce((a,r)=>a+r.totalPhp,0))} note={`${data.reservations.length} active reservations`} icon={<CalendarCheck size={15}/>} trend="+12.1%"/>
+   <Metric title="Menu sales" value={peso(data.orders.reduce((a,o)=>a+o.totalPhp,0))} note={`${data.orders.length} orders today`} icon={<Utensils size={15}/>} trend="+4.6%"/>
+   <Metric title="Outstanding" value={peso(pending)} note="Awaiting settlement" icon={<Wallet size={15}/>} trend="Review" warning/>
+  </div>
+  <div className="metric-row2"><SmallMetric label="Arrivals today" value={arrivals.toString()} foot="Expected at front desk" icon={<DoorOpen size={14}/>}/><SmallMetric label="Check-ins complete" value={data.checkins.filter(c=>c.status==='Checked in').length.toString()} foot="Guests welcomed" icon={<CheckCheck size={14}/>}/><SmallMetric label="Check-outs" value={data.checkins.filter(c=>c.status==='Checked out').length.toString()} foot="Stays completed" icon={<LogOut size={14}/>}/><SmallMetric label="Occupied rooms" value={`${occupied}/${data.rooms.length}`} foot="Currently in house" icon={<BedDouble size={14}/>}/><SmallMetric label="Ready to sell" value={ready.toString()} foot="Rooms inspected" icon={<Sparkles size={14}/>}/><SmallMetric label="Low stock" value={data.inventory.filter(i=>i.onHand<=i.reorderAt).length.toString()} foot="Items to replenish" icon={<Boxes size={14}/>}/></div>
+  <div className="dash-grid"><section className="panel"><div className="panel-head"><div><div className="panel-title">Revenue pulse</div><div className="panel-caption">Room and service collections · PHP · {range}</div></div><select className="select-control" aria-label="Dashboard timeframe" value={range} onChange={e=>setRange(e.target.value)}><option>This month</option><option>Last 30 days</option><option>Last 6 months</option><option>This year</option></select></div><div className="revenue-body"><div className="chart-wrap"><svg className="chart-svg" viewBox="0 0 700 230" preserveAspectRatio="none" role="img" aria-label="Revenue trend chart"><defs><linearGradient id="areaFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#2b806c" stopOpacity=".15"/><stop offset="100%" stopColor="#2b806c" stopOpacity="0"/></linearGradient></defs>{[25,65,105,145,185].map((y,i)=><g key={y}><line x1="48" x2="684" y1={y} y2={y} className="chart-grid"/><text x="0" y={y+3} className="chart-label">{['PHP 30k','PHP 22k','PHP 15k','PHP 7k','PHP 0'][i]}</text></g>)}<path className="chart-area" d="M60 153 C115 126 130 110 176 114 S275 75 304 83 S408 99 430 78 S537 48 563 57 S644 77 670 56 L670 185 L60 185Z"/><path className="chart-line" d="M60 153 C115 126 130 110 176 114 S275 75 304 83 S408 99 430 78 S537 48 563 57 S644 77 670 56"/>{[[60,153],[176,114],[304,83],[430,78],[563,57],[670,56]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r="4" className="chart-dot"/>)}{['Apr','May','Jun','Jul','Aug','Sep'].map((m,i)=><text key={m} x={60+i*122} y="215" className="chart-label">{m} 2026</text>)}</svg></div><div className="chart-legend"><span><i className="legend-dot"/>Collected revenue</span><span><i className="legend-dot" style={{background:'#d9a74d'}}/>Operating costs</span><span><i className="legend-dot" style={{background:'#7993b5'}}/>Net position</span></div></div></section>
+   <div style={{display:'flex',flexDirection:'column',gap:13}}><section className="panel occ-card"><div className="occ-head"><span>Room occupancy</span><span className="live-tag">LIVE STATUS</span></div><div className="occ-numbers"><div><div className="panel-caption">Current occupancy</div><div className="occ-rate">{percent}%</div></div><div className="capacity">Total capacity<strong>{data.rooms.length} rooms</strong></div></div><div className="progress"><span style={{width:`${percent}%`}}/></div><div className="occ-legend"><span>Occupied<strong>{occupied}</strong></span><span style={{textAlign:'right'}}>Ready<strong>{ready}</strong></span></div><Link href="/rooms" className="button primary" style={{width:'100%',justifyContent:'center',marginTop:15,textDecoration:'none'}}><BedDouble size={13}/> Manage rooms</Link></section>
+    <section className="panel" style={{padding:15}}><div className="panel-title" style={{marginBottom:12}}>Today at a glance</div><div style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:'1px solid #edf0f3',fontSize:10,color:'#788596'}}>Check-in window <strong style={{color:'#334256'}}>2:00 PM – 6:00 PM</strong></div><div style={{display:'flex',justifyContent:'space-between',padding:'9px 0',fontSize:10,color:'#788596'}}>Cash to reconcile <strong style={{color:'#334256'}}>{peso(data.payments.filter(p=>p.method==='Cash'&&p.status==='Paid').reduce((a,p)=>a+p.amountPhp,0))}</strong></div><button className="button" style={{width:'100%',justifyContent:'center'}} onClick={openReservation}><Plus size={13}/> New reservation</button></section>
+   </div>
+  </div>
+  <section className="panel arrival-panel"><div className="panel-head"><div><div className="panel-title">Front desk arrivals</div><div className="panel-caption">Next guests expected today</div></div><Link href="/check-ins" className="button" style={{textDecoration:'none'}}>View arrivals <ArrowUpRight size={13}/></Link></div><div className="arrival-list">{todayCheckins.map((c,i)=><div className="arrival-row" key={c.reservationId}><div className="guest-cell"><span className="guest-initial">{initials(c.guest)}</span><div><strong>{c.guest}</strong><span className="secondary-text">{c.reservationId}</span></div></div><div><span className="secondary-text">Room</span><strong>{c.room}</strong></div><div><span className="secondary-text">Arrival</span><strong>{c.arrival}</strong></div><span className={'status '+statusClass(c.status)}>{c.status}</span></div>)}</div></section>
+ </>;
 }
-
-function RoutedErrorBoundary({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
-  return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
-}
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
-}
-
+function Metric({title,value,note,icon,trend,warning=false}:{title:string;value:string;note:string;icon:ReactNode;trend:string;warning?:boolean}){return <div className="panel metric"><div className="metric-top">{title}<span className="metric-icon" style={warning?{background:'#fff1e9',color:'#ba7742'}:{}}>{icon}</span></div><div className="metric-value" style={warning?{color:'#a2693e'}:{}}>{value}</div><div className="metric-foot">{note} · <strong>{trend}</strong></div></div>}
+function SmallMetric({label,value,foot,icon}:{label:string;value:string;foot:string;icon:ReactNode}){return <div className="panel metric-small"><div className="metric-top">{label}<span style={{color:'#559582'}}>{icon}</span></div><div className="metric-value">{value}</div><div className="metric-foot">{foot}</div></div>}
+function Toolbar({query,setQuery,placeholder='Search records…',children}:{query:string;setQuery:(s:string)=>void;placeholder?:string;children?:ReactNode}){return <div className="table-toolbar"><div className="global-search"><Search size={14}/><input aria-label={placeholder} data-testid="input-list-search" placeholder={placeholder} value={query} onChange={e=>setQuery(e.target.value)}/>{query&&<button className="icon-btn" onClick={()=>setQuery('')}><X size={13}/></button>}</div><div className="filter-bar">{children}</div></div>}
+function Status({value}:{value:string}){return <span className={'status '+statusClass(value)}>{value}</span>}
+function DataTable({headers,rows,empty='No matching records found'}:{headers:string[];rows:ReactNode[][];empty?:string}){return <div className="table-wrap"><table><thead><tr>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead>{rows.length?<tbody>{rows.map((row,i)=><tr key={i}>{row.map((cell,j)=><td key={j}>{cell}</td>)}</tr>)}</tbody>:<tbody><tr><td colSpan={headers.length}><div className="empty-state"><Search size={21}/><h3>{empty}</h3><p>Try another search or adjust your filters.</p></div></td></tr></tbody>}</table></div>}
+function Guests({data,query,setQuery}:{data:Store;query:string;setQuery:(s:string)=>void}){const guests=data.guests.filter(g=>`${g.name} ${g.email} ${g.phone} ${g.id}`.toLowerCase().includes(query.toLowerCase()));return <><PageHeader title="Guest directory" subtitle="A single view of your guest relationships"><span className="demo-pill">DEMO RECORDS</span></PageHeader><section className="panel table-panel"><Toolbar query={query} setQuery={setQuery} placeholder="Search name, email or phone…"/><DataTable headers={['Guest','Guest ID','Email','Phone','Stays','Lifetime value']} rows={guests.map(g=>{const stays=data.reservations.filter(r=>r.guestId===g.id);return [<div className="guest-cell"><span className="guest-initial">{initials(g.name)}</span><strong>{g.name}</strong></div>,<span>{g.id}</span>,g.email,g.phone,stays.length||'—',stays.length?peso(stays.reduce((n,r)=>n+r.totalPhp,0)):'—']})} empty="No guests match your search"/></section></>}
+function Reservations({data,query,setQuery,filter,setFilter,add,update}:{data:Store;query:string;setQuery:(s:string)=>void;filter:string;setFilter:(s:string)=>void;add:()=>void;update:(k:keyof Store,id:string,s:string)=>void}){const rows=data.reservations.filter(r=>{const g=data.guests.find(x=>x.id===r.guestId)?.name||'';return(`${r.id} ${r.room} ${g}`).toLowerCase().includes(query.toLowerCase())&&(filter==='All'||r.status===filter)});return <><PageHeader title="Reservations" subtitle="Bookings, guest stays and room assignments"><button className="button" onClick={()=>{const csv=['Reservation,Guest,Room,Arrival,Departure,Status,Total PHP',...rows.map(r=>`${r.id},${data.guests.find(g=>g.id===r.guestId)?.name},${r.room},${r.arrival},${r.departure},${r.status},${r.totalPhp}`)].join('\\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='hinkley-reservations.csv';a.click()}}><Download size={13}/> Export</button><button className="button primary" onClick={add}><Plus size={14}/> New reservation</button></PageHeader><section className="panel table-panel"><Toolbar query={query} setQuery={setQuery} placeholder="Search guest or reservation…"><select className="select-control" value={filter} onChange={e=>setFilter(e.target.value)}><option>All</option><option>Confirmed</option><option>Pending</option><option>Checked in</option></select><span className="panel-caption">{rows.length} stays</span></Toolbar><DataTable headers={['Reservation','Guest','Room','Arrival','Departure','Status','Total','Action']} rows={rows.map(r=>[<strong>{r.id}</strong>,data.guests.find(g=>g.id===r.guestId)?.name||'Guest',r.room,r.arrival,r.departure,<Status value={r.status}/>,peso(r.totalPhp),r.status==='Confirmed'?<button className="table-action" onClick={()=>update('reservations',r.id,'Checked in')}>Check in</button>:<button className="table-action" onClick={()=>update('reservations',r.id,'Confirmed')}>Confirm</button>])} empty="No reservations found"/></section></>}
+function FunctionRooms({data,query,setQuery,update}:{data:Store;query:string;setQuery:(s:string)=>void;update:(k:keyof Store,id:string,s:string)=>void}){const list=data.functions.filter(x=>`${x.id} ${x.space} ${x.guest}`.toLowerCase().includes(query.toLowerCase()));return <><PageHeader title="Function rooms" subtitle="Event spaces, bookings and setup readiness"><button className="button primary" onClick={()=>alert('For this prototype, function-room bookings are seeded demo records.') }><Plus size={14}/> Add event</button></PageHeader><section className="panel table-panel"><Toolbar query={query} setQuery={setQuery} placeholder="Search event or guest…"/><DataTable headers={['Booking','Event space','Guest','Starts','Ends','Status','Action']} rows={list.map(x=>[<strong>{x.id}</strong>,x.space,x.guest,x.startsAt,x.endsAt,<Status value={x.status}/>,<select className="select-control" value={x.status} onChange={e=>update('functions',x.id,e.target.value)}><option>Pending</option><option>Confirmed</option><option>Setup</option><option>Completed</option></select>])}/></section></>}
+function CheckIns({data,query,setQuery,update}:{data:Store;query:string;setQuery:(s:string)=>void;update:(k:keyof Store,id:string,s:string)=>void}){const list=data.checkins.filter(x=>`${x.guest} ${x.room} ${x.reservationId}`.toLowerCase().includes(query.toLowerCase()));const arrivals=list.filter(x=>x.status!=='Checked out');const departures=list.filter(x=>x.status==='Checked out'||data.reservations.find(r=>r.id===x.reservationId)?.departure===today);return <><PageHeader title="Arrivals & departures" subtitle="Friday, 18 September 2026 · Keep every handover moving"><span className="demo-pill">TODAY</span></PageHeader><div className="metrics" style={{gridTemplateColumns:'repeat(3,1fr)'}}><SmallMetric label="Arrivals expected" value={arrivals.filter(x=>x.status==='Expected').length.toString()} foot="Due by 6:00 PM" icon={<DoorOpen size={15}/>}/><SmallMetric label="Checked in" value={arrivals.filter(x=>x.status==='Checked in').length.toString()} foot="Ready to welcome" icon={<CheckCheck size={15}/>}/><SmallMetric label="Departures" value={departures.length.toString()} foot="Checkout by 11:00 AM" icon={<LogOut size={15}/>}/></div><section className="panel table-panel"><Toolbar query={query} setQuery={setQuery} placeholder="Search guest, room or confirmation…"/><DataTable headers={['Guest','Reservation','Room','Scheduled','Status','Front desk action']} rows={list.map(c=>[<div className="guest-cell"><span className="guest-initial">{initials(c.guest)}</span><strong>{c.guest}</strong></div>,c.reservationId,c.room,c.arrival,<Status value={c.status}/>,c.status==='Expected'?<button className="table-action" onClick={()=>update('checkins',c.reservationId,'Checked in')}>Check in guest</button>:c.status==='Checked in'?<button className="table-action" onClick={()=>update('checkins',c.reservationId,'Checked out')}>Check out</button>:<span className="secondary-text">Stay completed</span>])}/></section></>}
+function Payments({data,query,setQuery,update}:{data:Store;query:string;setQuery:(s:string)=>void;update:(k:keyof Store,id:string,s:string)=>void}){const list=data.payments.filter(x=>`${x.guest} ${x.id} ${x.reservationId} ${x.method}`.toLowerCase().includes(query.toLowerCase()));return <><PageHeader title="Payments" subtitle="Keep collections, deposits and balances in view"><span className="demo-pill">PHP</span></PageHeader><div className="metrics" style={{gridTemplateColumns:'repeat(3,1fr)'}}><SmallMetric label="Collected" value={peso(data.payments.filter(p=>p.status==='Paid').reduce((a,p)=>a+p.amountPhp,0))} foot="Settled payments" icon={<CircleDollarSign size={15}/>}/><SmallMetric label="Outstanding" value={peso(data.payments.filter(p=>p.status!=='Paid').reduce((a,p)=>a+p.amountPhp,0))} foot="Needs follow-up" icon={<Clock3 size={15}/>}/><SmallMetric label="Transactions" value={data.payments.length.toString()} foot="Across all methods" icon={<ReceiptText size={15}/>}/></div><section className="panel table-panel"><Toolbar query={query} setQuery={setQuery} placeholder="Search guest or payment…"/><DataTable headers={['Payment','Guest','Reservation','Date','Method','Amount','Status','Action']} rows={list.map(p=>[<strong>{p.id}</strong>,p.guest,p.reservationId,p.date,p.method,peso(p.amountPhp),<Status value={p.status}/>,p.status==='Paid'?<span className="secondary-text">Settled</span>:<button className="table-action" onClick={()=>update('payments',p.id,'Paid')}>Mark paid</button>])}/></section></>}
+function Orders({data,query,setQuery,update}:{data:Store;query:string;setQuery:(s:string)=>void;update:(k:keyof Store,id:string,s:string)=>void}){const list=data.orders.filter(x=>`${x.guest} ${x.id} ${x.items}`.toLowerCase().includes(query.toLowerCase()));return <><PageHeader title="Menu orders" subtitle="Track kitchen progress and room-service delivery"><button className="button" onClick={()=>alert('Menu ordering is represented by demo orders in this prototype.')}><Plus size={14}/> New order</button></PageHeader><section className="panel table-panel"><Toolbar query={query} setQuery={setQuery} placeholder="Search order, guest or item…"/><DataTable headers={['Order','Guest / room','Items','Placed','Total','Status','Update']} rows={list.map(o=>[<strong>{o.id}</strong>,o.guest,o.items,o.createdAt,peso(o.totalPhp),<Status value={o.status}/>,<select className="select-control" value={o.status} onChange={e=>update('orders',o.id,e.target.value)}><option>Preparing</option><option>Ready</option><option>Delivered</option><option>Cancelled</option></select>])}/></section></>}
+function Rooms({data,patch,flash}:{data:Store;patch:<K extends keyof Store>(key:K,fn:(value:Store[K])=>Store[K])=>void;flash:(s:string)=>void}){return <><PageHeader title="Room status" subtitle={`${data.rooms.length} rooms · Availability, rates and readiness`}><span className="demo-pill">LIVE DEMO</span></PageHeader><div className="filter-bar" style={{marginBottom:14}}><span className="status occupied">Occupied · {data.rooms.filter(r=>r.status==='Occupied').length}</span><span className="status ready">Ready · {data.rooms.filter(r=>r.status==='Ready').length}</span><span className="status dirty">Needs service · {data.rooms.filter(r=>r.status==='Dirty').length}</span><span className="status upcoming">Reserved · {data.rooms.filter(r=>r.status==='Reserved').length}</span></div><div className="list-grid">{data.rooms.map(r=><div className="panel room-card" key={r.id}><div className="room-card-head"><span className="room-number">{r.number}</span><Status value={r.status}/></div><p>{r.type} · {peso(r.ratePhp)} / night</p><select aria-label={`Update room ${r.number} status`} className="room-select" value={r.status} onChange={e=>{patch('rooms',rows=>rows.map(x=>x.id===r.id?{...x,status:e.target.value}:x));flash(`Room ${r.number} is now ${e.target.value.toLowerCase()}`)}}><option>Ready</option><option>Occupied</option><option>Dirty</option><option>Reserved</option><option>Out of order</option></select></div>)}</div></>}
+function Housekeeping({data,update}:{data:Store;update:(k:keyof Store,id:string,s:string)=>void}){const open=data.tasks.filter(t=>t.status!=='Completed').length;return <><PageHeader title="Housekeeping" subtitle="Room turns and daily service tasks"><span className="demo-pill">{open} OPEN TASKS</span></PageHeader><section className="panel table-panel"><div className="panel-head"><div><div className="panel-title">Room turnover board</div><div className="panel-caption">Mark each room ready once it has been checked</div></div><span className="secondary-text">{data.tasks.filter(t=>t.status==='Completed').length} completed</span></div><DataTable headers={['Task','Room','Assigned to','Priority','Status','Action']} rows={data.tasks.map(t=>[<strong>{t.id}</strong>,<strong>Room {t.room}</strong>,t.assignedTo,<Status value={t.priority}/>,<Status value={t.status}/>,t.status!=='Completed'?<button className="table-action" onClick={()=>{update('tasks',t.id,'Completed');}}>Complete task</button>:<span style={{color:'#368269',display:'inline-flex',gap:5,alignItems:'center'}}><Check size={13}/> Done</span>])}/></section><div className="panel" style={{padding:15,marginTop:13,display:'flex',gap:10,alignItems:'center',fontSize:11,color:'#728092'}}><ClipboardCheck size={16} color="#37816e"/> Completing a room-turn task indicates the room has been inspected and is guest-ready.</div></>}
+function Inventory({data,query,setQuery,patch}:{data:Store;query:string;setQuery:(s:string)=>void;patch:<K extends keyof Store>(key:K,fn:(value:Store[K])=>Store[K])=>void}){const [onlyLow,setOnlyLow]=useState(false);const list=data.inventory.filter(x=>`${x.name} ${x.category}`.toLowerCase().includes(query.toLowerCase())&&(!onlyLow||x.onHand<=x.reorderAt));const low=list.filter(x=>x.onHand<=x.reorderAt);return <><PageHeader title="Inventory" subtitle="Keep guest supplies and operating essentials replenished"><span className="status overdue">{data.inventory.filter(i=>i.onHand<=i.reorderAt).length} items low</span></PageHeader><section className="panel table-panel"><Toolbar query={query} setQuery={setQuery} placeholder="Search item or category…"><select className="select-control" value={onlyLow?'Low stock':'All stock'} onChange={e=>setOnlyLow(e.target.value==='Low stock')}><option>All stock</option><option>Low stock</option></select></Toolbar><DataTable headers={['Item','Category','On hand','Reorder at','Unit','Stock level','Action']} rows={list.map(i=>[<strong>{i.name}</strong>,i.category,<strong>{i.onHand}</strong>,i.reorderAt,i.unit,<Status value={i.onHand<=i.reorderAt?'Low stock':'In stock'}/>,<button className="table-action" onClick={()=>patch('inventory',rows=>rows.map(x=>x.id===i.id?{...x,onHand:x.onHand+10}:x))}>Receive +10</button>])} empty="No inventory items found"/></section><p className="page-sub" style={{marginTop:12}}>Low-stock items need attention: {low.length}. Stock changes are saved to this browser.</p></>}
+function ReservationModal({data,close,submit}:{data:Store;close:()=>void;submit:(e:React.FormEvent<HTMLFormElement>)=>void}){return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)close()}}><form className="modal" onSubmit={submit}><div className="modal-head"><div><h2>New reservation</h2><div className="panel-caption">Create a demo booking for Hinkley Homes</div></div><button type="button" className="icon-btn" onClick={close}><X size={17}/></button></div><div className="modal-body"><div className="form-grid"><div className="field full"><label htmlFor="guest">Guest name</label><input id="guest" name="guest" required placeholder="Full name"/></div><div className="field"><label htmlFor="email">Email</label><input id="email" name="email" type="email" placeholder="guest@email.com"/></div><div className="field"><label htmlFor="phone">Phone</label><input id="phone" name="phone" placeholder="+63"/></div><div className="field"><label htmlFor="room">Room</label><select id="room" name="room" required defaultValue=""><option value="" disabled>Select a room</option>{data.rooms.filter(r=>r.status==='Ready').map(r=><option key={r.id} value={r.number}>{r.number} · {r.type}</option>)}</select></div><div className="field"><label htmlFor="total">Total (PHP)</label><input id="total" name="total" type="number" min="1" required placeholder="7800"/></div><div className="field"><label htmlFor="arrival">Arrival</label><input id="arrival" name="arrival" type="date" required defaultValue={today}/></div><div className="field"><label htmlFor="departure">Departure</label><input id="departure" name="departure" type="date" required defaultValue="2026-09-20"/></div></div><div className="modal-actions"><button type="button" className="button" onClick={close}>Cancel</button><button type="submit" className="button primary"><Check size={14}/> Create reservation</button></div></div></form></div>}
+function RoutedErrorBoundary({children}:{children:ReactNode}){const [location]=useLocation();return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>}
+function Router(){return <RoutedErrorBoundary><Switch><Route path="/" component={AppShell}/><Route path="/guests" component={AppShell}/><Route path="/reservations" component={AppShell}/><Route path="/function-rooms" component={AppShell}/><Route path="/check-ins" component={AppShell}/><Route path="/payments" component={AppShell}/><Route path="/menu-orders" component={AppShell}/><Route path="/rooms" component={AppShell}/><Route path="/housekeeping" component={AppShell}/><Route path="/inventory" component={AppShell}/><Route component={NotFound}/></Switch></RoutedErrorBoundary>}
+function App(){return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/,'')}><Router/></WouterRouter><Toaster/></TooltipProvider></QueryClientProvider>}
 export default App;

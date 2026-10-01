@@ -1,0 +1,1 @@
+- [Artifact startup timing](artifact-startup-timing.md) — a new app may need one restart after its package-local Vite link appears.
