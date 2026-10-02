@@ -1,1 +1,2 @@
 - [Artifact startup timing](artifact-startup-timing.md) — a new app may need one restart after its package-local Vite link appears.
+- [COHO access boundary](coho-access-control.md) — the PMS is externally access-restricted; keep the COHO credential server-side.

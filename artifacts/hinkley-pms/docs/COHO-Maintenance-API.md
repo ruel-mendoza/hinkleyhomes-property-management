@@ -33,4 +33,5 @@ Use a COHO API-user key in the server-side Authorization: Bearer <api-key> heade
 - PATCH request bodies are ordinary partial JSON objects, not RFC 6902 operation arrays.
 - Category GUIDs come from GET /v1.1/public/maintenance/categories. Disabled categories are omitted.
 - History can be read and manual notes added. File uploads require a separate presigned-upload flow.
+- The PMS maps create requests from COHO property and room references returned by the v1.1 properties endpoint with `includeRooms=true`.
 - Hinkley PMS demo room labels are not COHO property/room references; map records using references returned by COHO before creating issues.
