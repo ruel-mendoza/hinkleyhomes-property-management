@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  getGetCohoStatusQueryKey,
   getListCohoMaintenanceQueryKey,
   getListCohoMaintenanceCategoriesQueryKey,
   getListCohoPropertiesQueryKey,
@@ -71,7 +72,12 @@ export default function CohoMaintenancePage() {
   const [notice, setNotice] = useState("");
   const [formError, setFormError] = useState("");
 
-  const statusQuery = useGetCohoStatus();
+  const statusQuery = useGetCohoStatus({
+    query: {
+      queryKey: getGetCohoStatusQueryKey(),
+      refetchInterval: 15_000,
+    },
+  });
   const configured = statusQuery.data?.configured === true;
   const propertiesQuery = useListCohoProperties(
     { page: 1, pageSize: 100 },
