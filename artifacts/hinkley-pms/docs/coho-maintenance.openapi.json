@@ -1,0 +1,2350 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "COHO Public API 1.1 — Maintenance subset",
+    "description": "**Current integrator API.** Use `/v1.1/public/*` for new integrations and when migrating from v1.0 (`/v1/public/*` or `/v1.0/public/*`).\n\nThis OpenAPI document is the authoritative contract. Operations are marked **Stable** for production integrator use.\n\nComing from v1.0? Follow the [v1.0 → v1.1 migration guide](https://api.coho.life/docs/public-api/v1.0-to-v1.1) (sunset **6 October 2026 UTC**). Switch documents in Scalar to **COHO Public API 1.0** only while comparing deprecated operations.\n\n**PATCH:** request bodies are ordinary JSON objects with optional properties (a partial update). They are not RFC 6902 JSON Patch operation arrays. Send `Content-Type: application/json`.",
+    "version": "1.1"
+  },
+  "tags": [
+    {
+      "name": "Maintenance"
+    }
+  ],
+  "paths": {
+    "/v1.1/public/maintenance/categories": {
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "List maintenance categories",
+        "description": "Retrieve the organisation maintenance category tree. Use category GUIDs when creating a maintenance issue or converting a conversation to a maintenance issue. Disabled categories are omitted.",
+        "operationId": "ListMaintenanceCategoriesV11",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceCategoriesList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-scalar-stability": "stable"
+      }
+    },
+    "/v1.1/public/maintenance": {
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "List maintenance issues",
+        "description": "Retrieve a paginated list of maintenance issues. Each item includes guid (for routes) and jobNumber (human identifier). Optional propertyReference, propertyReferences, and propertyTags restrict results to matching properties (property and building tags; room tags do not match). Unknown references or tags return an empty page.",
+        "operationId": "ListMaintenanceIssuesV11",
+        "parameters": [
+          {
+            "name": "propertyReference",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "propertyReferences",
+            "in": "query",
+            "description": "Restrict to these property references. Combined with propertyReference when both are supplied.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "propertyTags",
+            "in": "query",
+            "description": "Restrict to properties matching these property or building tags. Room tags do not match.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "createdAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "updatedAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "sortColumn",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/MaintenanceIssuesSortColumn"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceIssuesPagedList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-scalar-stability": "stable"
+      },
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Create maintenance issue",
+        "description": "Create a maintenance issue. Returns both guid and jobNumber. Optional maintenanceCategoryGuid links the issue to a category from ListMaintenanceCategoriesV11.",
+        "operationId": "CreateMaintenanceV11",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMaintenanceIssue"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMaintenanceIssue"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMaintenanceIssue"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceIssueCreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-scalar-stability": "stable"
+      }
+    },
+    "/v1.1/public/maintenance/{guid}": {
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Get maintenance issue",
+        "description": "Retrieve a maintenance issue by its guid.",
+        "operationId": "GetMaintenanceV11",
+        "parameters": [
+          {
+            "name": "guid",
+            "in": "path",
+            "description": "Guid of the maintenance issue",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceIssue"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-scalar-stability": "stable"
+      },
+      "patch": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Patch maintenance issue",
+        "description": "Update manager notes or severity.",
+        "operationId": "PatchMaintenanceV11",
+        "parameters": [
+          {
+            "name": "guid",
+            "in": "path",
+            "description": "Guid of the maintenance issue",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchMaintenanceIssue"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchMaintenanceIssue"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchMaintenanceIssue"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-scalar-stability": "stable"
+      }
+    },
+    "/v1.1/public/maintenance/convert-from-conversation": {
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Convert conversation to maintenance issue",
+        "description": "Create a maintenance issue from an existing conversation and re-link that conversation as the manager/housemates thread. Requires both the maintenance.write and conversations.write scopes on the API key.",
+        "operationId": "ConvertConversationToMaintenanceV11",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConvertConversationToMaintenanceIssue"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConvertConversationToMaintenanceIssue"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConvertConversationToMaintenanceIssue"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceIssueCreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-scalar-stability": "stable"
+      }
+    },
+    "/v1.1/public/maintenance/{guid}/complete": {
+      "patch": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Complete maintenance issue",
+        "description": "Mark a maintenance issue as completed.",
+        "operationId": "CompleteMaintenanceV11",
+        "parameters": [
+          {
+            "name": "guid",
+            "in": "path",
+            "description": "Guid of the maintenance issue",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteMaintenanceIssue"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteMaintenanceIssue"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteMaintenanceIssue"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-scalar-stability": "stable"
+      }
+    },
+    "/v1.1/public/maintenance/{guid}/files": {
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Add maintenance file",
+        "description": "Add a file on a maintenance issue. Upload via GET /v1.1/public/files/presigned-upload-url, then pass FilePostModel with key. Query: managerOnly.",
+        "operationId": "AddFileToMaintenanceV11",
+        "parameters": [
+          {
+            "name": "guid",
+            "in": "path",
+            "description": "Guid of the maintenance issue",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "managerOnly",
+            "in": "query",
+            "description": "Is the file only viewable by the manager",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMaintenanceFile"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMaintenanceFile"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMaintenanceFile"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-scalar-stability": "stable"
+      }
+    },
+    "/v1.1/public/maintenance/{guid}/files/attach-existing": {
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Attach existing files to maintenance",
+        "description": "Attach files already on one of your maintenance issues to another issue without re-uploading. Pass file references (not upload keys). Query: managerOnly.",
+        "operationId": "AttachExistingFilesToMaintenanceV11",
+        "parameters": [
+          {
+            "name": "guid",
+            "in": "path",
+            "description": "Guid of the maintenance issue",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "managerOnly",
+            "in": "query",
+            "description": "Are the files only viewable by the manager",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachExistingMaintenanceFiles"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachExistingMaintenanceFiles"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachExistingMaintenanceFiles"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-scalar-stability": "stable"
+      }
+    },
+    "/v1.1/public/maintenance/{guid}/history": {
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Get maintenance history",
+        "description": "Retrieve the history log for a maintenance issue, newest first.",
+        "operationId": "GetMaintenanceHistoryV11",
+        "parameters": [
+          {
+            "name": "guid",
+            "in": "path",
+            "description": "Guid of the maintenance issue",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "historyTypeIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiHistoryItemList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-scalar-stability": "stable"
+      },
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Add maintenance history note",
+        "description": "Add a manual note to a maintenance issue history log.",
+        "operationId": "AddMaintenanceHistoryNoteV11",
+        "parameters": [
+          {
+            "name": "guid",
+            "in": "path",
+            "description": "Guid of the maintenance issue",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddPublicApiHistoryNote"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddPublicApiHistoryNote"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddPublicApiHistoryNote"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiHistoryItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-scalar-stability": "stable"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PublicProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      },
+      "PublicApiHistoryItem": {
+        "type": "object",
+        "properties": {
+          "guid": {
+            "type": "string",
+            "description": "Unique identifier for this history item",
+            "format": "uuid"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "actionTaken": {
+            "type": "string",
+            "nullable": true
+          },
+          "user": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastUpdater": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "$ref": "#/components/schemas/HistoryCategories"
+          },
+          "type": {
+            "$ref": "#/components/schemas/HistoryTypes"
+          },
+          "editable": {
+            "type": "boolean"
+          },
+          "userDriven": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Link": {
+        "type": "object",
+        "properties": {
+          "href": {
+            "type": "string",
+            "nullable": true
+          },
+          "rel": {
+            "type": "string",
+            "nullable": true
+          },
+          "method": {
+            "$ref": "#/components/schemas/LinkMethod"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LinkMethod": {
+        "enum": [
+          "GET",
+          "POST",
+          "PUT",
+          "PATCH",
+          "DELETE"
+        ],
+        "type": "string"
+      },
+      "HistoryTypes": {
+        "enum": [
+          "itemAdded",
+          "itemRemoved",
+          "itemUpdated",
+          "tenantInvited",
+          "rentPaymentAdded",
+          "itemAcknowledged",
+          "tenantJoined",
+          "setMaintenanceStatus",
+          "setMaintenanceSeverity",
+          "invitedToViewing",
+          "viewingDateSuggested",
+          "itemAddedByTenant",
+          "itemAccepted",
+          "itemRejected",
+          "viewingApplicantCancelled",
+          "viewingApplicantReportNoAnswer",
+          "viewingTenantReportNoShow",
+          "viewingTenantMoveInReject",
+          "viewingTenantMoveInAccept",
+          "viewingTenantCancelledMoveInRejection",
+          "viewingManagerMoveInReject",
+          "viewingManagerMoveInAccept",
+          "viewingApplicantMoveInReject",
+          "viewingApplicantMoveInAccept",
+          "viewingApplicantCancelledMoveInRejection",
+          "viewingDateRejected",
+          "viewingDateAccepted",
+          "viewingUncancelledApplicant",
+          "viewingUncancelledHousemate",
+          "viewingUncancelledManager",
+          "viewingManagerCancelled",
+          "viewingTenantCancelled",
+          "viewingRequest",
+          "viewingApplicantConfirmed",
+          "viewingApplicantPreconfirmed",
+          "invitedToTenancy",
+          "viewingTenantTenancyAccepted",
+          "viewingTenantTenancyRejected",
+          "setAvailability",
+          "tenancyEnded",
+          "itemAddedOnBehalfOf",
+          "manuallyAdded",
+          "setStatus",
+          "setArchived",
+          "newLead",
+          "newLeadMessage",
+          "applicantJoined",
+          "onboardingHoldingFeeManagerReceived",
+          "onboardingHoldingFeeManagerReturned",
+          "onboardingHoldingFeeManagerSkipped",
+          "onboardingHoldingFeeApplicantSent",
+          "onboardingHoldingFeeManagerSet",
+          "onboardingCancelled",
+          "onboardingTenancyDetailsUpdated",
+          "onboardingTenantDetailsUpdated",
+          "onboardingApplicationFormCompleted",
+          "onboardingApplicationFormCompletedByManager",
+          "onboardingReferencingApplicantBegan",
+          "onboardingReferencingGuarantorBegan",
+          "onboardingReferencingApplicantPassedDeprecated",
+          "onboardingReferencingApplicantFailedDeprecated",
+          "onboardingReferencingApplicantRequestInformation",
+          "onboardingReferencingApplicantCompleted",
+          "onboardingReferencingGuarantorPassed",
+          "onboardingReferencingGuarantorFailed",
+          "onboardingReferencingGuarantorRequestInformation",
+          "onboardingReferencingGuarantorCompleted",
+          "onboardingReferencingApplicantDetailsProvided",
+          "onboardingReferencingGuarantorDetailsProvidedByApplicant",
+          "onboardingReferencingApplicantDetailsRequested",
+          "onboardingReferencingGuarantorDetailsRequested",
+          "onboardingCreated",
+          "onboardingApplicationFormReviewed",
+          "onboardingTenancyAgreementCreated",
+          "tenancyAgreementSignedByTenant",
+          "onboardingTenancyAgreementManagerUploadedSigned",
+          "onboardingTenancyAgreementConfirmed",
+          "onboardingTenancyAgreementCompleted",
+          "onboardingTenancyAgreementRejected",
+          "onboardingPayMoniesManagerSetAmount",
+          "onboardingPayMoniesManagerReceived",
+          "onboardingPayMoniesApplicantSent",
+          "onboardingFollowUpDateSet",
+          "onboardingFollowUpCompleted",
+          "onboardingReferencingNotRequired",
+          "onboardingApplicationFormSkipped",
+          "onboardingFollowUpMoveInDetailsSet",
+          "onboardingReferencingSkipped",
+          "onboardingReferencingGuarantorSkipped",
+          "leftConversation",
+          "rentDueRecordMissedPaymentManagerLogged",
+          "rentDueRecordPaymentAssociated",
+          "rentDueRecordPaymentRemoved",
+          "rentDueRecordUpcomingPaymentNotificationSent",
+          "rentDueRecordPaymentDueNotificationSent",
+          "rentDueRecordPaymentLateNotificationSent",
+          "rentDueRecordBillsSet",
+          "rentDueRecordAdded",
+          "rentDueRecordMissedPaymentTenantLogged",
+          "tenancyMoveRoom",
+          "rentDueRecordRefunded",
+          "onboardingHoldingFeeManagerKept",
+          "depositKept",
+          "holdingFeeKept",
+          "tenantFeeKept",
+          "roomDeleted",
+          "roomDeactivated",
+          "propertyDeactivated",
+          "propertyDeleted",
+          "tenancyRestored",
+          "rentDueRecordLastMonthsHeldRentRedirected",
+          "tenancyAgreementSignedByGuarantor",
+          "rentDueRecordBadDebt",
+          "rentDueRecordBadDebtCancelled",
+          "rentDueRecordRemoved",
+          "rentDueRecordRestored",
+          "rentCollectionCreditControlNotificationEmailSent",
+          "holdingFeeReturned",
+          "rentAutomation",
+          "rentDueRecordAutoMatched",
+          "onboardingReferencingApplicantRequired",
+          "onboardingReferencingGuarantorRequired",
+          "rentCollectionCreditControlManagerInstructionsFollowed",
+          "rentCollectionCreditControlNotificationSmsSent",
+          "onboardingReferencingApplicantAccepted",
+          "onboardingReferencingGuarantorAccepted",
+          "onboardingReferencingApplicantDoNothing",
+          "onboardingReferencingGuarantorDoNothing",
+          "onboardingInternalReferencingApplicantPassed",
+          "onboardingInternalReferencingGuarantorPassed",
+          "onboardingInternalReferencingApplicantFailed",
+          "onboardingInternalReferencingGuarantorFailed",
+          "trtCronjobRun",
+          "trtCreated",
+          "trtFirstRun",
+          "trtUpdateAndRun",
+          "trtDeletedAndRun",
+          "trtRevisedAndRun",
+          "onboardingDigitalReferencingApplicantReferenceRequested",
+          "onboardingDigitalReferencingGuarantorReferenceRequested",
+          "onboardingFullReferencingApplicantReferenceRequested",
+          "onboardingFullReferencingGuarantorReferenceRequested",
+          "onboardingReferencingGuarantorDetailsUpdatedByApplicant",
+          "orphanedCheckDatabaseDeleteIfSafe",
+          "onboardingReferencingApplicantSkipped",
+          "tenantAddedToTenancy",
+          "onboardingReferencingGuarantorDetailsProvidedByManager",
+          "onboardingReferencingGuarantorDetailsUpdatedByManager",
+          "onboardingInternalReferencingApplicantResultsUploaded",
+          "onboardingInternalReferencingGuarantorResultsUploaded",
+          "tenancyRentChanged",
+          "tenancyEndedCancelled",
+          "onboardingDigitalReferencingApplicantReferenceReceived",
+          "onboardingDigitalReferencingGuarantorReferenceReceived",
+          "onboardingFullReferencingApplicantReferenceReceived",
+          "onboardingFullReferencingGuarantorReferenceReceived",
+          "onboardingTenancyAgreementGuarantorRemoved",
+          "rentDueRecordRuleMatched",
+          "hmoLicenseAnniversaryReminderSent",
+          "propertyOwnershipChanged",
+          "propertyTypeChanged",
+          "onboardingAssignedOrganisationUser",
+          "onboardingUnassignedOrganisationUser",
+          "onboardingPayMoniesApplicantUnsent",
+          "onboardingApplicationFormReturnedForCorrection",
+          "setUnarchived",
+          "hierarchyChildRemoved",
+          "hierarchyChildAdded",
+          "conversationDisabled",
+          "ownerCreated",
+          "ownerUpdated",
+          "ownerArchived",
+          "ownerRestored",
+          "ownerDeleted",
+          "ownerInvited",
+          "propertyOwnershipCreated",
+          "propertyOwnershipUpdated",
+          "propertyOwnershipRemoved",
+          "propertyFinancialItemsRegenerated",
+          "subscriptionPlanUpdate",
+          "subscriptionPlanSelected",
+          "tenancyDeleted",
+          "actionProgressionAddStep",
+          "actionProgressionDeleteStep",
+          "actionProgressionArchiveStep",
+          "actionProgressionEditStep",
+          "actionProgressionCompleteStep",
+          "actionProgressionMarkAllComplete",
+          "actionProgressionAssignStep",
+          "actionProgressionUncompleteStep",
+          "actionProgressionUnassignStep",
+          "actionProgressionCreateFromTemplate",
+          "actionProgressionCreateAdHoc",
+          "actionMarkedCompleted",
+          "actionStatusChanged",
+          "actionSnoozed",
+          "actionUnsnoozed",
+          "tenancyAgreementAdditionalFilesAttached",
+          "onboardingApplicationFormStepCompleted",
+          "rentChangeNotificationSent",
+          "viewingInviteSent",
+          "onboardingInternalReferencingApplicantCancelled",
+          "onboardingInternalReferencingGuarantorCancelled",
+          "depositManagementRequestedInfoFromApplicant",
+          "depositManagementApplicantSentInfo",
+          "depositManagementManagerReviewedApplicantInfo",
+          "depositManagementRequireSignature",
+          "depositManagementApplicantSigned",
+          "depositManagementManagerReviewedSignature",
+          "depositManagementRemoveSignatureRequirement",
+          "depositManagementAlertTenantsRequireSignature",
+          "onboardingRestored",
+          "onboardingCompletedByManager",
+          "onboardingCompletedBySystem",
+          "rentDueRecordPaymentAssociationRemoved",
+          "rentDueRecordEdited",
+          "rentDueRecordFinItemsRegenerated",
+          "rentDueRecordReversed",
+          "rentDueRecordUnreversed",
+          "maintenanceAssignedOrganistionUser",
+          "maintenanceUnassignedOrganistionUser",
+          "setMaintenanceManagerNotes",
+          "maintenanceReported",
+          "maintenanceAssignedOrganistionSupplier",
+          "maintenanceManagerUnassignedOrganistionSupplier",
+          "maintenanceSupplierStatusChanged",
+          "maintenanceManagerStatusChanged",
+          "maintenanceOwnerStatusChanged",
+          "setMaintenanceDateMaintenanceCarriedOut",
+          "maintenanceScheduleProposed",
+          "maintenanceSharedWithOwner",
+          "setMaintenanceDueBy",
+          "setMaintenanceDateOnHoldUntil",
+          "maintenanceSentToOrganistionSupplier",
+          "maintenanceOpenedBySupplier",
+          "maintenanceIssueDeleted",
+          "maintenanceEstimatePostByOrganisation",
+          "maintenanceEstimatePatch",
+          "maintenanceInvoicePostByOrganisation",
+          "maintenanceInvoicePatch",
+          "setMaintenanceEstimatedDate",
+          "setMaintenanceDatePartsDue",
+          "maintenanceSupplierRejectedIssue",
+          "managerUploadMaintenancePublicFile",
+          "maintenanceCompletionNotesAdded",
+          "maintenanceSupplierAcceptedIssue",
+          "maintenanceUnsharedWithOwner",
+          "maintenanceRemoveScheduledDate",
+          "maintenanceScheduleApproved",
+          "maintenanceInvoicePostBySupplier",
+          "maintenanceEstimatePostBySupplier",
+          "maintenanceInvoicePatchAcceptedByOrganisation",
+          "maintenanceInvoicePatchRejectedByOrganisation",
+          "maintenanceEstimatePatchAcceptedByOrganisation",
+          "maintenanceEstimatePatchRejectedByOrganisation",
+          "maintenanceSoloActionTaken",
+          "maintenanceTenantAssigned",
+          "maintenanceSetPrivate",
+          "maintenanceSetShared",
+          "maintenancePartsDueReceived",
+          "maintenancePropertyAssigned",
+          "maintenanceCategoryNameOverride",
+          "maintenanceCategoryUpdated",
+          "deleteMaintenanceDueBy",
+          "maintenanceRoomSet",
+          "anonUploadMaintenancePublicFile",
+          "maintenanceSetClosed",
+          "maintenanceSetReopened",
+          "inventoryTemplateAdded",
+          "inventoryTemplateUpdated",
+          "inventoryTemplateArchived",
+          "inventoryTemplateUnarchived",
+          "inventoryTemplateFileExport",
+          "viewingPrequalificationCreated",
+          "viewingPrequalificationUpdated",
+          "viewingArchived",
+          "viewingUnarchived",
+          "viewingUnassignedOrganisationUser",
+          "viewingAssignedOrganisationUser",
+          "viewingAssignedRoom",
+          "viewingUnassignedRoom",
+          "viewingOutcomeUpdated",
+          "viewingManagerCancelledMoveInRejection",
+          "viewingTurnedIntoOnboarding",
+          "viewingFirstSeen",
+          "viewingPrequalificationSkipped",
+          "viewingApplicantJoinedAlternative",
+          "organisationUserAssigned",
+          "organisationUserUnassigned",
+          "applicationFormAccepted",
+          "applicationFormRejected",
+          "viewingPropertySwitched",
+          "rentDueRecordHoldingFeeRedirected",
+          "rentDueRecordRedirectUndone",
+          "tdsDepositCancelled",
+          "tdsDepositMarkedAsPaid",
+          "tdsDepositHeld",
+          "tdsDepositCreated",
+          "tdsDepositFilesCreated",
+          "tdsDepositCreationErrored",
+          "depositStatusChanged",
+          "depositTransferred",
+          "depositRepaymentRequested",
+          "depositReturned",
+          "depositReceivedBulk",
+          "depositReceived",
+          "depositTransferredBulk",
+          "depositManagementIgnored",
+          "depositCompleted",
+          "depositCompletedBulk",
+          "depositProcessReopened",
+          "depositProcessClosedBulk",
+          "goCardlessBillingRequestCreatedForMandateOnly",
+          "goCardlessNoActiveMandatesNotification",
+          "goCardlessBillingRequestCancelled",
+          "goCardlessPaymentStatusUpdated",
+          "goCardlessMandateStatusUpdated",
+          "goCardlessOrganisationDisconnected",
+          "goCardlessCustomerIdUpdated",
+          "rentDueRecordGoCardlessPaymentStatusUpdated",
+          "goCardlessBillingRequestCreatedForMandateAndFirstPayment",
+          "goCardlessPaymentCreatedAgainstMandate",
+          "goCardlessInstantPaymentCreated",
+          "goCardlessSubscriptionIdUpdated",
+          "goCardlessMandateCreated",
+          "goCardlessMandateArchived",
+          "goCardlessMandateUnarchived",
+          "goCardlessPaymentCancelled",
+          "propertyServicesAdded",
+          "propertyServicesRemoved",
+          "singleLetPropertyRentModified",
+          "singleLetPropertyPaymentFrequencyModified",
+          "singleLetPropertyDepositTypeModified",
+          "singleLetPropertyGuarantorRequiredModified",
+          "singleLetPropertyDepositReplacementSchemeAvailableModified",
+          "singleLetPropertyDepositAmountRequiredModified",
+          "onboardingHoldingFeeManagerMarkedUnpaid",
+          "onboardingApplicationFormUpdatedByManager",
+          "onboardingApplicationFormDeleted",
+          "rentReviewRoom",
+          "rentReviewTenancy",
+          "yourPlaceUpdateRequestSent",
+          "yourPlaceTeamUpdates",
+          "rightMoveAuthenticationInformationAdded",
+          "rightMoveAuthenticationInformationPatched",
+          "rightMoveAuthenticationInformationDeleted",
+          "rightMovePropertyDeleted",
+          "rightMovePropertyCreated",
+          "rightMovePropertyUpdated",
+          "onTheMarketAuthenticationInformationAdded",
+          "onTheMarketAuthenticationInformationPatched",
+          "onTheMarketAuthenticationInformationDeleted",
+          "onTheMarketPropertyDeleted",
+          "onTheMarketPropertyCreated",
+          "onTheMarketPropertyUpdated",
+          "connectionAccountDeleted",
+          "onboardingHoldingFeeRequired",
+          "onboardingApplicationFormRequired",
+          "rightToRentValidated",
+          "rightToRentRejected",
+          "newFinancialItemLink",
+          "financialItemLinkDeleted",
+          "rentDueRecordUnrefunded",
+          "rentDueRecordDueDateModified",
+          "onboardingFollowUpDateDeleted",
+          "onboardingConversationCreated",
+          "onboardingFollowUpMoveInDetailsDeleted",
+          "viewingActiveTenantsAlerted",
+          "maintenanceActiveTenantsAlerted",
+          "managerUploadMaintenanceManagerOnlyFile",
+          "onboardingTenancyAgreementStatusChange",
+          "conversationAllowReplies",
+          "viewingApplicantPreconfirmationSent",
+          "viewingApplicantConfirmationSent",
+          "onboardingHoldingFeeCheckPaymentUpdate",
+          "tenantDisconnected",
+          "settlementPartyReportSentToPropertyOwner",
+          "missingRentChargeIgnored",
+          "missingRentChargeUnignored",
+          "guarantorSignatureLinkSent",
+          "tenantSignatureLinkSent",
+          "transactionStatusUpdated",
+          "tenancyAgreementEmailIdentityRejected",
+          "tenancyAgreementEmailIdentityAccepted",
+          "tenancyAgreementMobileNumberIdentityAccepted",
+          "tenancyAgreementMobileNumberIdentityRejected",
+          "ownerConversationCreated",
+          "tenantRecordAcknowledgementAdded",
+          "tenantRecordAcknowledgementServed",
+          "tenantRecordAcknowledgementAcknowledged",
+          "tenantRecordAcknowledgementManuallyAcknowledged",
+          "propertyActivated",
+          "roomActivated",
+          "tdsDepositRepaymentRequested",
+          "archiveChildCompanies",
+          "unarchiveChildCompanies",
+          "ownerSettlementDeleted",
+          "saltEdgeConnectionBackgroundRefresh",
+          "propertyServiceParameterUpdated",
+          "canopyRequestStatusUpdate",
+          "canopyPassportStatusUpdate",
+          "settlementStatusUpdate",
+          "settlementPartyPaid",
+          "bulkSettlement",
+          "propertyOwnerFloatCreated",
+          "propertyOwnerFloatUpdated",
+          "propertyOwnerFloatArchived",
+          "propertyOwnerFloatUnArchived",
+          "onboardingPayMoneySkipped",
+          "onboardingPayMoneyRequired",
+          "recurringMaintenanceAdded",
+          "recurringMaintenanceEdited",
+          "recurringMaintenanceDisabled",
+          "recurringMaintenanceEnabled",
+          "recurringMaintenanceDeleted",
+          "maintenanceCreatedFromRecurring",
+          "rentPaymentDateUpdated",
+          "whatsAppTwilioNumberPurchased",
+          "whatsAppMetaRegistrationInitiated",
+          "whatsAppOtpReceived",
+          "whatsAppOtpSubmitted",
+          "whatsAppNumberVerified",
+          "whatsAppProvisioningFailed",
+          "whatsAppMessageDelivered",
+          "whatsAppReplyWindowOpened",
+          "whatsAppDisconnectRequested",
+          "whatsAppDisconnected",
+          "whatsAppSubscriptionEnabled",
+          "whatsAppSubscriptionDisabled",
+          "whatsAppSystemMessage",
+          "tenantMessagingRestricted",
+          "tenantMessagingRestored",
+          "zeroDepositDisconnected",
+          "zeroDepositIntroductionCreated",
+          "zeroDepositIntroductionStatusChanged",
+          "onboardingGuarantorProfessionalSelected",
+          "onboardingGuarantorPersonalSelected",
+          "onboardingGuarantorSwitchedToPersonal",
+          "onboardingProfessionalGuarantorStepStarted",
+          "onboardingProfessionalGuarantorStepCompleted",
+          "zeroDepositConnectRequested",
+          "zeroDepositConnectionCompleted",
+          "recurringActionAdded",
+          "recurringActionEdited",
+          "recurringActionDisabled",
+          "recurringActionEnabled",
+          "recurringActionDeleted",
+          "actionCreatedFromRecurring",
+          "organisationUserAdded",
+          "organisationUserRoleUpdated",
+          "organisationUserEmailUpdated",
+          "organisationUserRestored",
+          "organisationUserRemoved",
+          "organisationRoleUpdated",
+          "organisationRoleRemoved",
+          "rentMatchRuleCreated",
+          "rentMatchRuleUpdated"
+        ],
+        "type": "string"
+      },
+      "HistoryCategories": {
+        "enum": [
+          "boilerServicing",
+          "tenancyAgreement",
+          "rightToRent",
+          "hmoLicence",
+          "gasSafetyCertificate",
+          "electricalInstallationConditionReport",
+          "energyPerformanceCertificate",
+          "inspection",
+          "depositManagement",
+          "property",
+          "room",
+          "tenancy",
+          "tenant",
+          "rentCollection",
+          "howToRentGuide",
+          "maintenance",
+          "tenantFind",
+          "fireSafety",
+          "healthAndSafety",
+          "portableApplianceTest",
+          "buildingInsurance",
+          "mortgageRenewal",
+          "organisation",
+          "lead",
+          "onboarding",
+          "conversation",
+          "tenancyRecurringTransaction",
+          "inventory",
+          "creditControlTenancy",
+          "actions",
+          "buildings",
+          "rentReview",
+          "transactions",
+          "customCertificate",
+          "propertyOwner",
+          "settlement"
+        ],
+        "type": "string"
+      },
+      "AddPublicApiHistoryNote": {
+        "required": [
+          "actionTaken"
+        ],
+        "type": "object",
+        "properties": {
+          "actionTaken": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicApiHistoryItemList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicApiHistoryItem"
+            },
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PatchResponse": {
+        "type": "object",
+        "properties": {
+          "updated": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "nullable": true
+            },
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AttachExistingMaintenanceFiles": {
+        "required": [
+          "fileReferences"
+        ],
+        "type": "object",
+        "properties": {
+          "fileReferences": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AddMaintenanceFile": {
+        "required": [
+          "file"
+        ],
+        "type": "object",
+        "properties": {
+          "file": {
+            "$ref": "#/components/schemas/FilePostModel"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FilePostModel": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "maxLength": 300,
+            "type": "string",
+            "description": "Optional display name for the file in COHO. Defaults to originalFilename when omitted.",
+            "nullable": true
+          },
+          "originalFilename": {
+            "type": "string",
+            "description": "Name of the uploaded file, including its extension (used to determine the file type). Required for new files.",
+            "nullable": true
+          },
+          "type": {
+            "$ref": "#/components/schemas/FileTypes"
+          },
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "existingFile": {
+            "type": "boolean"
+          },
+          "existingFilename": {
+            "type": "string",
+            "nullable": true
+          },
+          "specificToEntityReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "specificToEntityType": {
+            "$ref": "#/components/schemas/BaseEntityTypes"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BaseEntityTypes": {
+        "enum": [
+          "PROPERTY",
+          "ROOM",
+          "TENANCY",
+          "TENANCY_TENANT",
+          "RENT_DUE_RECORD",
+          "FINANCIAL_ITEM",
+          "CONVERSATION",
+          "CONVERSATION_MESSAGE",
+          "MAINTENANCE_ITEM",
+          "PROPERTY_OWNER",
+          "ACTION",
+          "ONBOARDING",
+          "TENANCY_RECURRING_TRANSACTION",
+          "BANK_ACCOUNT",
+          "ORGANISATION_SUPPLIER",
+          "ORGANISATION_PERSON",
+          "COHO_INVOICE",
+          "PROPERTY_VIEWING",
+          "MAINTENANCE_INVOICE",
+          "ACTION_PROGRESSION",
+          "ACTION_PROGRESSION_STEP",
+          "ACTION_PROGRESSION_FILE",
+          "ACTION_PROGRESSION_TEMPLATE_FILE",
+          "ONBOARDING_APPLICATION_FORM",
+          "ORGANISATION",
+          "ORGANISATION_PROPERTY_XERO_SETTINGS",
+          "PERSON",
+          "SUPPLIER",
+          "FINANCIAL_ITEM_CATEGORY",
+          "FINANCIAL_ITEM_SETTLEMENT",
+          "BUILDING",
+          "ANONYMOUS_SIGNER",
+          "GUARANTOR",
+          "YOUR_PLACE_LISTING",
+          "CANOPY_RENT_REFERENCE",
+          "GAS_SAFETY_CERTIFICATE",
+          "PORTABLE_APPLIANCE_TEST",
+          "ELECTRICAL_INSTALLATION_CONDITION_REPORT",
+          "HMO_LICENCE",
+          "BOILER_SERVICE",
+          "ENERGY_PERFORMANCE_CERTIFICATE",
+          "CUSTOM_CERTIFICATE",
+          "CALENDAR_ITEM",
+          "DEPOSIT_MANAGEMENT",
+          "LEAD",
+          "REPAIR_REPEATING",
+          "ACTION_REPEATING",
+          "NOT_SET_OR_ERROR"
+        ],
+        "type": "string"
+      },
+      "FileTypes": {
+        "enum": [
+          "unknown",
+          "image",
+          "document",
+          "video",
+          "audio"
+        ],
+        "type": "string"
+      },
+      "CompleteMaintenanceIssue": {
+        "type": "object",
+        "properties": {
+          "completionNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateMaintenanceCarriedOut": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "awaitingDecision": {
+            "$ref": "#/components/schemas/MaintenanceIssueCompleteAwaitingDecision"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MaintenanceIssueCompleteAwaitingDecision": {
+        "enum": [
+          "complete",
+          "awaitingInvoice",
+          "awaitingOther"
+        ],
+        "type": "string",
+        "description": "What to do next: complete, or wait for something"
+      },
+      "MaintenanceIssueCreateResponse": {
+        "type": "object",
+        "properties": {
+          "guid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "jobNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConvertConversationToMaintenanceIssue": {
+        "required": [
+          "conversationReference",
+          "propertyReference",
+          "requestMessage",
+          "severity"
+        ],
+        "type": "object",
+        "properties": {
+          "conversationReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertyReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "personReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "private": {
+            "type": "boolean"
+          },
+          "requestMessage": {
+            "maxLength": 4000,
+            "type": "string",
+            "nullable": true
+          },
+          "fileReferences": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "maintenanceCategoryGuid": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "severity": {
+            "$ref": "#/components/schemas/MaintenanceSeverities"
+          },
+          "managerNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "roomReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "organisationPersonGuid": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MaintenanceSeverities": {
+        "enum": [
+          "unknown",
+          "low",
+          "medium",
+          "high"
+        ],
+        "type": "string"
+      },
+      "PatchMaintenanceIssue": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "$ref": "#/components/schemas/MaintenanceSeverities"
+          },
+          "managerNotes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MaintenanceIssue": {
+        "type": "object",
+        "properties": {
+          "guid": {
+            "type": "string",
+            "description": "Stable machine identifier for this maintenance issue. Use in route paths for detail and write operations.",
+            "format": "uuid"
+          },
+          "jobNumber": {
+            "type": "string",
+            "description": "Human-readable job number shown in the product UI (for example M0001).",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "managerNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "completionNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "raisedBy": {
+            "$ref": "#/components/schemas/MaintenanceRaisedByTypes"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/MaintenanceSeverities"
+          },
+          "tenantName": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "roomName": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "roomReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertyReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicStatus": {
+            "$ref": "#/components/schemas/MaintenancePublicStatuses"
+          },
+          "detailedStatus": {
+            "$ref": "#/components/schemas/MaintenanceDetailedStatuses"
+          },
+          "dateMaintenanceScheduled": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dateMaintenanceScheduledEnd": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dateMaintenanceCarriedOut": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dateOnHoldUntil": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "datePartsDue": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dateEstimatedFor": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dateMaintenanceCompleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dateClosed": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "maintenanceDueBy": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MaintenanceDetailedStatuses": {
+        "enum": [
+          "unknown",
+          "reportedByTenant",
+          "managerInvestigating",
+          "managerArrangingSupplier",
+          "awaitingSupplierAcknowledgement",
+          "supplierGatheringInformation",
+          "managerReviewingSupplierEstimate",
+          "awaitingOwnerApproval",
+          "managerProcessingOwnerResponse",
+          "supplierAwaitingParts",
+          "supplierArrangingDate",
+          "managerAwaitingParts",
+          "managerArrangingDate",
+          "managerAwaitingMaintenanceDate",
+          "supplierAwaitingMaintenanceDate",
+          "supplierMaintenanceCompleted",
+          "managerApprovingMaintenance",
+          "managerAwaitingInvoice",
+          "reviewingSupplierInvoice",
+          "completed",
+          "reportedByManager",
+          "managerReviewingSchedule",
+          "deferred",
+          "supplierReviewingSchedule",
+          "reportedByOther",
+          "managerAwaitingOther",
+          "reportedByOwner",
+          "deleted"
+        ],
+        "type": "string",
+        "description": "External status, shown to the tenants or the owner on their respective dashboards"
+      },
+      "MaintenancePublicStatuses": {
+        "enum": [
+          "reported",
+          "investigating",
+          "arrangingSupplier",
+          "awaitingParts",
+          "awaitingPropertyOwner",
+          "arrangingDate",
+          "maintenanceScheduled",
+          "reviewingMaintenanceWork",
+          "completed",
+          "awaiting",
+          "processingPropertyOwnerResponse",
+          "deleted",
+          "unknown"
+        ],
+        "type": "string",
+        "description": "External status, shown to the tenants or the owner on their respective dashboards"
+      },
+      "MaintenanceRaisedByTypes": {
+        "enum": [
+          "tenant",
+          "manager",
+          "owner",
+          "supplierPerson",
+          "other",
+          "managerOnBehalfOfTenant",
+          "system"
+        ],
+        "type": "string"
+      },
+      "CreateMaintenanceIssue": {
+        "required": [
+          "propertyReference",
+          "severity",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "propertyReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "roomReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "managerNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "severity": {
+            "$ref": "#/components/schemas/MaintenanceSeverities"
+          },
+          "maintenanceCategoryGuid": {
+            "type": "string",
+            "description": "Optional maintenance category GUID from ListMaintenanceCategoriesV11. When set, the issue is linked to that category and organisation category overrides (for example auto-assign supplier) are applied.",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MaintenanceIssuesPagedList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaintenanceIssue"
+            },
+            "nullable": true
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "hasPreviousPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SortOrder": {
+        "enum": [
+          "asc",
+          "desc"
+        ],
+        "type": "string"
+      },
+      "MaintenanceIssuesSortColumn": {
+        "enum": [
+          "created",
+          "updated",
+          "title"
+        ],
+        "type": "string"
+      },
+      "MaintenanceCategoriesList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaintenanceCategory"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MaintenanceCategory": {
+        "type": "object",
+        "properties": {
+          "guid": {
+            "type": "string",
+            "description": "Stable machine identifier for this maintenance category. Use when creating or converting maintenance issues.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "hierarchy": {
+            "type": "string",
+            "description": "Ancestor path excluding this category (for example \"Bathroom / En-Suite > Sink & Taps\"). Null for top-level categories.",
+            "nullable": true
+          },
+          "defaultSeverity": {
+            "$ref": "#/components/schemas/MaintenanceSeverities"
+          },
+          "requireFileUpload": {
+            "type": "boolean"
+          },
+          "requireVideoUpload": {
+            "type": "boolean"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaintenanceCategory"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "description": "Create an API user on your COHO organisation to get that API key",
+        "scheme": "bearer",
+        "bearerFormat": "uuid"
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ]
+}

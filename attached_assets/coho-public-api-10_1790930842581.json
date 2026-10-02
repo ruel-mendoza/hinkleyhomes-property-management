@@ -1,0 +1,5261 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "COHO Public API 1.0",
+    "description": "**Legacy API (deprecated).** This document describes `/v1.0/public/*` endpoints (also reachable as `/v1/public/*`).\n\nNew integrations MUST use **COHO Public API 1.1** (`/v1.1/public/*`). v1.0 is frozen: no new endpoints or contract changes except critical production hotfixes.\n\n**Sunset: 6 October 2026 (UTC).** After this date v1.0 routes will return 404 in production. v1.0 responses include `Deprecation`, `Sunset`, and `Link` (`rel=\"successor-version\"`) headers pointing at the matching v1.1 path where applicable.\n\n### Migrate to v1.1\n\n1. Keep the same `Authorization: Bearer <api-key>` header.\n2. Change the path prefix: `/v1/public/...` or `/v1.0/public/...` → `/v1.1/public/...`.\n3. For single-item maintenance, viewing, tenancy, rent-due-record, and info-box routes, switch path `{reference}` to `{guid}` from v1.1 list payloads.\n4. Watch renamed paths: `rooms/{reference}` → `properties/{propertyReference}/rooms/{roomReference}`; `viewings/createviewing` → `viewings`; `infobox` → `info-boxes`.\n\nFull operation map and notes: [Public API v1.0 → v1.1 migration guide](https://api.coho.life/docs/public-api/v1.0-to-v1.1).\n\n**PATCH:** request bodies are ordinary JSON objects with optional properties (a partial update). They are not RFC 6902 JSON Patch operation arrays. Send `Content-Type: application/json`.",
+    "version": "1.0"
+  },
+  "paths": {
+    "/v1/public/test-auth": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Test authentication",
+        "description": "Verify that your API key works **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/test-auth`.",
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/info-boxes/property/{propertyReference}": {
+      "get": {
+        "tags": [
+          "Info Box"
+        ],
+        "summary": "Get info boxes for property",
+        "description": "Retrieve info boxes for a specific property **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/info-boxes/property/{propertyReference}`.",
+        "operationId": "GetInfoBoxes",
+        "parameters": [
+          {
+            "name": "propertyReference",
+            "in": "path",
+            "description": "Reference of the property",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Limit to specific type",
+            "schema": {
+              "$ref": "#/components/schemas/InfoBoxTypes"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "createdAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "updatedAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "sortColumn",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/InfoBoxSortColumn"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/0, Culture=neutral, PublicKeyToken=null]]"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/info-boxes/{reference}": {
+      "get": {
+        "tags": [
+          "Info Box"
+        ],
+        "summary": "Get info box",
+        "description": "Retrieve a specific info box by its reference **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/info-boxes/{guid}`.",
+        "operationId": "GetInfoBox",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "description": "Reference of the info box",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfoBox"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      },
+      "patch": {
+        "tags": [
+          "Info Box"
+        ],
+        "summary": "Patch info box",
+        "description": "Update info box content **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `PATCH /v1.1/public/info-boxes/{guid}`.",
+        "operationId": "PatchInfoBox",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "description": "Reference of the info box",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchInfoBox"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchInfoBox"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchInfoBox"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/infobox": {
+      "post": {
+        "tags": [
+          "Info Box"
+        ],
+        "summary": "Create info box",
+        "description": "Create an info box **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `POST /v1.1/public/info-boxes`.",
+        "operationId": "CreateInfoBox",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInfoBox"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInfoBox"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInfoBox"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/maintenance/{reference}/files": {
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Add maintenance file",
+        "description": "Add a file on a specific maintenance issue using multipart/form-data. Query: managerOnly. File part: file (required). **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `POST /v1.1/public/maintenance/{guid}/files`.",
+        "operationId": "AddFileToMaintenance",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "description": "Guid of the maintenance issue",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "managerOnly",
+            "in": "query",
+            "description": "Is the file only viewable by the manager",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/maintenance/{reference}": {
+      "patch": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Patch maintenance",
+        "description": "Update manager notes or severity. **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `PATCH /v1.1/public/maintenance/{guid}`.",
+        "operationId": "PatchMaintenance",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "description": "Guid of the maintenance issue",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchMaintenanceIssue"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchMaintenanceIssue"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchMaintenanceIssue"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      },
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Get maintenance",
+        "description": "Retrieve a specific maintenance issue **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/maintenance/{guid}`.",
+        "operationId": "GetMaintenance",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "description": "Guid of the maintenance issue",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceIssue"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/maintenance/{reference}/complete": {
+      "patch": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Complete maintenance",
+        "description": "Make a maintenance issue as completed **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `PATCH /v1.1/public/maintenance/{guid}/complete`.",
+        "operationId": "CompleteMaintenance",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "description": "Guid of the maintenance issue",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteMaintenanceIssue"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteMaintenanceIssue"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteMaintenanceIssue"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/maintenance": {
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Get maintenance issues",
+        "description": "Retrieve a list of maintenance issues based on the filter criteria **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/maintenance`.",
+        "operationId": "GetMaintenanceIssues",
+        "parameters": [
+          {
+            "name": "propertyReference",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "createdAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "updatedAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "sortColumn",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/MaintenanceIssuesSortColumn"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceIssuesPagedList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      },
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Create maintenance",
+        "description": "Create a maintenance issue **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `POST /v1.1/public/maintenance`.",
+        "operationId": "CreateMaintenance",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMaintenanceIssue"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMaintenanceIssue"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMaintenanceIssue"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/maintenance/{reference}/history": {
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Get maintenance history",
+        "description": "Retrieve the history log for a maintenance issue, newest first. **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/maintenance/{guid}/history`.",
+        "operationId": "GetMaintenanceHistory",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "description": "Guid of the maintenance issue",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "historyTypeIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceHistoryItemList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      },
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Add maintenance history note",
+        "description": "Add a manual note to a maintenance issue history log. **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `POST /v1.1/public/maintenance/{guid}/history`.",
+        "operationId": "AddMaintenanceHistoryNote",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "description": "Guid of the maintenance issue",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMaintenanceHistoryNote"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMaintenanceHistoryNote"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMaintenanceHistoryNote"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceHistoryItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/properties": {
+      "get": {
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Get properties",
+        "description": "Retrieve a list of properties based on the filter criteria **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/properties`.",
+        "operationId": "GetProperties",
+        "parameters": [
+          {
+            "name": "majorAreaReference",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rentalType",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/RentalTypes"
+            }
+          },
+          {
+            "name": "availableOnly",
+            "in": "query",
+            "description": "Limit to properties that are available or have at least one room available",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeRooms",
+            "in": "query",
+            "description": "Include active tenancies for the room",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeAllImages",
+            "in": "query",
+            "description": "Includes all images associated to the properties instead of just the main one",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "buildingReferences",
+            "in": "query",
+            "description": "Filter by a specific building or some buildings. Uses building.guid. A top level building also matches the properties of its child buildings.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "createdAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "updatedAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "sortColumn",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/PropertiesSortColumn"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertiesPagedList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/buildings": {
+      "get": {
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Get buildings",
+        "description": "Retrieve a list of buildings **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/buildings`.",
+        "operationId": "GetBuildings",
+        "parameters": [
+          {
+            "name": "includeActive",
+            "in": "query",
+            "description": "Include active buildings",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "description": "Include archived buildings",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "sortColumn",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/BuildingsSortColumn"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildingsPagedList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/properties/{reference}": {
+      "get": {
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Get property",
+        "description": "Retrieve a specific property **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/properties/{reference}`.",
+        "operationId": "GetProperty",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "description": "Reference of the property",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeRooms",
+            "in": "query",
+            "description": "Include active tenancies for the room",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeAllImages",
+            "in": "query",
+            "description": "Includes all images associated to the property instead of just the main one",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Property"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/property-ownerships": {
+      "get": {
+        "tags": [
+          "Property Owners"
+        ],
+        "summary": "Get property ownerships",
+        "description": "Retrieve a list of active property ownerships (for non-owned properties) **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/property-ownerships`.",
+        "operationId": "GetPropertyOwnerships",
+        "parameters": [
+          {
+            "name": "propertyReference",
+            "in": "query",
+            "description": "Reference of the related property",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "createdAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "updatedAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "sortColumn",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/PropertyOwnerSortColumn"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyOwnershipsPagedList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/rent-due-records": {
+      "get": {
+        "tags": [
+          "Rent Collection"
+        ],
+        "summary": "Get rent due records",
+        "description": "Retrieve a list of rent due records based on the filter criteria **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/rent-due-records`.",
+        "operationId": "GetRentDueRecords",
+        "parameters": [
+          {
+            "name": "propertyReference",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roomReference",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "If none/empty, will be set to active",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/TenancyStatuses"
+              }
+            }
+          },
+          {
+            "name": "tenancyReferences",
+            "in": "query",
+            "description": "If none/empty, will not be filtered",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "createdAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "updatedAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "sortColumn",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/RentDueRecordSortColumn"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RentDueRecordPaginatedList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/rent-due-records/{reference}": {
+      "get": {
+        "tags": [
+          "Rent Collection"
+        ],
+        "summary": "Get rent due record",
+        "description": "Retrieve a specific rent due record **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/rent-due-records/{guid}`.",
+        "operationId": "GetRentDueRecord",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "description": "Reference of the rent due record",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RentDueRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/rooms": {
+      "get": {
+        "tags": [
+          "Rooms"
+        ],
+        "summary": "Get rooms",
+        "description": "Retrieve a list of rooms based on the filter criteria. The lettable unit inside a single-let property is also included in the list and typically have the name 'Tenancy' **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/rooms`.",
+        "operationId": "GetRooms",
+        "parameters": [
+          {
+            "name": "propertyReference",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "availableOnly",
+            "in": "query",
+            "description": "Limit to rooms that are set as available",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeTenancy",
+            "in": "query",
+            "description": "Include active tenancies for the room",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeAllImages",
+            "in": "query",
+            "description": "Includes all images associated to the rooms instead of just the main one",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "createdAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "updatedAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "sortColumn",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/RoomsSortColumn"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomsPagedList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/rooms/{reference}": {
+      "get": {
+        "tags": [
+          "Rooms"
+        ],
+        "summary": "Get room",
+        "description": "Retrieve a specific room **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/properties/{propertyReference}/rooms/{roomReference}`.",
+        "operationId": "GetRoom",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "description": "Reference of the room",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeTenancy",
+            "in": "query",
+            "description": "Include active tenancies for the room",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeAllImages",
+            "in": "query",
+            "description": "Includes all images associated to the room instead of just the main one",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Room"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/tenancies": {
+      "get": {
+        "tags": [
+          "Tenancies"
+        ],
+        "summary": "Get tenancies",
+        "description": "Retrieve a list of tenancies based on the filter criteria **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/tenancies`.",
+        "operationId": "GetTenancies",
+        "parameters": [
+          {
+            "name": "propertyReference",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roomReference",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "If none/empty, will be set to active",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/TenancyStatuses"
+              }
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "createdAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "updatedAfter",
+            "in": "query",
+            "description": "UTC dateTime",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "sortColumn",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TenancySortColumn"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenanciesPagedList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/tenancies/{reference}": {
+      "get": {
+        "tags": [
+          "Tenancies"
+        ],
+        "summary": "Get tenancy",
+        "description": "Retrieve a specific tenancy **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/tenancies/{guid}`.",
+        "operationId": "GetTenancy",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "description": "Reference of the tenancy",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tenancy"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/viewings/{reference}": {
+      "get": {
+        "tags": [
+          "Viewings"
+        ],
+        "summary": "Get viewing",
+        "description": "Retrieve a specific viewing **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `GET /v1.1/public/viewings/{guid}`.",
+        "operationId": "GetViewing",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "description": "Reference of the viewing",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyViewing"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    },
+    "/v1/public/viewings/createviewing": {
+      "post": {
+        "tags": [
+          "Viewings"
+        ],
+        "summary": "Create a viewing",
+        "description": "Create a viewing request from a potential tenant, this will notify the property manager. **Deprecated:** migrate to the equivalent v1.1 operation in the COHO Public API 1.1 document. **Successor:** `POST /v1.1/public/viewings`.",
+        "operationId": "CreateViewing",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateViewing"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateViewing"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateViewing"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "x-scalar-stability": "deprecated"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "0, Culture=neutral, PublicKeyToken=null]]": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InfoBox"
+            },
+            "nullable": true
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "hasPreviousPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AddMaintenanceHistoryNote": {
+        "required": [
+          "actionTaken"
+        ],
+        "type": "object",
+        "properties": {
+          "actionTaken": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AgeRanges": {
+        "enum": [
+          "under20s",
+          "early20s",
+          "mid20s",
+          "late20s",
+          "early30s",
+          "mid30s",
+          "late30s",
+          "early40s",
+          "mid40s",
+          "late40s",
+          "over50",
+          "unspecified"
+        ],
+        "type": "string"
+      },
+      "AllowedTenantTypes": {
+        "enum": [
+          "unspecified",
+          "professional",
+          "student",
+          "other",
+          "social"
+        ],
+        "type": "string"
+      },
+      "BillsInclusiveTypes": {
+        "enum": [
+          "notIncluded",
+          "included",
+          "partiallyIncluded",
+          "notApplicable"
+        ],
+        "type": "string"
+      },
+      "Building": {
+        "type": "object",
+        "properties": {
+          "guid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "archivedOn": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "childBuildings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Building"
+            },
+            "nullable": true
+          },
+          "properties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BuildingProperty"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BuildingProperty": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BuildingsPagedList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Building"
+            },
+            "nullable": true
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "hasPreviousPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BuildingsSortColumn": {
+        "enum": [
+          "id",
+          "created",
+          "updated",
+          "name"
+        ],
+        "type": "string"
+      },
+      "CompleteMaintenanceIssue": {
+        "type": "object",
+        "properties": {
+          "completionNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateMaintenanceCarriedOut": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "awaitingDecision": {
+            "$ref": "#/components/schemas/MaintenanceIssueCompleteAwaitingDecision"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateInfoBox": {
+        "required": [
+          "content",
+          "isMicro",
+          "name",
+          "propertyReference",
+          "visibleToTenant"
+        ],
+        "type": "object",
+        "properties": {
+          "propertyReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "content": {
+            "type": "string",
+            "nullable": true
+          },
+          "isMicro": {
+            "type": "boolean"
+          },
+          "visibleToTenant": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateMaintenanceIssue": {
+        "required": [
+          "propertyReference",
+          "severity",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "propertyReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "roomReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "managerNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "severity": {
+            "$ref": "#/components/schemas/MaintenanceSeverities"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateViewing": {
+        "required": [
+          "emailAddress",
+          "forename",
+          "propertyReference",
+          "requestMessage",
+          "surname"
+        ],
+        "type": "object",
+        "properties": {
+          "propertyReference": {
+            "minLength": 1,
+            "type": "string",
+            "description": "Unique identifier for the property that this room belongs to"
+          },
+          "roomReference": {
+            "type": "string",
+            "description": "Unique identifier for the room",
+            "nullable": true
+          },
+          "forename": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "surname": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "emailAddress": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "mobileNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "proposedDate": {
+            "type": "string",
+            "description": "Optional if the requestee wishes to suggest a date",
+            "format": "date-time",
+            "nullable": true
+          },
+          "proposedDuration": {
+            "type": "integer",
+            "description": "Optional if the requestee wishes to suggest a date, this would be the length of the viewing",
+            "format": "int32",
+            "nullable": true
+          },
+          "requestMessage": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string",
+            "description": "Message from the requestee to the landlord or agent"
+          },
+          "sentWhatsAppInvite": {
+            "type": "boolean",
+            "description": "Deprecated and ignored. Applicant SMS for the created viewing may still be delivered over WhatsApp when the WhatsApp-first notification path is available."
+          }
+        },
+        "additionalProperties": false
+      },
+      "DepositTypes": {
+        "enum": [
+          "NONE",
+          "DEPOSIT_PROTECTION_SCHEME",
+          "DEPOSIT_REPLACEMENT_SCHEME",
+          "OTHER",
+          "LODGER_DEPOSIT",
+          "RENT_IN_ADVANCE",
+          "UNKNOWN"
+        ],
+        "type": "string"
+      },
+      "GuarantorRequiredOptions": {
+        "enum": [
+          "notRequired",
+          "sometimesRequired",
+          "alwaysRequired"
+        ],
+        "type": "string"
+      },
+      "HistoryCategories": {
+        "enum": [
+          "boilerServicing",
+          "tenancyAgreement",
+          "rightToRent",
+          "hmoLicence",
+          "gasSafetyCertificate",
+          "electricalInstallationConditionReport",
+          "energyPerformanceCertificate",
+          "inspection",
+          "depositManagement",
+          "property",
+          "room",
+          "tenancy",
+          "tenant",
+          "rentCollection",
+          "howToRentGuide",
+          "maintenance",
+          "tenantFind",
+          "fireSafety",
+          "healthAndSafety",
+          "portableApplianceTest",
+          "buildingInsurance",
+          "mortgageRenewal",
+          "organisation",
+          "lead",
+          "onboarding",
+          "conversation",
+          "tenancyRecurringTransaction",
+          "inventory",
+          "creditControlTenancy",
+          "actions",
+          "buildings",
+          "rentReview",
+          "transactions",
+          "customCertificate",
+          "propertyOwner",
+          "settlement"
+        ],
+        "type": "string"
+      },
+      "HistoryTypes": {
+        "enum": [
+          "itemAdded",
+          "itemRemoved",
+          "itemUpdated",
+          "tenantInvited",
+          "rentPaymentAdded",
+          "itemAcknowledged",
+          "tenantJoined",
+          "setMaintenanceStatus",
+          "setMaintenanceSeverity",
+          "invitedToViewing",
+          "viewingDateSuggested",
+          "itemAddedByTenant",
+          "itemAccepted",
+          "itemRejected",
+          "viewingApplicantCancelled",
+          "viewingApplicantReportNoAnswer",
+          "viewingTenantReportNoShow",
+          "viewingTenantMoveInReject",
+          "viewingTenantMoveInAccept",
+          "viewingTenantCancelledMoveInRejection",
+          "viewingManagerMoveInReject",
+          "viewingManagerMoveInAccept",
+          "viewingApplicantMoveInReject",
+          "viewingApplicantMoveInAccept",
+          "viewingApplicantCancelledMoveInRejection",
+          "viewingDateRejected",
+          "viewingDateAccepted",
+          "viewingUncancelledApplicant",
+          "viewingUncancelledHousemate",
+          "viewingUncancelledManager",
+          "viewingManagerCancelled",
+          "viewingTenantCancelled",
+          "viewingRequest",
+          "viewingApplicantConfirmed",
+          "viewingApplicantPreconfirmed",
+          "invitedToTenancy",
+          "viewingTenantTenancyAccepted",
+          "viewingTenantTenancyRejected",
+          "setAvailability",
+          "tenancyEnded",
+          "itemAddedOnBehalfOf",
+          "manuallyAdded",
+          "setStatus",
+          "setArchived",
+          "newLead",
+          "newLeadMessage",
+          "applicantJoined",
+          "onboardingHoldingFeeManagerReceived",
+          "onboardingHoldingFeeManagerReturned",
+          "onboardingHoldingFeeManagerSkipped",
+          "onboardingHoldingFeeApplicantSent",
+          "onboardingHoldingFeeManagerSet",
+          "onboardingCancelled",
+          "onboardingTenancyDetailsUpdated",
+          "onboardingTenantDetailsUpdated",
+          "onboardingApplicationFormCompleted",
+          "onboardingApplicationFormCompletedByManager",
+          "onboardingReferencingApplicantBegan",
+          "onboardingReferencingGuarantorBegan",
+          "onboardingReferencingApplicantPassedDeprecated",
+          "onboardingReferencingApplicantFailedDeprecated",
+          "onboardingReferencingApplicantRequestInformation",
+          "onboardingReferencingApplicantCompleted",
+          "onboardingReferencingGuarantorPassed",
+          "onboardingReferencingGuarantorFailed",
+          "onboardingReferencingGuarantorRequestInformation",
+          "onboardingReferencingGuarantorCompleted",
+          "onboardingReferencingApplicantDetailsProvided",
+          "onboardingReferencingGuarantorDetailsProvidedByApplicant",
+          "onboardingReferencingApplicantDetailsRequested",
+          "onboardingReferencingGuarantorDetailsRequested",
+          "onboardingCreated",
+          "onboardingApplicationFormReviewed",
+          "onboardingTenancyAgreementCreated",
+          "tenancyAgreementSignedByTenant",
+          "onboardingTenancyAgreementManagerUploadedSigned",
+          "onboardingTenancyAgreementConfirmed",
+          "onboardingTenancyAgreementCompleted",
+          "onboardingTenancyAgreementRejected",
+          "onboardingPayMoniesManagerSetAmount",
+          "onboardingPayMoniesManagerReceived",
+          "onboardingPayMoniesApplicantSent",
+          "onboardingFollowUpDateSet",
+          "onboardingFollowUpCompleted",
+          "onboardingReferencingNotRequired",
+          "onboardingApplicationFormSkipped",
+          "onboardingFollowUpMoveInDetailsSet",
+          "onboardingReferencingSkipped",
+          "onboardingReferencingGuarantorSkipped",
+          "leftConversation",
+          "rentDueRecordMissedPaymentManagerLogged",
+          "rentDueRecordPaymentAssociated",
+          "rentDueRecordPaymentRemoved",
+          "rentDueRecordUpcomingPaymentNotificationSent",
+          "rentDueRecordPaymentDueNotificationSent",
+          "rentDueRecordPaymentLateNotificationSent",
+          "rentDueRecordBillsSet",
+          "rentDueRecordAdded",
+          "rentDueRecordMissedPaymentTenantLogged",
+          "tenancyMoveRoom",
+          "rentDueRecordRefunded",
+          "onboardingHoldingFeeManagerKept",
+          "depositKept",
+          "holdingFeeKept",
+          "tenantFeeKept",
+          "roomDeleted",
+          "roomDeactivated",
+          "propertyDeactivated",
+          "propertyDeleted",
+          "tenancyRestored",
+          "rentDueRecordLastMonthsHeldRentRedirected",
+          "tenancyAgreementSignedByGuarantor",
+          "rentDueRecordBadDebt",
+          "rentDueRecordBadDebtCancelled",
+          "rentDueRecordRemoved",
+          "rentDueRecordRestored",
+          "rentCollectionCreditControlNotificationEmailSent",
+          "holdingFeeReturned",
+          "rentAutomation",
+          "rentDueRecordAutoMatched",
+          "onboardingReferencingApplicantRequired",
+          "onboardingReferencingGuarantorRequired",
+          "rentCollectionCreditControlManagerInstructionsFollowed",
+          "rentCollectionCreditControlNotificationSmsSent",
+          "onboardingReferencingApplicantAccepted",
+          "onboardingReferencingGuarantorAccepted",
+          "onboardingReferencingApplicantDoNothing",
+          "onboardingReferencingGuarantorDoNothing",
+          "onboardingInternalReferencingApplicantPassed",
+          "onboardingInternalReferencingGuarantorPassed",
+          "onboardingInternalReferencingApplicantFailed",
+          "onboardingInternalReferencingGuarantorFailed",
+          "trtCronjobRun",
+          "trtCreated",
+          "trtFirstRun",
+          "trtUpdateAndRun",
+          "trtDeletedAndRun",
+          "trtRevisedAndRun",
+          "onboardingDigitalReferencingApplicantReferenceRequested",
+          "onboardingDigitalReferencingGuarantorReferenceRequested",
+          "onboardingFullReferencingApplicantReferenceRequested",
+          "onboardingFullReferencingGuarantorReferenceRequested",
+          "onboardingReferencingGuarantorDetailsUpdatedByApplicant",
+          "orphanedCheckDatabaseDeleteIfSafe",
+          "onboardingReferencingApplicantSkipped",
+          "tenantAddedToTenancy",
+          "onboardingReferencingGuarantorDetailsProvidedByManager",
+          "onboardingReferencingGuarantorDetailsUpdatedByManager",
+          "onboardingInternalReferencingApplicantResultsUploaded",
+          "onboardingInternalReferencingGuarantorResultsUploaded",
+          "tenancyRentChanged",
+          "tenancyEndedCancelled",
+          "onboardingDigitalReferencingApplicantReferenceReceived",
+          "onboardingDigitalReferencingGuarantorReferenceReceived",
+          "onboardingFullReferencingApplicantReferenceReceived",
+          "onboardingFullReferencingGuarantorReferenceReceived",
+          "onboardingTenancyAgreementGuarantorRemoved",
+          "rentDueRecordRuleMatched",
+          "hmoLicenseAnniversaryReminderSent",
+          "propertyOwnershipChanged",
+          "propertyTypeChanged",
+          "onboardingAssignedOrganisationUser",
+          "onboardingUnassignedOrganisationUser",
+          "onboardingPayMoniesApplicantUnsent",
+          "onboardingApplicationFormReturnedForCorrection",
+          "setUnarchived",
+          "hierarchyChildRemoved",
+          "hierarchyChildAdded",
+          "conversationDisabled",
+          "ownerCreated",
+          "ownerUpdated",
+          "ownerArchived",
+          "ownerRestored",
+          "ownerDeleted",
+          "ownerInvited",
+          "propertyOwnershipCreated",
+          "propertyOwnershipUpdated",
+          "propertyOwnershipRemoved",
+          "propertyFinancialItemsRegenerated",
+          "subscriptionPlanUpdate",
+          "subscriptionPlanSelected",
+          "tenancyDeleted",
+          "actionProgressionAddStep",
+          "actionProgressionDeleteStep",
+          "actionProgressionArchiveStep",
+          "actionProgressionEditStep",
+          "actionProgressionCompleteStep",
+          "actionProgressionMarkAllComplete",
+          "actionProgressionAssignStep",
+          "actionProgressionUncompleteStep",
+          "actionProgressionUnassignStep",
+          "actionProgressionCreateFromTemplate",
+          "actionProgressionCreateAdHoc",
+          "actionMarkedCompleted",
+          "actionStatusChanged",
+          "actionSnoozed",
+          "actionUnsnoozed",
+          "tenancyAgreementAdditionalFilesAttached",
+          "onboardingApplicationFormStepCompleted",
+          "rentChangeNotificationSent",
+          "viewingInviteSent",
+          "onboardingInternalReferencingApplicantCancelled",
+          "onboardingInternalReferencingGuarantorCancelled",
+          "depositManagementRequestedInfoFromApplicant",
+          "depositManagementApplicantSentInfo",
+          "depositManagementManagerReviewedApplicantInfo",
+          "depositManagementRequireSignature",
+          "depositManagementApplicantSigned",
+          "depositManagementManagerReviewedSignature",
+          "depositManagementRemoveSignatureRequirement",
+          "depositManagementAlertTenantsRequireSignature",
+          "onboardingRestored",
+          "onboardingCompletedByManager",
+          "onboardingCompletedBySystem",
+          "rentDueRecordPaymentAssociationRemoved",
+          "rentDueRecordEdited",
+          "rentDueRecordFinItemsRegenerated",
+          "rentDueRecordReversed",
+          "rentDueRecordUnreversed",
+          "maintenanceAssignedOrganistionUser",
+          "maintenanceUnassignedOrganistionUser",
+          "setMaintenanceManagerNotes",
+          "maintenanceReported",
+          "maintenanceAssignedOrganistionSupplier",
+          "maintenanceManagerUnassignedOrganistionSupplier",
+          "maintenanceSupplierStatusChanged",
+          "maintenanceManagerStatusChanged",
+          "maintenanceOwnerStatusChanged",
+          "setMaintenanceDateMaintenanceCarriedOut",
+          "maintenanceScheduleProposed",
+          "maintenanceSharedWithOwner",
+          "setMaintenanceDueBy",
+          "setMaintenanceDateOnHoldUntil",
+          "maintenanceSentToOrganistionSupplier",
+          "maintenanceOpenedBySupplier",
+          "maintenanceIssueDeleted",
+          "maintenanceEstimatePostByOrganisation",
+          "maintenanceEstimatePatch",
+          "maintenanceInvoicePostByOrganisation",
+          "maintenanceInvoicePatch",
+          "setMaintenanceEstimatedDate",
+          "setMaintenanceDatePartsDue",
+          "maintenanceSupplierRejectedIssue",
+          "managerUploadMaintenancePublicFile",
+          "maintenanceCompletionNotesAdded",
+          "maintenanceSupplierAcceptedIssue",
+          "maintenanceUnsharedWithOwner",
+          "maintenanceRemoveScheduledDate",
+          "maintenanceScheduleApproved",
+          "maintenanceInvoicePostBySupplier",
+          "maintenanceEstimatePostBySupplier",
+          "maintenanceInvoicePatchAcceptedByOrganisation",
+          "maintenanceInvoicePatchRejectedByOrganisation",
+          "maintenanceEstimatePatchAcceptedByOrganisation",
+          "maintenanceEstimatePatchRejectedByOrganisation",
+          "maintenanceSoloActionTaken",
+          "maintenanceTenantAssigned",
+          "maintenanceSetPrivate",
+          "maintenanceSetShared",
+          "maintenancePartsDueReceived",
+          "maintenancePropertyAssigned",
+          "maintenanceCategoryNameOverride",
+          "maintenanceCategoryUpdated",
+          "deleteMaintenanceDueBy",
+          "maintenanceRoomSet",
+          "anonUploadMaintenancePublicFile",
+          "maintenanceSetClosed",
+          "maintenanceSetReopened",
+          "inventoryTemplateAdded",
+          "inventoryTemplateUpdated",
+          "inventoryTemplateArchived",
+          "inventoryTemplateUnarchived",
+          "inventoryTemplateFileExport",
+          "viewingPrequalificationCreated",
+          "viewingPrequalificationUpdated",
+          "viewingArchived",
+          "viewingUnarchived",
+          "viewingUnassignedOrganisationUser",
+          "viewingAssignedOrganisationUser",
+          "viewingAssignedRoom",
+          "viewingUnassignedRoom",
+          "viewingOutcomeUpdated",
+          "viewingManagerCancelledMoveInRejection",
+          "viewingTurnedIntoOnboarding",
+          "viewingFirstSeen",
+          "viewingPrequalificationSkipped",
+          "viewingApplicantJoinedAlternative",
+          "organisationUserAssigned",
+          "organisationUserUnassigned",
+          "applicationFormAccepted",
+          "applicationFormRejected",
+          "viewingPropertySwitched",
+          "rentDueRecordHoldingFeeRedirected",
+          "rentDueRecordRedirectUndone",
+          "tdsDepositCancelled",
+          "tdsDepositMarkedAsPaid",
+          "tdsDepositHeld",
+          "tdsDepositCreated",
+          "tdsDepositFilesCreated",
+          "tdsDepositCreationErrored",
+          "depositStatusChanged",
+          "depositTransferred",
+          "depositRepaymentRequested",
+          "depositReturned",
+          "depositReceivedBulk",
+          "depositReceived",
+          "depositTransferredBulk",
+          "depositManagementIgnored",
+          "depositCompleted",
+          "depositCompletedBulk",
+          "depositProcessReopened",
+          "depositProcessClosedBulk",
+          "goCardlessBillingRequestCreatedForMandateOnly",
+          "goCardlessNoActiveMandatesNotification",
+          "goCardlessBillingRequestCancelled",
+          "goCardlessPaymentStatusUpdated",
+          "goCardlessMandateStatusUpdated",
+          "goCardlessOrganisationDisconnected",
+          "goCardlessCustomerIdUpdated",
+          "rentDueRecordGoCardlessPaymentStatusUpdated",
+          "goCardlessBillingRequestCreatedForMandateAndFirstPayment",
+          "goCardlessPaymentCreatedAgainstMandate",
+          "goCardlessInstantPaymentCreated",
+          "goCardlessSubscriptionIdUpdated",
+          "goCardlessMandateCreated",
+          "goCardlessMandateArchived",
+          "goCardlessMandateUnarchived",
+          "goCardlessPaymentCancelled",
+          "propertyServicesAdded",
+          "propertyServicesRemoved",
+          "singleLetPropertyRentModified",
+          "singleLetPropertyPaymentFrequencyModified",
+          "singleLetPropertyDepositTypeModified",
+          "singleLetPropertyGuarantorRequiredModified",
+          "singleLetPropertyDepositReplacementSchemeAvailableModified",
+          "singleLetPropertyDepositAmountRequiredModified",
+          "onboardingHoldingFeeManagerMarkedUnpaid",
+          "onboardingApplicationFormUpdatedByManager",
+          "onboardingApplicationFormDeleted",
+          "rentReviewRoom",
+          "rentReviewTenancy",
+          "yourPlaceUpdateRequestSent",
+          "yourPlaceTeamUpdates",
+          "rightMoveAuthenticationInformationAdded",
+          "rightMoveAuthenticationInformationPatched",
+          "rightMoveAuthenticationInformationDeleted",
+          "rightMovePropertyDeleted",
+          "rightMovePropertyCreated",
+          "rightMovePropertyUpdated",
+          "onTheMarketAuthenticationInformationAdded",
+          "onTheMarketAuthenticationInformationPatched",
+          "onTheMarketAuthenticationInformationDeleted",
+          "onTheMarketPropertyDeleted",
+          "onTheMarketPropertyCreated",
+          "onTheMarketPropertyUpdated",
+          "connectionAccountDeleted",
+          "onboardingHoldingFeeRequired",
+          "onboardingApplicationFormRequired",
+          "rightToRentValidated",
+          "rightToRentRejected",
+          "newFinancialItemLink",
+          "financialItemLinkDeleted",
+          "rentDueRecordUnrefunded",
+          "rentDueRecordDueDateModified",
+          "onboardingFollowUpDateDeleted",
+          "onboardingConversationCreated",
+          "onboardingFollowUpMoveInDetailsDeleted",
+          "viewingActiveTenantsAlerted",
+          "maintenanceActiveTenantsAlerted",
+          "managerUploadMaintenanceManagerOnlyFile",
+          "onboardingTenancyAgreementStatusChange",
+          "conversationAllowReplies",
+          "viewingApplicantPreconfirmationSent",
+          "viewingApplicantConfirmationSent",
+          "onboardingHoldingFeeCheckPaymentUpdate",
+          "tenantDisconnected",
+          "settlementPartyReportSentToPropertyOwner",
+          "missingRentChargeIgnored",
+          "missingRentChargeUnignored",
+          "guarantorSignatureLinkSent",
+          "tenantSignatureLinkSent",
+          "transactionStatusUpdated",
+          "tenancyAgreementEmailIdentityRejected",
+          "tenancyAgreementEmailIdentityAccepted",
+          "tenancyAgreementMobileNumberIdentityAccepted",
+          "tenancyAgreementMobileNumberIdentityRejected",
+          "ownerConversationCreated",
+          "tenantRecordAcknowledgementAdded",
+          "tenantRecordAcknowledgementServed",
+          "tenantRecordAcknowledgementAcknowledged",
+          "tenantRecordAcknowledgementManuallyAcknowledged",
+          "propertyActivated",
+          "roomActivated",
+          "tdsDepositRepaymentRequested",
+          "archiveChildCompanies",
+          "unarchiveChildCompanies",
+          "ownerSettlementDeleted",
+          "saltEdgeConnectionBackgroundRefresh",
+          "propertyServiceParameterUpdated",
+          "canopyRequestStatusUpdate",
+          "canopyPassportStatusUpdate",
+          "settlementStatusUpdate",
+          "settlementPartyPaid",
+          "bulkSettlement",
+          "propertyOwnerFloatCreated",
+          "propertyOwnerFloatUpdated",
+          "propertyOwnerFloatArchived",
+          "propertyOwnerFloatUnArchived",
+          "onboardingPayMoneySkipped",
+          "onboardingPayMoneyRequired",
+          "recurringMaintenanceAdded",
+          "recurringMaintenanceEdited",
+          "recurringMaintenanceDisabled",
+          "recurringMaintenanceEnabled",
+          "recurringMaintenanceDeleted",
+          "maintenanceCreatedFromRecurring",
+          "rentPaymentDateUpdated",
+          "whatsAppTwilioNumberPurchased",
+          "whatsAppMetaRegistrationInitiated",
+          "whatsAppOtpReceived",
+          "whatsAppOtpSubmitted",
+          "whatsAppNumberVerified",
+          "whatsAppProvisioningFailed",
+          "whatsAppMessageDelivered",
+          "whatsAppReplyWindowOpened",
+          "whatsAppDisconnectRequested",
+          "whatsAppDisconnected",
+          "whatsAppSubscriptionEnabled",
+          "whatsAppSubscriptionDisabled",
+          "whatsAppSystemMessage",
+          "tenantMessagingRestricted",
+          "tenantMessagingRestored",
+          "zeroDepositDisconnected",
+          "zeroDepositIntroductionCreated",
+          "zeroDepositIntroductionStatusChanged",
+          "onboardingGuarantorProfessionalSelected",
+          "onboardingGuarantorPersonalSelected",
+          "onboardingGuarantorSwitchedToPersonal",
+          "onboardingProfessionalGuarantorStepStarted",
+          "onboardingProfessionalGuarantorStepCompleted",
+          "zeroDepositConnectRequested",
+          "zeroDepositConnectionCompleted",
+          "recurringActionAdded",
+          "recurringActionEdited",
+          "recurringActionDisabled",
+          "recurringActionEnabled",
+          "recurringActionDeleted",
+          "actionCreatedFromRecurring",
+          "organisationUserAdded",
+          "organisationUserRoleUpdated",
+          "organisationUserEmailUpdated",
+          "organisationUserRestored",
+          "organisationUserRemoved",
+          "organisationRoleUpdated",
+          "organisationRoleRemoved",
+          "rentMatchRuleCreated",
+          "rentMatchRuleUpdated"
+        ],
+        "type": "string"
+      },
+      "Image": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "url": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "InfoBox": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "Unique identifier for this info box",
+            "nullable": true
+          },
+          "visibleToTenant": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "content": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "$ref": "#/components/schemas/InfoBoxTypes"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "InfoBoxSortColumn": {
+        "enum": [
+          "id",
+          "created",
+          "updated"
+        ],
+        "type": "string"
+      },
+      "InfoBoxTypes": {
+        "enum": [
+          "micro",
+          "panel",
+          "maintenance"
+        ],
+        "type": "string"
+      },
+      "Link": {
+        "type": "object",
+        "properties": {
+          "href": {
+            "type": "string",
+            "nullable": true
+          },
+          "rel": {
+            "type": "string",
+            "nullable": true
+          },
+          "method": {
+            "$ref": "#/components/schemas/LinkMethod"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LinkMethod": {
+        "enum": [
+          "GET",
+          "POST",
+          "PUT",
+          "PATCH",
+          "DELETE"
+        ],
+        "type": "string"
+      },
+      "Loqate": {
+        "type": "object",
+        "properties": {
+          "domesticId": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "language": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "languageAlternatives": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "department": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "company": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "subBuilding": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "buildingNumber": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "buildingName": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "secondaryStreet": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "street": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "block": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "neighbourhood": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "district": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "line1": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "line2": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "line3": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "line4": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "line5": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "adminAreaName": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "adminAreaCode": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "province": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "provinceName": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "provinceCode": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "postalCode": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "countryName": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "countryIso2": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "countryIso3": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "countryIsoNumber": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "sortingNumber1": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "sortingNumber2": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "barcode": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "poBoxNumber": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "dataLevel": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field1": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field2": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field3": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field4": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field5": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field6": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field7": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field8": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field9": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field10": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field11": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field12": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field13": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field14": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field15": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field16": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field17": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field18": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field19": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "field20": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "formattedLine1": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "formattedLine2": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "formattedLine3": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "formattedLine4": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          },
+          "formattedLine5": {
+            "type": "string",
+            "default": "",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MaintenanceDetailedStatuses": {
+        "enum": [
+          "unknown",
+          "reportedByTenant",
+          "managerInvestigating",
+          "managerArrangingSupplier",
+          "awaitingSupplierAcknowledgement",
+          "supplierGatheringInformation",
+          "managerReviewingSupplierEstimate",
+          "awaitingOwnerApproval",
+          "managerProcessingOwnerResponse",
+          "supplierAwaitingParts",
+          "supplierArrangingDate",
+          "managerAwaitingParts",
+          "managerArrangingDate",
+          "managerAwaitingMaintenanceDate",
+          "supplierAwaitingMaintenanceDate",
+          "supplierMaintenanceCompleted",
+          "managerApprovingMaintenance",
+          "managerAwaitingInvoice",
+          "reviewingSupplierInvoice",
+          "completed",
+          "reportedByManager",
+          "managerReviewingSchedule",
+          "deferred",
+          "supplierReviewingSchedule",
+          "reportedByOther",
+          "managerAwaitingOther",
+          "reportedByOwner",
+          "deleted"
+        ],
+        "type": "string",
+        "description": "External status, shown to the tenants or the owner on their respective dashboards"
+      },
+      "MaintenanceHistoryItem": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "Unique identifier for this history item",
+            "format": "uuid"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "actionTaken": {
+            "type": "string",
+            "nullable": true
+          },
+          "user": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastUpdater": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "$ref": "#/components/schemas/HistoryCategories"
+          },
+          "type": {
+            "$ref": "#/components/schemas/HistoryTypes"
+          },
+          "editable": {
+            "type": "boolean"
+          },
+          "userDriven": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MaintenanceHistoryItemList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaintenanceHistoryItem"
+            },
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MaintenanceIssue": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "Unique identifier for this maintenance issue",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "jobNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "managerNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "completionNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "raisedBy": {
+            "$ref": "#/components/schemas/MaintenanceRaisedByTypes"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/MaintenanceSeverities"
+          },
+          "tenantName": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "roomName": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "roomReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertyReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicStatus": {
+            "$ref": "#/components/schemas/MaintenancePublicStatuses"
+          },
+          "detailedStatus": {
+            "$ref": "#/components/schemas/MaintenanceDetailedStatuses"
+          },
+          "dateMaintenanceScheduled": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dateMaintenanceCarriedOut": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dateOnHoldUntil": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "datePartsDue": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dateEstimatedFor": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dateMaintenanceCompleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dateClosed": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "maintenanceDueBy": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MaintenanceIssueCompleteAwaitingDecision": {
+        "enum": [
+          "complete",
+          "awaitingInvoice",
+          "awaitingOther"
+        ],
+        "type": "string",
+        "description": "What to do next: complete, or wait for something"
+      },
+      "MaintenanceIssuesPagedList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaintenanceIssue"
+            },
+            "nullable": true
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "hasPreviousPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MaintenanceIssuesSortColumn": {
+        "enum": [
+          "id",
+          "created",
+          "updated",
+          "title"
+        ],
+        "type": "string"
+      },
+      "MaintenancePublicStatuses": {
+        "enum": [
+          "reported",
+          "investigating",
+          "arrangingSupplier",
+          "awaitingParts",
+          "awaitingPropertyOwner",
+          "arrangingDate",
+          "maintenanceScheduled",
+          "reviewingMaintenanceWork",
+          "completed",
+          "awaiting",
+          "processingPropertyOwnerResponse",
+          "deleted",
+          "unknown"
+        ],
+        "type": "string",
+        "description": "External status, shown to the tenants or the owner on their respective dashboards"
+      },
+      "MaintenanceRaisedByTypes": {
+        "enum": [
+          "tenant",
+          "manager",
+          "owner",
+          "supplierPerson",
+          "other",
+          "managerOnBehalfOfTenant",
+          "system"
+        ],
+        "type": "string"
+      },
+      "MaintenanceSeverities": {
+        "enum": [
+          "unknown",
+          "low",
+          "medium",
+          "high"
+        ],
+        "type": "string"
+      },
+      "MoneyTypes": {
+        "enum": [
+          "rent",
+          "other",
+          "deposit",
+          "holding-fee",
+          "holding-fee-kept",
+          "deposit-kept",
+          "rent-in-advance",
+          "rent-arrears"
+        ],
+        "type": "string"
+      },
+      "Organisation": {
+        "type": "object",
+        "properties": {
+          "organisationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicTelephoneNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicEmail": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PatchInfoBox": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "content": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PatchMaintenanceIssue": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "$ref": "#/components/schemas/MaintenanceSeverities"
+          },
+          "managerNotes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PatchResponse": {
+        "type": "object",
+        "properties": {
+          "updated": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "nullable": true
+            },
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PostResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      },
+      "PropertiesPagedList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Property"
+            },
+            "nullable": true
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "hasPreviousPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PropertiesSortColumn": {
+        "enum": [
+          "id",
+          "created",
+          "updated",
+          "name"
+        ],
+        "type": "string"
+      },
+      "Property": {
+        "type": "object",
+        "properties": {
+          "tagStrings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "description": "Unique identifier for this property",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "headlineDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "image": {
+            "$ref": "#/components/schemas/Image"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Image"
+            },
+            "nullable": true
+          },
+          "rentalType": {
+            "$ref": "#/components/schemas/RentalTypes"
+          },
+          "totalRooms": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "roomsOccupied": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "numberOfBedrooms": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "numberOfBathrooms": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "streetName": {
+            "type": "string",
+            "nullable": true
+          },
+          "houseNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "postcode": {
+            "type": "string",
+            "nullable": true
+          },
+          "majorAreaReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          },
+          "minimumMonthsRental": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "maximumMonthsRental": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "allowedTenantType": {
+            "$ref": "#/components/schemas/AllowedTenantTypes"
+          },
+          "petsAllowed": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "minAge": {
+            "$ref": "#/components/schemas/AgeRanges"
+          },
+          "maxAge": {
+            "$ref": "#/components/schemas/AgeRanges"
+          },
+          "smokingAllowed": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "address": {
+            "$ref": "#/components/schemas/Loqate"
+          },
+          "propertyType": {
+            "$ref": "#/components/schemas/PropertyTypes"
+          },
+          "propertyOwnershipType": {
+            "$ref": "#/components/schemas/PropertyOwnershipTypes"
+          },
+          "existingTenantGenders": {
+            "type": "object",
+            "properties": {
+              "UNSPECIFIED": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "MALE": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "FEMALE": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "OTHER": {
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "additionalProperties": false,
+            "nullable": true
+          },
+          "amenities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "rooms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Room"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PropertyOwner": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "Unique identifier for this owner",
+            "nullable": true
+          },
+          "ownerType": {
+            "$ref": "#/components/schemas/PropertyOwnerTypes"
+          },
+          "forename": {
+            "type": "string",
+            "nullable": true
+          },
+          "surname": {
+            "type": "string",
+            "nullable": true
+          },
+          "companyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "emailAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "contactNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PropertyOwnerSortColumn": {
+        "enum": [
+          "created",
+          "updated"
+        ],
+        "type": "string"
+      },
+      "PropertyOwnerTypes": {
+        "enum": [
+          "unknown",
+          "individual",
+          "company"
+        ],
+        "type": "string"
+      },
+      "PropertyOwnership": {
+        "type": "object",
+        "properties": {
+          "ownershipType": {
+            "$ref": "#/components/schemas/PropertyOwnershipTypes"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertyReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PropertyOwner"
+            },
+            "description": "The legal entities that own the related property",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PropertyOwnershipTypes": {
+        "enum": [
+          "unknown",
+          "ownedByOrganisation",
+          "masterLeaseRentToRent",
+          "managed"
+        ],
+        "type": "string"
+      },
+      "PropertyOwnershipsPagedList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PropertyOwnership"
+            },
+            "nullable": true
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "hasPreviousPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PropertyTypes": {
+        "enum": [
+          "notSpecified",
+          "flat",
+          "terrace",
+          "semiDetached",
+          "detached"
+        ],
+        "type": "string"
+      },
+      "PropertyViewing": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "emailAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "mobileNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "roomReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertyReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "proposedDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "proposedDuration": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "firstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      },
+      "RentDueRecord": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "Unique identifier for this rent due record",
+            "nullable": true
+          },
+          "tenancyReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "moneyType": {
+            "$ref": "#/components/schemas/MoneyTypes"
+          },
+          "subTypeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "$ref": "#/components/schemas/RentDueRecordState"
+          },
+          "dateDue": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "amountTax": {
+            "type": "number",
+            "format": "double"
+          },
+          "amountTotal": {
+            "type": "number",
+            "format": "double"
+          },
+          "paidInFull": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "paymentAssociations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RentPaymentAssociation"
+            },
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RentDueRecordPaginatedList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RentDueRecord"
+            },
+            "nullable": true
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "hasPreviousPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RentDueRecordSortColumn": {
+        "enum": [
+          "id",
+          "created",
+          "updated",
+          "due"
+        ],
+        "type": "string"
+      },
+      "RentDueRecordState": {
+        "enum": [
+          "standard-charge",
+          "charge-refunded",
+          "redirected",
+          "bad-debt",
+          "charge-reversed",
+          "tenant-funds-kept",
+          "unknown",
+          "deleted"
+        ],
+        "type": "string"
+      },
+      "RentPayment": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "Unique identifier for this payment",
+            "nullable": true
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "method": {
+            "$ref": "#/components/schemas/RentPaymentMethods"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RentPaymentAssociation": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "Unique identifier for this payment association",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "dateAssociated": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "payment": {
+            "$ref": "#/components/schemas/RentPayment"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RentPaymentFrequencies": {
+        "enum": [
+          "monthly",
+          "weekly",
+          "term",
+          "four weekly",
+          "fortnightly",
+          "quarterly",
+          "annually"
+        ],
+        "type": "string"
+      },
+      "RentPaymentMethods": {
+        "enum": [
+          "unknown",
+          "standing-order",
+          "direct-debit",
+          "card-payment",
+          "cash",
+          "bank-transfer",
+          "other",
+          "from-deposit",
+          "credit",
+          "cheque",
+          "housing-benefit-direct"
+        ],
+        "type": "string"
+      },
+      "RentalTypes": {
+        "enum": [
+          "multi",
+          "single",
+          "shortTermLet",
+          "block",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "RequestedGenders": {
+        "enum": [
+          "any",
+          "male",
+          "female",
+          "singleGender",
+          "mixedGender"
+        ],
+        "type": "string"
+      },
+      "Room": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "Room identifier that is unique to the property (the room reference together with property reference makes a unique identifier)",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "image": {
+            "$ref": "#/components/schemas/Image"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Image"
+            },
+            "nullable": true
+          },
+          "availableFrom": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "rent": {
+            "type": "number",
+            "format": "double"
+          },
+          "paymentFrequency": {
+            "$ref": "#/components/schemas/RentPaymentFrequencies"
+          },
+          "depositType": {
+            "$ref": "#/components/schemas/DepositTypes"
+          },
+          "depositAmountRequired": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "guarantorRequired": {
+            "$ref": "#/components/schemas/GuarantorRequiredOptions"
+          },
+          "amenities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "roomSize": {
+            "$ref": "#/components/schemas/RoomTypes"
+          },
+          "billsInclusive": {
+            "$ref": "#/components/schemas/BillsInclusiveTypes"
+          },
+          "requestedGender": {
+            "$ref": "#/components/schemas/RequestedGenders"
+          },
+          "advertTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "advertDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenancy": {
+            "$ref": "#/components/schemas/Tenancy"
+          },
+          "property": {
+            "$ref": "#/components/schemas/Property"
+          },
+          "organisation": {
+            "$ref": "#/components/schemas/Organisation"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          },
+          "numberOfRooms": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "shortTermConsidered": {
+            "type": "boolean"
+          },
+          "daysAvailable": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "referencesRequired": {
+            "type": "boolean"
+          },
+          "couplesWelcome": {
+            "type": "boolean"
+          },
+          "veganPreferences": {
+            "type": "boolean"
+          },
+          "dailyEmailAlerts": {
+            "type": "boolean"
+          },
+          "instantEmailAlerts": {
+            "type": "boolean"
+          },
+          "maxInstantAlerts": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RoomTypes": {
+        "enum": [
+          "notApplicableOrNull",
+          "singleRoom",
+          "doubleRoom"
+        ],
+        "type": "string"
+      },
+      "RoomsPagedList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Room"
+            },
+            "nullable": true
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "hasPreviousPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RoomsSortColumn": {
+        "enum": [
+          "id",
+          "created",
+          "updated",
+          "name"
+        ],
+        "type": "string"
+      },
+      "SortOrder": {
+        "enum": [
+          "asc",
+          "desc"
+        ],
+        "type": "string"
+      },
+      "TenanciesPagedList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tenancy"
+            },
+            "nullable": true
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "hasPreviousPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Tenancy": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "Unique identifier for this tenancy",
+            "nullable": true
+          },
+          "propertyReference": {
+            "type": "string",
+            "description": "Unique identifier for the property that this tenancy belongs to",
+            "nullable": true
+          },
+          "roomReference": {
+            "type": "string",
+            "description": "Unique identifier for the room that this tenancy belongs to",
+            "nullable": true
+          },
+          "tenancyNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/TenancyStatuses"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "tenants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tenant"
+            },
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenancySortColumn": {
+        "enum": [
+          "created",
+          "updated"
+        ],
+        "type": "string"
+      },
+      "TenancyStatuses": {
+        "enum": [
+          "past",
+          "active",
+          "future",
+          "cancelled",
+          "prospective"
+        ],
+        "type": "string"
+      },
+      "Tenant": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullname": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "forename": {
+            "type": "string",
+            "nullable": true
+          },
+          "surname": {
+            "type": "string",
+            "nullable": true
+          },
+          "emailAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "telephoneNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "description": "Create an API user on your COHO organisation to get that API key",
+        "scheme": "bearer",
+        "bearerFormat": "uuid"
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication"
+    },
+    {
+      "name": "Info Box"
+    },
+    {
+      "name": "Maintenance"
+    },
+    {
+      "name": "Properties"
+    },
+    {
+      "name": "Property Owners"
+    },
+    {
+      "name": "Rent Collection"
+    },
+    {
+      "name": "Rooms"
+    },
+    {
+      "name": "Tenancies"
+    },
+    {
+      "name": "Viewings"
+    }
+  ],
+  "externalDocs": {
+    "description": "v1.0 → v1.1 migration guide",
+    "url": "https://api.coho.life/docs/public-api/v1.0-to-v1.1"
+  }
+}

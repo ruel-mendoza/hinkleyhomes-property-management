@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: coho
+    description: Server-side proxy for COHO Public API 1.1 maintenance operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,179 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /coho/status:
+    get:
+      operationId: getCohoStatus
+      tags: [coho]
+      summary: Get COHO connection status
+      responses:
+        "200":
+          description: COHO API key configuration status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoStatus"
+  /coho/properties:
+    get:
+      operationId: listCohoProperties
+      tags: [coho]
+      summary: List COHO properties for maintenance issue mapping
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Paginated COHO property list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoPropertiesPage"
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO API key is not configured
+  /coho/maintenance:
+    get:
+      operationId: listCohoMaintenance
+      tags: [coho]
+      summary: List COHO maintenance issues
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - name: propertyReference
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated maintenance issue list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoMaintenancePage"
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO API key is not configured
+    post:
+      operationId: createCohoMaintenance
+      tags: [coho]
+      summary: Create a COHO maintenance issue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CohoMaintenanceInput"
+      responses:
+        "200":
+          description: Created COHO maintenance issue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoMaintenanceCreated"
+        "400":
+          description: Invalid maintenance issue input
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO API key is not configured
+  /coho/maintenance/categories:
+    get:
+      operationId: listCohoMaintenanceCategories
+      tags: [coho]
+      summary: List COHO maintenance categories
+      responses:
+        "200":
+          description: Maintenance categories
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoMaintenanceCategories"
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO API key is not configured
+  /coho/maintenance/{guid}:
+    patch:
+      operationId: updateCohoMaintenance
+      tags: [coho]
+      summary: Update COHO maintenance severity or manager notes
+      parameters:
+        - name: guid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CohoMaintenanceUpdate"
+      responses:
+        "200":
+          description: COHO maintenance issue updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoActionResult"
+        "400":
+          description: Invalid maintenance update
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO API key is not configured
+  /coho/maintenance/{guid}/complete:
+    patch:
+      operationId: completeCohoMaintenance
+      tags: [coho]
+      summary: Mark a COHO maintenance issue complete
+      parameters:
+        - name: guid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CohoMaintenanceComplete"
+      responses:
+        "200":
+          description: COHO maintenance issue completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoActionResult"
+        "400":
+          description: Invalid completion request
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO API key is not configured
 components:
   schemas:
     HealthStatus:
@@ -33,4 +208,196 @@ components:
           type: string
       required:
         - status
+    CohoStatus:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        apiVersion:
+          type: string
+      required: [configured, apiVersion]
+    CohoProperty:
+      type: object
+      properties:
+        reference:
+          type: ["string", "null"]
+        name:
+          type: ["string", "null"]
+        rooms:
+          type: array
+          items:
+            $ref: "#/components/schemas/CohoRoom"
+      required: [reference, name]
+    CohoRoom:
+      type: object
+      properties:
+        reference:
+          type: ["string", "null"]
+        name:
+          type: ["string", "null"]
+      required: [reference, name]
+    CohoPropertiesPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CohoProperty"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+        hasNextPage:
+          type: boolean
+        hasPreviousPage:
+          type: boolean
+      required: [items, page, pageSize, totalCount, hasNextPage, hasPreviousPage]
+    CohoMaintenance:
+      type: object
+      properties:
+        guid:
+          type: string
+          format: uuid
+        jobNumber:
+          type: ["string", "null"]
+        title:
+          type: ["string", "null"]
+        requestMessage:
+          type: ["string", "null"]
+        managerNotes:
+          type: ["string", "null"]
+        completionNotes:
+          type: ["string", "null"]
+        severity:
+          type: string
+        tenantName:
+          type: ["string", "null"]
+        tenantEmail:
+          type: ["string", "null"]
+        roomName:
+          type: ["string", "null"]
+        propertyName:
+          type: ["string", "null"]
+        roomReference:
+          type: ["string", "null"]
+        propertyReference:
+          type: ["string", "null"]
+        publicStatus:
+          type: string
+        detailedStatus:
+          type: string
+        dateMaintenanceScheduled:
+          type: ["string", "null"]
+          format: date-time
+        dateMaintenanceCarriedOut:
+          type: ["string", "null"]
+          format: date-time
+        dateMaintenanceCompleted:
+          type: ["string", "null"]
+          format: date-time
+        maintenanceDueBy:
+          type: ["string", "null"]
+          format: date-time
+        created:
+          type: string
+          format: date-time
+      required: [guid, severity, publicStatus, detailedStatus, created]
+    CohoMaintenancePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CohoMaintenance"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+        hasNextPage:
+          type: boolean
+        hasPreviousPage:
+          type: boolean
+      required: [items, page, pageSize, totalCount, hasNextPage, hasPreviousPage]
+    CohoMaintenanceCategory:
+      type: object
+      properties:
+        guid:
+          type: string
+          format: uuid
+        name:
+          type: ["string", "null"]
+        hierarchy:
+          type: ["string", "null"]
+        defaultSeverity:
+          type: ["string", "null"]
+      required: [guid, name, hierarchy, defaultSeverity]
+    CohoMaintenanceCategories:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CohoMaintenanceCategory"
+      required: [items]
+    CohoMaintenanceInput:
+      type: object
+      properties:
+        propertyReference:
+          type: string
+          minLength: 1
+        roomReference:
+          type: ["string", "null"]
+        title:
+          type: string
+          minLength: 1
+        requestMessage:
+          type: ["string", "null"]
+        managerNotes:
+          type: ["string", "null"]
+        severity:
+          type: string
+          enum: [unknown, low, medium, high]
+        maintenanceCategoryGuid:
+          type: ["string", "null"]
+          format: uuid
+      required: [propertyReference, title, severity]
+    CohoMaintenanceUpdate:
+      type: object
+      properties:
+        severity:
+          type: string
+          enum: [unknown, low, medium, high]
+        managerNotes:
+          type: ["string", "null"]
+    CohoMaintenanceComplete:
+      type: object
+      properties:
+        awaitingDecision:
+          type: string
+          enum: [complete, awaitingInvoice, awaitingOther]
+        completionNotes:
+          type: ["string", "null"]
+        dateMaintenanceCarriedOut:
+          type: ["string", "null"]
+          format: date-time
+      required: [awaitingDecision]
+    CohoMaintenanceCreated:
+      type: object
+      properties:
+        guid:
+          type: string
+          format: uuid
+        jobNumber:
+          type: ["string", "null"]
+      required: [guid, jobNumber]
+    CohoActionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
 

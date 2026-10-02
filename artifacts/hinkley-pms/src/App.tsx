@@ -10,8 +10,9 @@ import {
   CircleDollarSign, ClipboardCheck, Clock3, Coffee, DoorOpen, Download, Ellipsis, Filter, LayoutDashboard,
   Menu, Moon, MoreHorizontal, Plus, Search, Settings2, Sparkles, Users, Utensils, Wallet, X, House,
   Boxes, Brush, CalendarCheck, ReceiptText, ConciergeBell, PanelLeftClose, LogOut, TrendingUp, CalendarRange,
-  UserRound, Bed, CircleHelp, Building2,
+  UserRound, Bed, CircleHelp, Building2, Wrench,
 } from 'lucide-react';
+import CohoMaintenancePage from '@/pages/coho-maintenance';
 
 type Guest={id:string;name:string;email:string;phone:string};
 type Reservation={id:string;guestId:string;room:string;arrival:string;departure:string;status:string;totalPhp:number};
@@ -61,7 +62,7 @@ const seeded:Store={
  inventory:[{id:'I-01',name:'Bath towels',category:'Linen',onHand:18,reorderAt:24,unit:'pcs'},{id:'I-02',name:'Shampoo 30ml',category:'Guest amenities',onHand:42,reorderAt:30,unit:'bottles'},{id:'I-03',name:'Coffee sachets',category:'Food & beverage',onHand:16,reorderAt:40,unit:'packs'},{id:'I-04',name:'Queen bed sheets',category:'Linen',onHand:26,reorderAt:20,unit:'sets'},{id:'I-05',name:'Toilet tissue',category:'Guest amenities',onHand:21,reorderAt:36,unit:'rolls'},{id:'I-06',name:'Dish soap',category:'Housekeeping',onHand:9,reorderAt:12,unit:'bottles'}]
 };
 const STORAGE='hinkley-pms-demo-v1';
-const navGroups=[{label:'CORE',items:[['/','Overview',LayoutDashboard]]},{label:'FRONT DESK',items:[['/guests','Guests',Users],['/reservations','Reservations',CalendarDays],['/function-rooms','Function rooms',Building2],['/check-ins','Check-ins',DoorOpen],['/payments','Payments',Wallet],['/menu-orders','Menu orders',Utensils]]},{label:'ROOMS & SERVICE',items:[['/rooms','Rooms',BedDouble],['/housekeeping','Housekeeping',Brush],['/inventory','Inventory',Boxes]]}] as const;
+const navGroups=[{label:'CORE',items:[['/','Overview',LayoutDashboard]]},{label:'FRONT DESK',items:[['/guests','Guests',Users],['/reservations','Reservations',CalendarDays],['/function-rooms','Function rooms',Building2],['/check-ins','Check-ins',DoorOpen],['/payments','Payments',Wallet],['/menu-orders','Menu orders',Utensils]]},{label:'ROOMS & SERVICE',items:[['/rooms','Rooms',BedDouble],['/housekeeping','Housekeeping',Brush],['/maintenance','Maintenance',Wrench],['/inventory','Inventory',Boxes]]}] as const;
 const routeInfo:Record<string,{title:string;subtitle:string;group:string}>={
  '/guests':{title:'Guest directory',subtitle:'Guest profiles and contact details',group:'Front desk'},
  '/reservations':{title:'Reservations',subtitle:'Manage bookings, stays and guest requests',group:'Front desk'},
@@ -70,7 +71,8 @@ const routeInfo:Record<string,{title:string;subtitle:string;group:string}>={
  '/payments':{title:'Payments',subtitle:'Track collections and outstanding balances',group:'Finance'},
  '/menu-orders':{title:'Menu orders',subtitle:'Room service orders and fulfillment',group:'Food & beverage'},
  '/rooms':{title:'Room status',subtitle:'Availability and housekeeping readiness',group:'Rooms & service'},
- '/housekeeping':{title:'Housekeeping',subtitle:'Room turns and daily service tasks',group:'Rooms & service'},
+  '/housekeeping':{title:'Housekeeping',subtitle:'Room turns and daily service tasks',group:'Rooms & service'},
+  '/maintenance':{title:'Maintenance',subtitle:'COHO issues and repair updates',group:'Rooms & service'},
  '/inventory':{title:'Inventory',subtitle:'Supplies on hand and reorder attention',group:'Operations'}
 };
 const peso=(n:number)=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP',minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
@@ -122,6 +124,7 @@ function AppShell(){
      <Route path="/menu-orders" component={()=> <Orders data={data} query={query} setQuery={setQuery} update={updateStatus}/>}/>
      <Route path="/rooms" component={()=> <Rooms data={data} patch={patch} flash={flash}/>}/>
      <Route path="/housekeeping" component={()=> <Housekeeping data={data} update={updateStatus}/>}/>
+      <Route path="/maintenance" component={CohoMaintenancePage}/>
      <Route path="/inventory" component={()=> <Inventory data={data} query={query} setQuery={setQuery} patch={patch}/>}/>
      <Route component={NotFound}/>
     </Switch>
