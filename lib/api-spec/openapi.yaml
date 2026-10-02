@@ -223,11 +223,13 @@ components:
           type: ["string", "null"]
         name:
           type: ["string", "null"]
+        location:
+          type: ["string", "null"]
         rooms:
           type: array
           items:
             $ref: "#/components/schemas/CohoRoom"
-      required: [reference, name]
+      required: [reference, name, location]
     CohoRoom:
       type: object
       properties:

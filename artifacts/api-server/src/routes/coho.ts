@@ -36,6 +36,13 @@ function stringOrNull(value: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
 
+function firstNonEmptyString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
 function positiveInteger(value: unknown, fallback: number): number {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
@@ -139,10 +146,18 @@ router.get("/coho/properties", async (req, res): Promise<void> => {
   const normalized = {
     items: sourceItems.map((item) => {
       const property = asRecord(item);
+      const address = asRecord(property.address);
       const rooms = Array.isArray(property.rooms) ? property.rooms : [];
       return {
         reference: stringOrNull(property.reference),
         name: stringOrNull(property.name),
+        location: firstNonEmptyString(
+          address.city,
+          address.district,
+          address.neighbourhood,
+          address.adminAreaName,
+          address.provinceName,
+        ),
         rooms: rooms.map((room) => {
           const roomRecord = asRecord(room);
           return {

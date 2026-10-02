@@ -12,6 +12,13 @@ import {
   Boxes, Brush, CalendarCheck, ReceiptText, ConciergeBell, PanelLeftClose, LogOut, TrendingUp, CalendarRange,
   UserRound, Bed, CircleHelp, Building2, Wrench,
 } from 'lucide-react';
+import {
+  getGetCohoStatusQueryKey,
+  getListCohoPropertiesQueryKey,
+  type CohoProperty,
+  useGetCohoStatus,
+  useListCohoProperties,
+} from '@workspace/api-client-react';
 import CohoMaintenancePage from '@/pages/coho-maintenance';
 
 type Guest={id:string;name:string;email:string;phone:string};
@@ -84,8 +91,24 @@ const queryClient=new QueryClient();
 function AppShell(){
  const [path,setPath]=useLocation();
  const [data,setData]=useState<Store>(()=>{try{const saved=localStorage.getItem(STORAGE);return saved?{...seeded,...JSON.parse(saved)}:seeded}catch{return seeded}});
- const [global,setGlobal]=useState(''); const [branch,setBranch]=useState('Hinkley Homes'); const [range,setRange]=useState('This month');
+ const [global,setGlobal]=useState(''); const [branch,setBranch]=useState('all'); const [range,setRange]=useState('This month');
  const [query,setQuery]=useState('');const [filter,setFilter]=useState('All');const [modal,setModal]=useState(false);const [toast,setToast]=useState('');const [sideOpen,setSideOpen]=useState(false);
+ const cohoStatusQuery=useGetCohoStatus({query:{queryKey:getGetCohoStatusQueryKey(),refetchInterval:15_000}});
+ const cohoPropertiesQuery=useListCohoProperties({page:1,pageSize:100},{query:{queryKey:getListCohoPropertiesQueryKey({page:1,pageSize:100}),enabled:cohoStatusQuery.data?.configured===true,refetchInterval:60_000}});
+ const cohoProperties=cohoPropertiesQuery.data?.items??[];
+ const cohoLocationGroups=useMemo(()=>{
+  const grouped=new Map<string,CohoProperty[]>();
+  for(const property of cohoProperties){
+   const location=property.location?.trim()||'Other locations';
+   const group=grouped.get(location)??[];
+   group.push(property);
+   grouped.set(location,group);
+  }
+  return Array.from(grouped.entries())
+   .map(([location,properties])=>({location,properties:properties.sort((a,b)=>(a.name??a.reference??'').localeCompare(b.name??b.reference??''))}))
+   .sort((a,b)=>a.location.localeCompare(b.location));
+ },[cohoProperties]);
+ const selectedPropertyName=branch==='all'?'All properties':cohoProperties.find(property=>property.reference===branch)?.name??'All properties';
  useEffect(()=>{localStorage.setItem(STORAGE,JSON.stringify(data))},[data]);
  useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(''),2600);return()=>clearTimeout(t)},[toast]);
  useEffect(()=>{setQuery('');setFilter('All');setSideOpen(false)},[path]);
@@ -110,12 +133,12 @@ function AppShell(){
   <div className="main-area">
    <header className="topbar"><button className="icon-btn mobile-toggle" onClick={()=>setSideOpen(true)} aria-label="Open navigation"><Menu size={19}/></button>
     <div className="global-search"><Search size={15}/><input value={global} onChange={e=>setGlobal(e.target.value)} placeholder="Search guests, reservations…" aria-label="Global search" data-testid="input-global-search"/>{global&&<button className="icon-btn" onClick={()=>setGlobal('')}><X size={13}/></button>}</div>
-    <div className="top-spacer"/><select className="top-branch" value={branch} onChange={e=>setBranch(e.target.value)} aria-label="Branch"><option>Hinkley Homes</option><option>All branches</option><option>Hinkley Garden Wing</option></select><button className="icon-btn" title="Notifications" onClick={()=>flash('You’re all caught up')}><Bell size={17}/></button><button className="icon-btn" title="Settings" onClick={()=>flash('Settings are managed for this demo')}><Settings2 size={17}/></button><div className="avatar">GT</div>
+    <div className="top-spacer"/><select className="top-branch" value={branch} onChange={e=>setBranch(e.target.value)} aria-label="Location and property"><option value="all">All properties</option>{cohoLocationGroups.map(group=><optgroup key={group.location} label={group.location}>{group.properties.map(property=><option key={property.reference??property.name} value={property.reference??''} disabled={!property.reference}>{property.name||property.reference||'Unnamed property'}</option>)}</optgroup>)}{cohoProperties.length===0&&<option value="unavailable" disabled>{cohoStatusQuery.isLoading||cohoPropertiesQuery.isLoading?'Loading COHO properties…':cohoStatusQuery.data?.configured?'No COHO properties available':'COHO key needed'}</option>}</select><button className="icon-btn" title="Notifications" onClick={()=>flash('You’re all caught up')}><Bell size={17}/></button><button className="icon-btn" title="Settings" onClick={()=>flash('Settings are managed for this demo')}><Settings2 size={17}/></button><div className="avatar">GT</div>
     {globalResults.length>0&&<div style={{position:'absolute',top:52,left:62,width:390,maxWidth:'calc(100vw - 85px)',background:'#fff',border:'1px solid #e4e9ed',borderRadius:8,boxShadow:'0 12px 34px #1b29361c',zIndex:50,padding:5}}>{globalResults.map((r,i)=><Link href={r.href} key={i} onClick={()=>setGlobal('')} style={{display:'block',padding:'9px 10px',textDecoration:'none',color:'#344256',borderRadius:5}}><b style={{fontSize:11}}>{r.label}</b><span style={{display:'block',fontSize:9,color:'#8793a0',marginTop:3}}>{r.detail}</span></Link>)}</div>}
    </header>
    <main className="content">
     <Switch>
-     <Route path="/" component={()=> <Dashboard data={data} setRange={setRange} range={range} arrivals={todayArrivals} occupied={occupied} ready={ready} revenue={revenue} pending={moneyPending} openReservation={()=>setModal(true)} branch={branch}/>}/>
+     <Route path="/" component={()=> <Dashboard data={data} setRange={setRange} range={range} arrivals={todayArrivals} occupied={occupied} ready={ready} revenue={revenue} pending={moneyPending} openReservation={()=>setModal(true)} branch={selectedPropertyName}/>}/>
      <Route path="/guests" component={()=> <Guests data={data} query={query} setQuery={setQuery}/>}/>
      <Route path="/reservations" component={()=> <Reservations data={data} query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} add={()=>setModal(true)} update={updateStatus}/>}/>
      <Route path="/function-rooms" component={()=> <FunctionRooms data={data} query={query} setQuery={setQuery} update={updateStatus}/>}/>

@@ -43,6 +43,7 @@ export const ListCohoPropertiesResponse = zod.object({
   "items": zod.array(zod.object({
   "reference": zod.string().nullable(),
   "name": zod.string().nullable(),
+  "location": zod.string().nullable(),
   "rooms": zod.array(zod.object({
   "reference": zod.string().nullable(),
   "name": zod.string().nullable()

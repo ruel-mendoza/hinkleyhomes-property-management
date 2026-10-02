@@ -12,5 +12,7 @@ export interface CohoProperty {
   reference: string | null;
   /** @nullable */
   name: string | null;
+  /** @nullable */
+  location: string | null;
   rooms?: CohoRoom[];
 }
