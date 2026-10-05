@@ -21,6 +21,7 @@ import type {
 
 import type {
   CohoActionResult,
+  CohoCalendarPage,
   CohoMaintenanceCategories,
   CohoMaintenanceComplete,
   CohoMaintenanceCreated,
@@ -30,6 +31,7 @@ import type {
   CohoPropertiesPage,
   CohoStatus,
   HealthStatus,
+  ListCohoCalendarParams,
   ListCohoMaintenanceParams,
   ListCohoPropertiesParams
 } from './api.schemas';
@@ -288,6 +290,90 @@ export function useListCohoProperties<TData = Awaited<ReturnType<typeof listCoho
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListCohoPropertiesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCohoCalendarUrl = (params?: ListCohoCalendarParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/coho/calendar?${stringifiedParams}` : `/api/coho/calendar`
+}
+
+/**
+ * @summary List COHO calendar entries
+ */
+export const listCohoCalendar = async (params?: ListCohoCalendarParams, options?: Parameters<typeof customFetch>[1]): Promise<CohoCalendarPage> => {
+
+  return customFetch<CohoCalendarPage>(getListCohoCalendarUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCohoCalendarQueryKey = (params?: ListCohoCalendarParams,) => {
+    return [
+    `/api/coho/calendar`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCohoCalendarQueryOptions = <TData = Awaited<ReturnType<typeof listCohoCalendar>>, TError = ErrorType<void>>(params?: ListCohoCalendarParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCohoCalendar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCohoCalendarQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCohoCalendar>>> = ({ signal }) => listCohoCalendar(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCohoCalendar>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCohoCalendarQueryResult = NonNullable<Awaited<ReturnType<typeof listCohoCalendar>>>
+export type ListCohoCalendarQueryError = ErrorType<void>
+
+
+/**
+ * @summary List COHO calendar entries
+ */
+
+export function useListCohoCalendar<TData = Awaited<ReturnType<typeof listCohoCalendar>>, TError = ErrorType<void>>(
+ params?: ListCohoCalendarParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCohoCalendar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCohoCalendarQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

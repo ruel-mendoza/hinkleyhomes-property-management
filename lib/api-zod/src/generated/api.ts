@@ -58,6 +58,31 @@ export const ListCohoPropertiesResponse = zod.object({
 
 
 /**
+ * @summary List COHO calendar entries
+ */
+export const ListCohoCalendarQueryParams = zod.object({
+  "fromDate": zod.coerce.string().optional().describe('ISO-8601 start of the calendar window in UTC')
+})
+
+export const ListCohoCalendarResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "source": zod.enum(['calendarItem', 'action', 'maintenanceIssue', 'propertyViewing', 'tenancy']),
+  "entryType": zod.string(),
+  "entryDate": zod.string().describe('ISO-8601 calendar entry date in UTC'),
+  "endDate": zod.string().nullable().describe('ISO-8601 end date in UTC, when present'),
+  "isAllDay": zod.boolean(),
+  "title": zod.string().nullable(),
+  "propertyReference": zod.string().nullable(),
+  "propertyName": zod.string().nullable(),
+  "roomReference": zod.string().nullable(),
+  "roomName": zod.string().nullable(),
+  "personName": zod.string().nullable()
+}))
+})
+
+
+/**
  * @summary List COHO maintenance issues
  */
 

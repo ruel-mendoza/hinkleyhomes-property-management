@@ -3,9 +3,12 @@ import {
   CompleteCohoMaintenanceBody,
   CompleteCohoMaintenanceParams,
   CompleteCohoMaintenanceResponse,
+  CohoCalendarEntry,
   CreateCohoMaintenanceBody,
   CreateCohoMaintenanceResponse,
   GetCohoStatusResponse,
+  ListCohoCalendarQueryParams,
+  ListCohoCalendarResponse,
   ListCohoMaintenanceCategoriesResponse,
   ListCohoMaintenanceQueryParams,
   ListCohoMaintenanceResponse,
@@ -41,6 +44,12 @@ function firstNonEmptyString(...values: unknown[]): string | null {
     if (typeof value === "string" && value.trim()) return value.trim();
   }
   return null;
+}
+
+function dateOrNull(value: unknown): Date | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function positiveInteger(value: unknown, fallback: number): number {
@@ -174,6 +183,85 @@ router.get("/coho/properties", async (req, res): Promise<void> => {
     hasPreviousPage: source.hasPreviousPage === true,
   };
   sendParsed(req, res, ListCohoPropertiesResponse, normalized);
+});
+
+router.get("/coho/calendar", async (req, res): Promise<void> => {
+  const params = ListCohoCalendarQueryParams.safeParse(req.query);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid calendar query." });
+    return;
+  }
+
+  const fromDate = params.data.fromDate;
+  if (fromDate && !dateOrNull(fromDate)) {
+    res.status(400).json({ error: "fromDate must be an ISO-8601 date-time." });
+    return;
+  }
+  const query = fromDate
+    ? `?${new URLSearchParams({ fromDate })}`
+    : "";
+  const sources = [
+    { source: "calendarItem", path: "/calendar/items" },
+    { source: "action", path: "/calendar/actions" },
+    { source: "maintenanceIssue", path: "/calendar/maintenance-issues" },
+    { source: "propertyViewing", path: "/calendar/property-viewings" },
+    { source: "tenancy", path: "/calendar/tenancies" },
+  ] as const;
+  const items: CohoCalendarEntry[] = [];
+
+  for (const calendarSource of sources) {
+    const payload = await requestCoho(req, res, `${calendarSource.path}${query}`);
+    if (payload === undefined) return;
+
+    const sourceItems = asRecord(payload).items;
+    if (!Array.isArray(sourceItems)) {
+      req.log.warn(
+        { source: calendarSource.source },
+        "COHO returned an unexpected calendar response",
+      );
+      res.status(502).json({ error: "COHO returned an unexpected calendar response." });
+      return;
+    }
+
+    for (const [index, item] of sourceItems.entries()) {
+      const entry = asRecord(item);
+      const entryDate = stringOrNull(entry.entryDate);
+      const parsedEntryDate = dateOrNull(entryDate);
+      if (!entryDate || !parsedEntryDate) {
+        req.log.warn(
+          { source: calendarSource.source },
+          "COHO calendar entry is missing a valid date",
+        );
+        res.status(502).json({ error: "COHO returned an invalid calendar entry." });
+        return;
+      }
+      const title = stringOrNull(entry.title);
+      const stableId = firstNonEmptyString(
+        entry.calendarItemGuid,
+        entry.actionReference,
+        entry.maintenanceGuid,
+        entry.viewingGuid,
+        entry.tenancyGuid,
+      );
+      items.push({
+        id: stableId ?? `${calendarSource.source}:${entryDate}:${title ?? index}`,
+        source: calendarSource.source,
+        entryType: stringOrNull(entry.entryType) ?? calendarSource.source,
+        entryDate: parsedEntryDate.toISOString(),
+        endDate: dateOrNull(entry.endDate)?.toISOString() ?? null,
+        isAllDay: entry.isAllDay === true,
+        title,
+        propertyReference: stringOrNull(entry.propertyReference),
+        propertyName: stringOrNull(entry.propertyName),
+        roomReference: stringOrNull(entry.roomReference),
+        roomName: stringOrNull(entry.roomName),
+        personName: stringOrNull(entry.conversationRespondentName),
+      });
+    }
+  }
+
+  items.sort((a, b) => a.entryDate.localeCompare(b.entryDate));
+  sendParsed(req, res, ListCohoCalendarResponse, { items });
 });
 
 router.get("/coho/maintenance", async (req, res): Promise<void> => {

@@ -40,6 +40,47 @@ export interface CohoPropertiesPage {
   hasPreviousPage: boolean;
 }
 
+export type CohoCalendarEntrySource = typeof CohoCalendarEntrySource[keyof typeof CohoCalendarEntrySource];
+
+
+export const CohoCalendarEntrySource = {
+  calendarItem: 'calendarItem',
+  action: 'action',
+  maintenanceIssue: 'maintenanceIssue',
+  propertyViewing: 'propertyViewing',
+  tenancy: 'tenancy',
+} as const;
+
+export interface CohoCalendarEntry {
+  id: string;
+  source: CohoCalendarEntrySource;
+  entryType: string;
+  /** ISO-8601 calendar entry date in UTC */
+  entryDate: string;
+  /**
+     * ISO-8601 end date in UTC, when present
+     * @nullable
+     */
+  endDate: string | null;
+  isAllDay: boolean;
+  /** @nullable */
+  title: string | null;
+  /** @nullable */
+  propertyReference: string | null;
+  /** @nullable */
+  propertyName: string | null;
+  /** @nullable */
+  roomReference: string | null;
+  /** @nullable */
+  roomName: string | null;
+  /** @nullable */
+  personName: string | null;
+}
+
+export interface CohoCalendarPage {
+  items: CohoCalendarEntry[];
+}
+
 export interface CohoMaintenance {
   guid: string;
   /** @nullable */
@@ -180,6 +221,13 @@ page?: number;
  * @maximum 100
  */
 pageSize?: number;
+};
+
+export type ListCohoCalendarParams = {
+/**
+ * ISO-8601 start of the calendar window in UTC
+ */
+fromDate?: string;
 };
 
 export type ListCohoMaintenanceParams = {

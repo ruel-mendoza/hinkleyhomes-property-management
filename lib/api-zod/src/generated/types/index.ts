@@ -7,6 +7,9 @@
  */
 
 export * from './cohoActionResult';
+export * from './cohoCalendarEntry';
+export * from './cohoCalendarEntrySource';
+export * from './cohoCalendarPage';
 export * from './cohoMaintenance';
 export * from './cohoMaintenanceCategories';
 export * from './cohoMaintenanceCategory';
@@ -23,5 +26,6 @@ export * from './cohoProperty';
 export * from './cohoRoom';
 export * from './cohoStatus';
 export * from './healthStatus';
+export * from './listCohoCalendarParams';
 export * from './listCohoMaintenanceParams';
 export * from './listCohoPropertiesParams';
