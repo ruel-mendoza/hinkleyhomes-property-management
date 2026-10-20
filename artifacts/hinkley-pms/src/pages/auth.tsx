@@ -199,7 +199,7 @@ const signUpSchema = z
       .trim()
       .email("Enter a valid email address.")
       .refine(isAllowedStaffEmail, restrictedEmailMessage),
-    password: z.string().min(8, "Use at least 8 characters."),
+    password: z.string().min(10, "Use at least 10 characters."),
     confirmPassword: z.string().min(1, "Confirm your password."),
   })
   .refine((values) => values.password === values.confirmPassword, {
@@ -660,7 +660,8 @@ export function SignUpPage() {
                         className="auth-input"
                         type="password"
                         autoComplete="new-password"
-                        placeholder="At least 8 characters"
+                        minLength={10}
+                        placeholder="At least 10 characters"
                         data-testid="input-signup-password"
                       />
                     </FormControl>
@@ -694,7 +695,7 @@ export function SignUpPage() {
               Create account <ArrowRight size={16} />
             </AuthSubmit>
             <p className="auth-password-note">
-              Passwords must be at least 8 characters. Your password is secured
+              Passwords must be at least 10 characters. Your password is secured
               by Clerk and is never stored by this app.
             </p>
           </form>
