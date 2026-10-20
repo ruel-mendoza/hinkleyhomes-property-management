@@ -487,14 +487,10 @@ export function SignUpPage() {
       return;
     }
 
-    const nameParts = values.fullName.trim().split(/\s+/);
-    const firstName = nameParts.shift() || "";
-    const lastName = nameParts.join(" ");
     const { error } = await signUp.password({
       emailAddress: email,
       password: values.password,
-      firstName,
-      ...(lastName ? { lastName } : {}),
+      unsafeMetadata: { fullName: values.fullName.trim() },
     });
 
     if (error) {

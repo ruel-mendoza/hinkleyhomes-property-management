@@ -104,8 +104,9 @@ function AppShell(){
  const [path,setPath]=useLocation();
  const {user}=useUser();
  const {signOut}=useClerk();
- const profileEmail=user?.primaryEmailAddress?.emailAddress??'';
- const profileName=user?.fullName||profileEmail.split('@')[0]||'Hinkley staff';
+  const profileEmail=user?.primaryEmailAddress?.emailAddress??'';
+  const metadataName=typeof user?.unsafeMetadata?.fullName==='string'?user.unsafeMetadata.fullName.trim():'';
+  const profileName=metadataName||user?.fullName||profileEmail.split('@')[0]||'Hinkley staff';
  const profileInitials=initials(profileName);
  const [data,setData]=useState<Store>(()=>{try{const saved=localStorage.getItem(STORAGE);return saved?{...seeded,...JSON.parse(saved)}:seeded}catch{return seeded}});
  const [global,setGlobal]=useState(''); const [branch,setBranch]=useState('all'); const [range,setRange]=useState('This month');
