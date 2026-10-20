@@ -18,6 +18,19 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Validate the staff email domain before account creation
+ */
+export const ValidateSignupEmailBody = zod.object({
+  "email": zod.string().email()
+})
+
+export const ValidateSignupEmailResponse = zod.object({
+  "allowed": zod.boolean(),
+  "message": zod.string().nullable()
+})
+
+
+/**
  * @summary Get COHO connection status
  */
 export const GetCohoStatusResponse = zod.object({

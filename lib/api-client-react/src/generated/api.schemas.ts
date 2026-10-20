@@ -9,6 +9,16 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface SignupEmailCheckRequest {
+  email: string;
+}
+
+export interface SignupEmailCheckResult {
+  allowed: boolean;
+  /** @nullable */
+  message: string | null;
+}
+
 export interface CohoStatus {
   configured: boolean;
   apiVersion: string;

@@ -45,6 +45,15 @@ button {cursor:pointer}
 .side-foot {border-top:1px solid #ffffff12;padding:14px 17px;display:flex;align-items:center;gap:10px;font-size:11px}
 .avatar {width:30px;height:30px;border-radius:50%;background:#d8e8e0;color:#205c4e;display:grid;place-items:center;font-weight:700;font-size:10px}
 .side-foot small {display:block;color:#8e9aae;font-size:10px;margin-top:2px}
+.side-profile-copy {min-width:0;flex:1;overflow:hidden}
+.side-profile-copy strong {display:block;overflow:hidden;color:#e1e8f0;font-size:10px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+.top-profile {display:flex;align-items:center;gap:9px;min-width:0}
+.top-profile-copy {display:grid;gap:2px;max-width:138px;min-width:0}
+.top-profile-copy strong,.top-profile-copy span {overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top-profile-copy strong {color:#e0e7f0;font-size:10px;font-weight:650}
+.top-profile-copy span {color:#8896aa;font-size:9px}
+.top-signout {width:30px;height:30px;display:grid;place-items:center;border:1px solid #344157;border-radius:7px;background:#1b293c;color:#a9b6c7}
+.top-signout:hover {background:#25354b;color:#fff}
 .main-area {margin-left:244px;width:calc(100% - 244px);min-height:100dvh}
 .topbar {height:62px;background:#fff;border-bottom:1px solid #e5e9ef;display:flex;align-items:center;padding:0 30px;gap:18px;position:sticky;top:0;z-index:20}
 .global-search {height:34px;width:min(390px,45vw);border:1px solid #e2e7ed;border-radius:7px;display:flex;align-items:center;gap:9px;padding:0 11px;color:#8793a2;background:#fafbfd}
@@ -96,7 +105,7 @@ button {cursor:pointer}
 .mobile-overlay{display:none}
 @keyframes fade{from{opacity:0}to{opacity:1}}@keyframes rise{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}
 @media(max-width:1100px){.metrics{grid-template-columns:repeat(2,1fr)}.metric-row2{grid-template-columns:repeat(3,1fr)}.content{padding-left:22px;padding-right:22px}}
-@media(max-width:760px){.sidebar{transform:translateX(-100%);width:248px}.sidebar.open{transform:translateX(0)}.mobile-overlay.show{display:block;position:fixed;inset:0;background:#101e3370;z-index:25}.main-area{margin-left:0;width:100%}.topbar{padding:0 14px;height:56px;gap:10px}.mobile-toggle{display:grid}.global-search{width:100%;max-width:none}.top-branch{display:none}.content{padding:20px 14px 32px}.page-title{font-size:20px}.page-head{align-items:center}.head-actions .button span{display:none}.dash-grid{grid-template-columns:1fr}.metric-row2{grid-template-columns:repeat(2,1fr)}.list-grid{grid-template-columns:repeat(2,1fr)}.arrival-row{grid-template-columns:1fr auto}.arrival-row>div:nth-child(2),.arrival-row>div:nth-child(3){display:none}.page-head .head-actions{gap:5px}.button{padding:8px 9px}.dashboard-hero{align-items:flex-start}.filter-bar{width:100%}}
+@media(max-width:760px){.sidebar{transform:translateX(-100%);width:248px}.sidebar.open{transform:translateX(0)}.mobile-overlay.show{display:block;position:fixed;inset:0;background:#101e3370;z-index:25}.main-area{margin-left:0;width:100%}.topbar{padding:0 14px;height:56px;gap:10px}.mobile-toggle{display:grid}.global-search{width:100%;max-width:none}.top-branch{display:none}.top-profile-copy{display:none}.top-profile{gap:5px}.content{padding:20px 14px 32px}.page-title{font-size:20px}.page-head{align-items:center}.head-actions .button span{display:none}.dash-grid{grid-template-columns:1fr}.metric-row2{grid-template-columns:repeat(2,1fr)}.list-grid{grid-template-columns:repeat(2,1fr)}.arrival-row{grid-template-columns:1fr auto}.arrival-row>div:nth-child(2),.arrival-row>div:nth-child(3){display:none}.page-head .head-actions{gap:5px}.button{padding:8px 9px}.dashboard-hero{align-items:flex-start}.filter-bar{width:100%}}
 @media(max-width:460px){.metrics{gap:8px}.metric{padding:12px}.metric-value{font-size:19px}.metric-row2{gap:8px}.list-grid{grid-template-columns:1fr}.page-head{display:block}.page-head .head-actions{margin-top:13px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.topbar .icon-btn:not(.mobile-toggle){display:none}}
 
 /* Hinkley night desk: dark workspace surfaces inspired by the supplied PMS reference */

@@ -29,3 +29,5 @@ export * from './healthStatus';
 export * from './listCohoCalendarParams';
 export * from './listCohoMaintenanceParams';
 export * from './listCohoPropertiesParams';
+export * from './signupEmailCheckRequest';
+export * from './signupEmailCheckResult';

@@ -26,6 +26,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/validate-signup-email:
+    post:
+      operationId: validateSignupEmail
+      tags: [auth]
+      summary: Validate the staff email domain before account creation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupEmailCheckRequest"
+      responses:
+        "200":
+          description: Whether the email is allowed to register
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignupEmailCheckResult"
+        "400":
+          description: Invalid email address
   /coho/status:
     get:
       operationId: getCohoStatus
@@ -230,6 +250,21 @@ components:
           type: string
       required:
         - status
+    SignupEmailCheckRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required: [email]
+    SignupEmailCheckResult:
+      type: object
+      properties:
+        allowed:
+          type: boolean
+        message:
+          type: ["string", "null"]
+      required: [allowed, message]
     CohoStatus:
       type: object
       properties:
