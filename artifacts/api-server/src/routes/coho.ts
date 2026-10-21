@@ -18,6 +18,7 @@ import {
   UpdateCohoMaintenanceParams,
   UpdateCohoMaintenanceResponse,
 } from "@workspace/api-zod";
+import { cohoApiKey } from "../lib/integrations-env";
 
 const router: IRouter = Router();
 const COHO_PUBLIC_API = "https://api.coho.life/v1.1/public";
@@ -63,7 +64,7 @@ async function requestCoho(
   path: string,
   init: RequestInit = {},
 ): Promise<unknown | undefined> {
-  const apiKey = process.env.COHO_API_KEY?.trim();
+  const apiKey = cohoApiKey();
   if (!apiKey) {
     res.status(503).json({ error: "COHO_API_KEY is not configured." });
     return undefined;
@@ -127,7 +128,7 @@ function sendParsed(
 router.get("/coho/status", (_req, res): void => {
   res.json(
     GetCohoStatusResponse.parse({
-      configured: Boolean(process.env.COHO_API_KEY?.trim()),
+      configured: Boolean(cohoApiKey()),
       apiVersion: "1.1",
     }),
   );

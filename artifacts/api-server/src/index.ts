@@ -1,4 +1,5 @@
 import app from "./app";
+import { cohoApiKey, readXeroEnv } from "./lib/integrations-env";
 import { logger } from "./lib/logger";
 
 const rawPort = process.env["PORT"];
@@ -22,4 +23,13 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  const xero = readXeroEnv();
+  logger.info(
+    { coho: cohoApiKey() ? "configured" : "unconfigured", xero: xero.status },
+    "Integration credentials",
+  );
+  if (xero.status === "invalid") {
+    logger.warn({ problems: xero.problems }, "Xero credentials are incomplete; Xero stays disabled");
+  }
 });

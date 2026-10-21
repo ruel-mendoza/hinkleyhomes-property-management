@@ -10,6 +10,7 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `SUPABASE_DATABASE_URL` — Supabase session pooler connection string (`DATABASE_URL` is reserved by Replit and not used)
+- Integration env: `COHO_API_KEY`; Xero `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, `XERO_REDIRECT_URI`, `XERO_TOKEN_ENCRYPTION_KEY` (optional `XERO_SCOPES`, `XERO_WEBHOOK_KEY`). All names and formats are documented in `.env.example`; values go in Replit Secrets. The API server logs which integrations are configured at startup.
 
 ## Stack
 
