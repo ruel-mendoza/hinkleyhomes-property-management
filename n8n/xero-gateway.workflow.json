@@ -94,6 +94,12 @@
           },
           "timeout": 30000
         }
+      },
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
       }
     },
     {

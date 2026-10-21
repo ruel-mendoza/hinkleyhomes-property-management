@@ -41,6 +41,15 @@ export type XeroGatewayResponse<T = unknown> = {
 
 export class XeroGatewayError extends Error {}
 
+// Xero's JSON dates look like "/Date(1696118400000+0000)/"; the *String
+// variants (e.g. DueDateString) are ISO without a timezone. Both mean UTC.
+export function parseXeroDate(value: unknown): Date | null {
+  if (typeof value !== "string" || !value) return null;
+  const msDate = value.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+  const date = msDate ? new Date(Number(msDate[1])) : new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(value) ? value : `${value}Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 const TIMEOUT_MS = 45_000;
 
 export async function xeroGatewayRequest<T = unknown>(
