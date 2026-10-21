@@ -44,6 +44,8 @@ export const supplierReceiptsTable = pgTable(
   (t) => [
     uniqueIndex("supplier_receipts_source_message_uq").on(t.source, t.sourceMessageId),
     index("supplier_receipts_status_idx").on(t.status),
+    index("supplier_receipts_supplier_id_idx").on(t.supplierId),
+    index("supplier_receipts_property_id_idx").on(t.propertyId),
   ],
 ).enableRLS();
 
@@ -71,7 +73,9 @@ export const paymentBatchesTable = pgTable("payment_batches", {
   approvedAt: timestamp("approved_at", { withTimezone: true }),
   xeroBatchPaymentId: text("xero_batch_payment_id").unique(),
   ...timestamps,
-}).enableRLS();
+},
+  (t) => [index("payment_batches_entity_id_idx").on(t.entityId)],
+).enableRLS();
 
 export const paymentBatchItemsTable = pgTable(
   "payment_batch_items",
@@ -95,6 +99,10 @@ export const paymentBatchItemsTable = pgTable(
   },
   (t) => [
     index("payment_batch_items_batch_id_idx").on(t.batchId),
+    index("payment_batch_items_supplier_id_idx").on(t.supplierId),
+    index("payment_batch_items_bank_details_id_idx").on(t.bankDetailsId),
+    index("payment_batch_items_invoice_id_idx").on(t.contractorInvoiceId),
+    index("payment_batch_items_receipt_id_idx").on(t.supplierReceiptId),
     check(
       "payment_batch_items_one_source_chk",
       sql`num_nonnulls(${t.contractorInvoiceId}, ${t.supplierReceiptId}) = 1`,

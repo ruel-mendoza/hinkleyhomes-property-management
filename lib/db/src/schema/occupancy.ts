@@ -81,6 +81,7 @@ export const shortStayBookingsTable = pgTable(
   },
   (t) => [
     index("short_stay_bookings_property_dates_idx").on(t.propertyId, t.departureDate),
+    index("short_stay_bookings_room_id_idx").on(t.roomId),
     check("short_stay_bookings_dates_chk", sql`${t.departureDate} >= ${t.arrivalDate}`),
   ],
 ).enableRLS();

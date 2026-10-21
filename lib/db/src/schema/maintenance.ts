@@ -33,7 +33,10 @@ export const maintenanceJobsTable = pgTable(
     completedAt: timestamp("completed_at", { withTimezone: true }),
     ...timestamps,
   },
-  (t) => [index("maintenance_jobs_property_id_idx").on(t.propertyId)],
+  (t) => [
+    index("maintenance_jobs_property_id_idx").on(t.propertyId),
+    index("maintenance_jobs_room_id_idx").on(t.roomId),
+  ],
 ).enableRLS();
 
 export const chargeToEnum = pgEnum("charge_to", [
@@ -62,7 +65,10 @@ export const maintenanceApprovalsTable = pgTable(
     notes: text("notes"),
     ...timestamps,
   },
-  (t) => [index("maintenance_approvals_job_id_idx").on(t.maintenanceJobId)],
+  (t) => [
+    index("maintenance_approvals_job_id_idx").on(t.maintenanceJobId),
+    index("maintenance_approvals_supplier_id_idx").on(t.supplierId),
+  ],
 ).enableRLS();
 
 export const invoiceMatchStatusEnum = pgEnum("invoice_match_status", [
@@ -96,6 +102,7 @@ export const contractorInvoicesTable = pgTable(
   (t) => [
     uniqueIndex("contractor_invoices_supplier_number_uq").on(t.supplierId, t.invoiceNumber),
     index("contractor_invoices_job_id_idx").on(t.maintenanceJobId),
+    index("contractor_invoices_approval_id_idx").on(t.approvalId),
     check("contractor_invoices_gross_chk", sql`${t.grossAmount} = ${t.netAmount} + ${t.vatAmount}`),
   ],
 ).enableRLS();
@@ -144,6 +151,10 @@ export const onChargesTable = pgTable(
   },
   (t) => [
     index("on_charges_invoice_id_idx").on(t.contractorInvoiceId),
+    index("on_charges_tenancy_id_idx").on(t.tenancyId),
+    index("on_charges_booking_id_idx").on(t.bookingId),
+    index("on_charges_entity_id_idx").on(t.entityId),
+    index("on_charges_cleaning_allowance_id_idx").on(t.cleaningAllowanceId),
     check("on_charges_amount_chk", sql`${t.chargeAmount} = ${t.grossAmount} - ${t.allowanceAmount}`),
   ],
 ).enableRLS();

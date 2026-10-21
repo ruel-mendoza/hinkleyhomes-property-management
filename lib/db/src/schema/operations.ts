@@ -103,7 +103,12 @@ export const clientReportsTable = pgTable("client_reports", {
   storagePath: text("storage_path"),
   data: jsonb("data"),
   ...timestamps,
-}).enableRLS();
+},
+  (t) => [
+    index("client_reports_entity_id_idx").on(t.entityId),
+    index("client_reports_property_id_idx").on(t.propertyId),
+  ],
+).enableRLS();
 
 export const insertExceptionSchema = createInsertSchema(exceptionQueueTable).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAuditLogSchema = createInsertSchema(auditLogTable).omit({ id: true, occurredAt: true });
