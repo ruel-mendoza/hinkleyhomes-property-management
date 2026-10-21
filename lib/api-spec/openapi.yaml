@@ -160,6 +160,175 @@ paths:
           description: Invalid filters
         "503":
           description: Database is not configured
+    post:
+      operationId: createCohoAction
+      tags: [coho]
+      summary: Create a custom action in COHO and save it to Supabase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CohoActionCreate"
+      responses:
+        "200":
+          description: The new action as saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoActionItem"
+        "400":
+          description: Invalid action details
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO or the database is not configured
+  /coho/actions/assignees:
+    get:
+      operationId: listCohoActionAssignees
+      tags: [coho]
+      summary: People actions can be assigned to
+      responses:
+        "200":
+          description: Assignable COHO team members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoActionAssigneeList"
+        "503":
+          description: Database is not configured
+  /coho/actions/{reference}:
+    patch:
+      operationId: updateCohoAction
+      tags: [coho]
+      summary: Edit a custom action's title, message, notes or due date
+      parameters:
+        - $ref: "#/components/parameters/CohoActionReference"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CohoActionEdit"
+      responses:
+        "200":
+          description: The action as saved after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoActionItem"
+        "400":
+          description: Invalid change, or the action is not a custom action
+        "404":
+          description: Action not found
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO or the database is not configured
+  /coho/actions/{reference}/status:
+    patch:
+      operationId: updateCohoActionStatus
+      tags: [coho]
+      summary: Change an action's status in COHO
+      parameters:
+        - $ref: "#/components/parameters/CohoActionReference"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CohoActionStatusChange"
+      responses:
+        "200":
+          description: The action as saved after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoActionItem"
+        "400":
+          description: Invalid status, or the action cannot be completed manually
+        "404":
+          description: Action not found
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO or the database is not configured
+  /coho/actions/{reference}/assign:
+    post:
+      operationId: assignCohoAction
+      tags: [coho]
+      summary: Assign or unassign an action in COHO
+      parameters:
+        - $ref: "#/components/parameters/CohoActionReference"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CohoActionAssign"
+      responses:
+        "200":
+          description: The action as saved after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoActionItem"
+        "400":
+          description: Invalid assignee
+        "404":
+          description: Action not found
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO or the database is not configured
+  /coho/actions/{reference}/snooze:
+    post:
+      operationId: snoozeCohoAction
+      tags: [coho]
+      summary: Snooze an action until a date
+      parameters:
+        - $ref: "#/components/parameters/CohoActionReference"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CohoActionSnooze"
+      responses:
+        "200":
+          description: The action as saved after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoActionItem"
+        "400":
+          description: Invalid snooze date
+        "404":
+          description: Action not found
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO or the database is not configured
+  /coho/actions/{reference}/unsnooze:
+    post:
+      operationId: unsnoozeCohoAction
+      tags: [coho]
+      summary: Remove the snooze from an action
+      parameters:
+        - $ref: "#/components/parameters/CohoActionReference"
+      responses:
+        "200":
+          description: The action as saved after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoActionItem"
+        "404":
+          description: Action not found
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO or the database is not configured
   /coho/actions/sync:
     post:
       operationId: syncCohoActions
@@ -341,6 +510,15 @@ paths:
         "503":
           description: COHO API key is not configured
 components:
+  parameters:
+    CohoActionReference:
+      name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 200
   schemas:
     HealthStatus:
       type: object
@@ -698,7 +876,98 @@ components:
           format: date-time
         removedFromCoho:
           type: boolean
-      required: [reference, title, message, notes, status, type, typeName, category, dueDate, overdue, snoozed, snoozedUntil, completedAt, propertyReference, propertyName, roomReference, roomName, assignedToName, tags, progressionStepsCompleted, progressionStepsCount, firstSeenAt, lastChangedAt, removedFromCoho]
+        archived:
+          type: boolean
+        assignedToGuid:
+          type: ["string", "null"]
+        canManuallyComplete:
+          description: COHO only lets staff mark an action completed when this is true; others complete themselves
+          type: boolean
+        isCustom:
+          description: Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited
+          type: boolean
+      required: [reference, title, message, notes, status, type, typeName, category, dueDate, overdue, snoozed, snoozedUntil, completedAt, propertyReference, propertyName, roomReference, roomName, assignedToName, tags, progressionStepsCompleted, progressionStepsCount, firstSeenAt, lastChangedAt, removedFromCoho, archived, assignedToGuid, canManuallyComplete, isCustom]
+    CohoActionCreate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        message:
+          type: ["string", "null"]
+          maxLength: 400
+        notes:
+          type: ["string", "null"]
+          maxLength: 4000
+        dueDate:
+          type: ["string", "null"]
+          format: date-time
+        propertyReference:
+          type: ["string", "null"]
+          maxLength: 200
+        roomReference:
+          type: ["string", "null"]
+          maxLength: 200
+        assignTo:
+          type: ["string", "null"]
+          format: uuid
+      required: [title]
+    CohoActionEdit:
+      type: object
+      description: Only the fields sent are changed. Custom actions only.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        message:
+          type: ["string", "null"]
+          maxLength: 400
+        notes:
+          type: ["string", "null"]
+          maxLength: 4000
+        dueDate:
+          type: ["string", "null"]
+          format: date-time
+    CohoActionStatusChange:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [new, in_progress, on_hold, completed]
+      required: [status]
+    CohoActionAssign:
+      type: object
+      properties:
+        assignTo:
+          description: Organisation person GUID; null unassigns
+          type: ["string", "null"]
+          format: uuid
+      required: [assignTo]
+    CohoActionSnooze:
+      type: object
+      properties:
+        until:
+          type: string
+          format: date-time
+      required: [until]
+    CohoActionAssignee:
+      type: object
+      properties:
+        guid:
+          type: string
+        name:
+          type: string
+      required: [guid, name]
+    CohoActionAssigneeList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CohoActionAssignee"
+      required: [items]
     CohoActionCategoryCounts:
       type: object
       properties:

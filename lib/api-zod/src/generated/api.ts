@@ -142,7 +142,11 @@ export const ListCohoActionsResponse = zod.object({
   "progressionStepsCount": zod.number().int(),
   "firstSeenAt": zod.coerce.date().describe('When the sync first saved this action'),
   "lastChangedAt": zod.coerce.date(),
-  "removedFromCoho": zod.boolean()
+  "removedFromCoho": zod.boolean(),
+  "archived": zod.boolean(),
+  "assignedToGuid": zod.string().nullable(),
+  "canManuallyComplete": zod.boolean().describe('COHO only lets staff mark an action completed when this is true; others complete themselves'),
+  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited')
 })),
   "page": zod.number().int(),
   "pageSize": zod.number().int(),
@@ -163,6 +167,316 @@ export const ListCohoActionsResponse = zod.object({
   "finishedAt": zod.coerce.date().nullable(),
   "error": zod.string().nullable()
 }),zod.null()]).describe('Most recent successful sync, or null if none has run')
+})
+
+
+/**
+ * @summary Create a custom action in COHO and save it to Supabase
+ */
+export const createCohoActionBodyTitleMax = 100;
+
+export const createCohoActionBodyMessageMax = 400;
+
+export const createCohoActionBodyNotesMax = 4000;
+
+export const createCohoActionBodyPropertyReferenceMax = 200;
+
+export const createCohoActionBodyRoomReferenceMax = 200;
+
+
+
+export const CreateCohoActionBody = zod.object({
+  "title": zod.string().min(1).max(createCohoActionBodyTitleMax),
+  "message": zod.string().max(createCohoActionBodyMessageMax).nullish(),
+  "notes": zod.string().max(createCohoActionBodyNotesMax).nullish(),
+  "dueDate": zod.coerce.date().nullish(),
+  "propertyReference": zod.string().max(createCohoActionBodyPropertyReferenceMax).nullish(),
+  "roomReference": zod.string().max(createCohoActionBodyRoomReferenceMax).nullish(),
+  "assignTo": zod.string().uuid().nullish()
+})
+
+export const CreateCohoActionResponse = zod.object({
+  "reference": zod.string(),
+  "title": zod.string().nullable(),
+  "message": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['not_set', 'new', 'in_progress', 'on_hold', 'completed']),
+  "type": zod.string(),
+  "typeName": zod.string().nullable(),
+  "category": zod.enum(['property', 'tenancy', 'maintenance', 'onboarding', 'viewing', 'other']),
+  "dueDate": zod.coerce.date().nullable(),
+  "overdue": zod.boolean(),
+  "snoozed": zod.boolean(),
+  "snoozedUntil": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "propertyReference": zod.string().nullable(),
+  "propertyName": zod.string().nullable(),
+  "roomReference": zod.string().nullable(),
+  "roomName": zod.string().nullable(),
+  "assignedToName": zod.string().nullable(),
+  "tags": zod.array(zod.string()),
+  "progressionStepsCompleted": zod.number().int(),
+  "progressionStepsCount": zod.number().int(),
+  "firstSeenAt": zod.coerce.date().describe('When the sync first saved this action'),
+  "lastChangedAt": zod.coerce.date(),
+  "removedFromCoho": zod.boolean(),
+  "archived": zod.boolean(),
+  "assignedToGuid": zod.string().nullable(),
+  "canManuallyComplete": zod.boolean().describe('COHO only lets staff mark an action completed when this is true; others complete themselves'),
+  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited')
+})
+
+
+/**
+ * @summary People actions can be assigned to
+ */
+export const ListCohoActionAssigneesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "guid": zod.string(),
+  "name": zod.string()
+}))
+})
+
+
+/**
+ * @summary Edit a custom action's title, message, notes or due date
+ */
+export const updateCohoActionPathReferenceMax = 200;
+
+
+
+export const UpdateCohoActionParams = zod.object({
+  "reference": zod.coerce.string().min(1).max(updateCohoActionPathReferenceMax)
+})
+
+export const updateCohoActionBodyTitleMax = 100;
+
+export const updateCohoActionBodyMessageMax = 400;
+
+export const updateCohoActionBodyNotesMax = 4000;
+
+
+
+export const UpdateCohoActionBody = zod.object({
+  "title": zod.string().min(1).max(updateCohoActionBodyTitleMax).optional(),
+  "message": zod.string().max(updateCohoActionBodyMessageMax).nullish(),
+  "notes": zod.string().max(updateCohoActionBodyNotesMax).nullish(),
+  "dueDate": zod.coerce.date().nullish()
+}).describe('Only the fields sent are changed. Custom actions only.')
+
+export const UpdateCohoActionResponse = zod.object({
+  "reference": zod.string(),
+  "title": zod.string().nullable(),
+  "message": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['not_set', 'new', 'in_progress', 'on_hold', 'completed']),
+  "type": zod.string(),
+  "typeName": zod.string().nullable(),
+  "category": zod.enum(['property', 'tenancy', 'maintenance', 'onboarding', 'viewing', 'other']),
+  "dueDate": zod.coerce.date().nullable(),
+  "overdue": zod.boolean(),
+  "snoozed": zod.boolean(),
+  "snoozedUntil": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "propertyReference": zod.string().nullable(),
+  "propertyName": zod.string().nullable(),
+  "roomReference": zod.string().nullable(),
+  "roomName": zod.string().nullable(),
+  "assignedToName": zod.string().nullable(),
+  "tags": zod.array(zod.string()),
+  "progressionStepsCompleted": zod.number().int(),
+  "progressionStepsCount": zod.number().int(),
+  "firstSeenAt": zod.coerce.date().describe('When the sync first saved this action'),
+  "lastChangedAt": zod.coerce.date(),
+  "removedFromCoho": zod.boolean(),
+  "archived": zod.boolean(),
+  "assignedToGuid": zod.string().nullable(),
+  "canManuallyComplete": zod.boolean().describe('COHO only lets staff mark an action completed when this is true; others complete themselves'),
+  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited')
+})
+
+
+/**
+ * @summary Change an action's status in COHO
+ */
+export const updateCohoActionStatusPathReferenceMax = 200;
+
+
+
+export const UpdateCohoActionStatusParams = zod.object({
+  "reference": zod.coerce.string().min(1).max(updateCohoActionStatusPathReferenceMax)
+})
+
+export const UpdateCohoActionStatusBody = zod.object({
+  "status": zod.enum(['new', 'in_progress', 'on_hold', 'completed'])
+})
+
+export const UpdateCohoActionStatusResponse = zod.object({
+  "reference": zod.string(),
+  "title": zod.string().nullable(),
+  "message": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['not_set', 'new', 'in_progress', 'on_hold', 'completed']),
+  "type": zod.string(),
+  "typeName": zod.string().nullable(),
+  "category": zod.enum(['property', 'tenancy', 'maintenance', 'onboarding', 'viewing', 'other']),
+  "dueDate": zod.coerce.date().nullable(),
+  "overdue": zod.boolean(),
+  "snoozed": zod.boolean(),
+  "snoozedUntil": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "propertyReference": zod.string().nullable(),
+  "propertyName": zod.string().nullable(),
+  "roomReference": zod.string().nullable(),
+  "roomName": zod.string().nullable(),
+  "assignedToName": zod.string().nullable(),
+  "tags": zod.array(zod.string()),
+  "progressionStepsCompleted": zod.number().int(),
+  "progressionStepsCount": zod.number().int(),
+  "firstSeenAt": zod.coerce.date().describe('When the sync first saved this action'),
+  "lastChangedAt": zod.coerce.date(),
+  "removedFromCoho": zod.boolean(),
+  "archived": zod.boolean(),
+  "assignedToGuid": zod.string().nullable(),
+  "canManuallyComplete": zod.boolean().describe('COHO only lets staff mark an action completed when this is true; others complete themselves'),
+  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited')
+})
+
+
+/**
+ * @summary Assign or unassign an action in COHO
+ */
+export const assignCohoActionPathReferenceMax = 200;
+
+
+
+export const AssignCohoActionParams = zod.object({
+  "reference": zod.coerce.string().min(1).max(assignCohoActionPathReferenceMax)
+})
+
+export const AssignCohoActionBody = zod.object({
+  "assignTo": zod.string().uuid().nullable().describe('Organisation person GUID; null unassigns')
+})
+
+export const AssignCohoActionResponse = zod.object({
+  "reference": zod.string(),
+  "title": zod.string().nullable(),
+  "message": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['not_set', 'new', 'in_progress', 'on_hold', 'completed']),
+  "type": zod.string(),
+  "typeName": zod.string().nullable(),
+  "category": zod.enum(['property', 'tenancy', 'maintenance', 'onboarding', 'viewing', 'other']),
+  "dueDate": zod.coerce.date().nullable(),
+  "overdue": zod.boolean(),
+  "snoozed": zod.boolean(),
+  "snoozedUntil": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "propertyReference": zod.string().nullable(),
+  "propertyName": zod.string().nullable(),
+  "roomReference": zod.string().nullable(),
+  "roomName": zod.string().nullable(),
+  "assignedToName": zod.string().nullable(),
+  "tags": zod.array(zod.string()),
+  "progressionStepsCompleted": zod.number().int(),
+  "progressionStepsCount": zod.number().int(),
+  "firstSeenAt": zod.coerce.date().describe('When the sync first saved this action'),
+  "lastChangedAt": zod.coerce.date(),
+  "removedFromCoho": zod.boolean(),
+  "archived": zod.boolean(),
+  "assignedToGuid": zod.string().nullable(),
+  "canManuallyComplete": zod.boolean().describe('COHO only lets staff mark an action completed when this is true; others complete themselves'),
+  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited')
+})
+
+
+/**
+ * @summary Snooze an action until a date
+ */
+export const snoozeCohoActionPathReferenceMax = 200;
+
+
+
+export const SnoozeCohoActionParams = zod.object({
+  "reference": zod.coerce.string().min(1).max(snoozeCohoActionPathReferenceMax)
+})
+
+export const SnoozeCohoActionBody = zod.object({
+  "until": zod.coerce.date()
+})
+
+export const SnoozeCohoActionResponse = zod.object({
+  "reference": zod.string(),
+  "title": zod.string().nullable(),
+  "message": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['not_set', 'new', 'in_progress', 'on_hold', 'completed']),
+  "type": zod.string(),
+  "typeName": zod.string().nullable(),
+  "category": zod.enum(['property', 'tenancy', 'maintenance', 'onboarding', 'viewing', 'other']),
+  "dueDate": zod.coerce.date().nullable(),
+  "overdue": zod.boolean(),
+  "snoozed": zod.boolean(),
+  "snoozedUntil": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "propertyReference": zod.string().nullable(),
+  "propertyName": zod.string().nullable(),
+  "roomReference": zod.string().nullable(),
+  "roomName": zod.string().nullable(),
+  "assignedToName": zod.string().nullable(),
+  "tags": zod.array(zod.string()),
+  "progressionStepsCompleted": zod.number().int(),
+  "progressionStepsCount": zod.number().int(),
+  "firstSeenAt": zod.coerce.date().describe('When the sync first saved this action'),
+  "lastChangedAt": zod.coerce.date(),
+  "removedFromCoho": zod.boolean(),
+  "archived": zod.boolean(),
+  "assignedToGuid": zod.string().nullable(),
+  "canManuallyComplete": zod.boolean().describe('COHO only lets staff mark an action completed when this is true; others complete themselves'),
+  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited')
+})
+
+
+/**
+ * @summary Remove the snooze from an action
+ */
+export const unsnoozeCohoActionPathReferenceMax = 200;
+
+
+
+export const UnsnoozeCohoActionParams = zod.object({
+  "reference": zod.coerce.string().min(1).max(unsnoozeCohoActionPathReferenceMax)
+})
+
+export const UnsnoozeCohoActionResponse = zod.object({
+  "reference": zod.string(),
+  "title": zod.string().nullable(),
+  "message": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['not_set', 'new', 'in_progress', 'on_hold', 'completed']),
+  "type": zod.string(),
+  "typeName": zod.string().nullable(),
+  "category": zod.enum(['property', 'tenancy', 'maintenance', 'onboarding', 'viewing', 'other']),
+  "dueDate": zod.coerce.date().nullable(),
+  "overdue": zod.boolean(),
+  "snoozed": zod.boolean(),
+  "snoozedUntil": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "propertyReference": zod.string().nullable(),
+  "propertyName": zod.string().nullable(),
+  "roomReference": zod.string().nullable(),
+  "roomName": zod.string().nullable(),
+  "assignedToName": zod.string().nullable(),
+  "tags": zod.array(zod.string()),
+  "progressionStepsCompleted": zod.number().int(),
+  "progressionStepsCount": zod.number().int(),
+  "firstSeenAt": zod.coerce.date().describe('When the sync first saved this action'),
+  "lastChangedAt": zod.coerce.date(),
+  "removedFromCoho": zod.boolean(),
+  "archived": zod.boolean(),
+  "assignedToGuid": zod.string().nullable(),
+  "canManuallyComplete": zod.boolean().describe('COHO only lets staff mark an action completed when this is true; others complete themselves'),
+  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited')
 })
 
 

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { and, eq, isNull, like, sql } from "drizzle-orm";
-import { cohoActionsTable, getDb, integrationSyncRunsTable, type InsertCohoAction } from "@workspace/db";
+import { cohoActionsTable, getDb, integrationSyncRunsTable, type CohoAction, type InsertCohoAction } from "@workspace/db";
 import { cohoGet } from "./coho-api";
 import { logger } from "./logger";
 
@@ -292,4 +292,40 @@ export async function lastSuccessfulActionsSync() {
     .orderBy(sql`${integrationSyncRunsTable.startedAt} desc`)
     .limit(1);
   return last ?? null;
+}
+
+// Re-reads one action from COHO and saves it, e.g. straight after staff change
+// it from the Actions page, so the page doesn't wait for the next full sync.
+export async function refreshCohoAction(reference: string): Promise<CohoAction> {
+  const db = getDb();
+  const item = asRecord(await cohoGet(`/actions/${encodeURIComponent(reference)}`));
+  const [existing] = await db.select().from(cohoActionsTable).where(eq(cohoActionsTable.reference, reference)).limit(1);
+
+  const names = { propertyNames: new Map<string, string>(), roomNames: new Map<string, string>() };
+  const propertyReference = str(item.propertyReference);
+  const roomReference = str(item.roomReference);
+  const knownProperty = existing?.cohoPropertyReference === propertyReference && Boolean(existing?.propertyName);
+  const knownRoom = !roomReference || (existing?.cohoRoomReference === roomReference && Boolean(existing?.roomName));
+  if (propertyReference && knownProperty && knownRoom) {
+    names.propertyNames.set(propertyReference, existing!.propertyName!);
+    if (roomReference) names.roomNames.set(roomReference, existing!.roomName!);
+  } else if (propertyReference) {
+    const property = asRecord(await cohoGet(`/properties/${encodeURIComponent(propertyReference)}?includeRooms=true`).catch(() => ({})));
+    const name = str(property.name);
+    if (name) names.propertyNames.set(propertyReference, name);
+    for (const room of Array.isArray(property.rooms) ? property.rooms.map(asRecord) : []) {
+      const ref = str(room.reference);
+      const roomName = str(room.name);
+      if (ref && roomName) names.roomNames.set(ref, roomName);
+    }
+  }
+  // Keep a tab COHO itself assigned earlier rather than re-inferring it.
+  const overview = new Map<string, Category>();
+  if (existing?.categoryFromCoho) overview.set(reference.toUpperCase(), existing.category);
+
+  const row = toRow(item, names, overview);
+  if (!row) throw new Error("COHO returned an action without a reference.");
+  await saveRows([row]);
+  const [saved] = await db.select().from(cohoActionsTable).where(eq(cohoActionsTable.reference, row.reference)).limit(1);
+  return saved;
 }

@@ -6,14 +6,22 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './cohoActionAssign';
+export * from './cohoActionAssignee';
+export * from './cohoActionAssigneeList';
 export * from './cohoActionCategory';
 export * from './cohoActionCategoryCounts';
+export * from './cohoActionCreate';
+export * from './cohoActionEdit';
 export * from './cohoActionItem';
 export * from './cohoActionLastSync';
 export * from './cohoActionLastSyncStatus';
 export * from './cohoActionList';
 export * from './cohoActionResult';
+export * from './cohoActionSnooze';
 export * from './cohoActionStatus';
+export * from './cohoActionStatusChange';
+export * from './cohoActionStatusChangeStatus';
 export * from './cohoActionSyncResult';
 export * from './cohoActionSyncResultStatus';
 export * from './cohoCalendarEntry';

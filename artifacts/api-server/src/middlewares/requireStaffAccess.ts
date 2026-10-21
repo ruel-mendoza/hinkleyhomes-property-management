@@ -23,6 +23,8 @@ export const requireStaffAccess: RequestHandler = async (
       res.status(403).json({ error: RESTRICTED_EMAIL_MESSAGE });
       return;
     }
+    // Who is acting, for audit logging in route handlers.
+    res.locals.staff = { userId, email };
     next();
   } catch {
     res.status(503).json({ error: "Could not verify account access." });

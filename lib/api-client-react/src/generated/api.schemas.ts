@@ -322,6 +322,103 @@ export interface CohoActionItem {
   firstSeenAt: string;
   lastChangedAt: string;
   removedFromCoho: boolean;
+  archived: boolean;
+  /** @nullable */
+  assignedToGuid: string | null;
+  /** COHO only lets staff mark an action completed when this is true; others complete themselves */
+  canManuallyComplete: boolean;
+  /** Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited */
+  isCustom: boolean;
+}
+
+export interface CohoActionCreate {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  title: string;
+  /**
+     * @maxLength 400
+     * @nullable
+     */
+  message?: string | null;
+  /**
+     * @maxLength 4000
+     * @nullable
+     */
+  notes?: string | null;
+  /** @nullable */
+  dueDate?: string | null;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  propertyReference?: string | null;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  roomReference?: string | null;
+  /** @nullable */
+  assignTo?: string | null;
+}
+
+/**
+ * Only the fields sent are changed. Custom actions only.
+ */
+export interface CohoActionEdit {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  title?: string;
+  /**
+     * @maxLength 400
+     * @nullable
+     */
+  message?: string | null;
+  /**
+     * @maxLength 4000
+     * @nullable
+     */
+  notes?: string | null;
+  /** @nullable */
+  dueDate?: string | null;
+}
+
+export type CohoActionStatusChangeStatus = typeof CohoActionStatusChangeStatus[keyof typeof CohoActionStatusChangeStatus];
+
+
+export const CohoActionStatusChangeStatus = {
+  new: 'new',
+  in_progress: 'in_progress',
+  on_hold: 'on_hold',
+  completed: 'completed',
+} as const;
+
+export interface CohoActionStatusChange {
+  status: CohoActionStatusChangeStatus;
+}
+
+export interface CohoActionAssign {
+  /**
+     * Organisation person GUID; null unassigns
+     * @nullable
+     */
+  assignTo: string | null;
+}
+
+export interface CohoActionSnooze {
+  until: string;
+}
+
+export interface CohoActionAssignee {
+  guid: string;
+  name: string;
+}
+
+export interface CohoActionAssigneeList {
+  items: CohoActionAssignee[];
 }
 
 export interface CohoActionCategoryCounts {

@@ -20,8 +20,15 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  CohoActionAssign,
+  CohoActionAssigneeList,
+  CohoActionCreate,
+  CohoActionEdit,
+  CohoActionItem,
   CohoActionList,
   CohoActionResult,
+  CohoActionSnooze,
+  CohoActionStatusChange,
   CohoActionSyncResult,
   CohoCalendarPage,
   CohoMaintenanceCategories,
@@ -565,6 +572,601 @@ export function useListCohoActions<TData = Awaited<ReturnType<typeof listCohoAct
 
 
 
+
+export const getCreateCohoActionUrl = () => {
+
+
+
+
+  return `/api/coho/actions`
+}
+
+/**
+ * @summary Create a custom action in COHO and save it to Supabase
+ */
+export const createCohoAction = async (cohoActionCreate: CohoActionCreate, options?: Parameters<typeof customFetch>[1]): Promise<CohoActionItem> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CohoActionItem>(getCreateCohoActionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(cohoActionCreate)
+  }
+);}
+
+
+
+
+
+export const getCreateCohoActionMutationKey = () => ['createCohoAction'] as const;
+
+export const getCreateCohoActionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCohoAction>>, TError,CreateCohoActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCohoAction>>, TError,CreateCohoActionMutationVariables, TContext> => {
+
+const mutationKey = getCreateCohoActionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCohoAction>>, CreateCohoActionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCohoAction(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCohoActionMutationResult = NonNullable<Awaited<ReturnType<typeof createCohoAction>>>
+    export type CreateCohoActionMutationBody = BodyType<CohoActionCreate>
+    export type CreateCohoActionMutationError = ErrorType<void>
+    export type CreateCohoActionMutationVariables = {data: BodyType<CohoActionCreate>}
+
+    /**
+ * @summary Create a custom action in COHO and save it to Supabase
+ */
+export const useCreateCohoAction = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCohoAction>>, TError,CreateCohoActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCohoAction>>,
+        TError,
+        CreateCohoActionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateCohoActionMutationOptions(options));
+    }
+
+export const getListCohoActionAssigneesUrl = () => {
+
+
+
+
+  return `/api/coho/actions/assignees`
+}
+
+/**
+ * @summary People actions can be assigned to
+ */
+export const listCohoActionAssignees = async ( options?: Parameters<typeof customFetch>[1]): Promise<CohoActionAssigneeList> => {
+
+  return customFetch<CohoActionAssigneeList>(getListCohoActionAssigneesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCohoActionAssigneesQueryKey = () => {
+    return [
+    `/api/coho/actions/assignees`
+    ] as const;
+    }
+
+
+export const getListCohoActionAssigneesQueryOptions = <TData = Awaited<ReturnType<typeof listCohoActionAssignees>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCohoActionAssignees>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCohoActionAssigneesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCohoActionAssignees>>> = ({ signal }) => listCohoActionAssignees({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCohoActionAssignees>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCohoActionAssigneesQueryResult = NonNullable<Awaited<ReturnType<typeof listCohoActionAssignees>>>
+export type ListCohoActionAssigneesQueryError = ErrorType<void>
+
+
+/**
+ * @summary People actions can be assigned to
+ */
+
+export function useListCohoActionAssignees<TData = Awaited<ReturnType<typeof listCohoActionAssignees>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCohoActionAssignees>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCohoActionAssigneesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCohoActionUrl = (reference: string,) => {
+
+
+
+
+  return `/api/coho/actions/${reference}`
+}
+
+/**
+ * @summary Edit a custom action's title, message, notes or due date
+ */
+export const updateCohoAction = async (reference: string,
+    cohoActionEdit: CohoActionEdit, options?: Parameters<typeof customFetch>[1]): Promise<CohoActionItem> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CohoActionItem>(getUpdateCohoActionUrl(reference),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(cohoActionEdit)
+  }
+);}
+
+
+
+
+
+export const getUpdateCohoActionMutationKey = () => ['updateCohoAction'] as const;
+
+export const getUpdateCohoActionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCohoAction>>, TError,UpdateCohoActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCohoAction>>, TError,UpdateCohoActionMutationVariables, TContext> => {
+
+const mutationKey = getUpdateCohoActionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCohoAction>>, UpdateCohoActionMutationVariables> = (props) => {
+          const {reference,data} = props ?? {};
+
+          return  updateCohoAction(reference,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCohoActionMutationResult = NonNullable<Awaited<ReturnType<typeof updateCohoAction>>>
+    export type UpdateCohoActionMutationBody = BodyType<CohoActionEdit>
+    export type UpdateCohoActionMutationError = ErrorType<void>
+    export type UpdateCohoActionMutationVariables = {reference: string;data: BodyType<CohoActionEdit>}
+
+    /**
+ * @summary Edit a custom action's title, message, notes or due date
+ */
+export const useUpdateCohoAction = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCohoAction>>, TError,UpdateCohoActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCohoAction>>,
+        TError,
+        UpdateCohoActionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateCohoActionMutationOptions(options));
+    }
+
+export const getUpdateCohoActionStatusUrl = (reference: string,) => {
+
+
+
+
+  return `/api/coho/actions/${reference}/status`
+}
+
+/**
+ * @summary Change an action's status in COHO
+ */
+export const updateCohoActionStatus = async (reference: string,
+    cohoActionStatusChange: CohoActionStatusChange, options?: Parameters<typeof customFetch>[1]): Promise<CohoActionItem> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CohoActionItem>(getUpdateCohoActionStatusUrl(reference),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(cohoActionStatusChange)
+  }
+);}
+
+
+
+
+
+export const getUpdateCohoActionStatusMutationKey = () => ['updateCohoActionStatus'] as const;
+
+export const getUpdateCohoActionStatusMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCohoActionStatus>>, TError,UpdateCohoActionStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCohoActionStatus>>, TError,UpdateCohoActionStatusMutationVariables, TContext> => {
+
+const mutationKey = getUpdateCohoActionStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCohoActionStatus>>, UpdateCohoActionStatusMutationVariables> = (props) => {
+          const {reference,data} = props ?? {};
+
+          return  updateCohoActionStatus(reference,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCohoActionStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateCohoActionStatus>>>
+    export type UpdateCohoActionStatusMutationBody = BodyType<CohoActionStatusChange>
+    export type UpdateCohoActionStatusMutationError = ErrorType<void>
+    export type UpdateCohoActionStatusMutationVariables = {reference: string;data: BodyType<CohoActionStatusChange>}
+
+    /**
+ * @summary Change an action's status in COHO
+ */
+export const useUpdateCohoActionStatus = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCohoActionStatus>>, TError,UpdateCohoActionStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCohoActionStatus>>,
+        TError,
+        UpdateCohoActionStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateCohoActionStatusMutationOptions(options));
+    }
+
+export const getAssignCohoActionUrl = (reference: string,) => {
+
+
+
+
+  return `/api/coho/actions/${reference}/assign`
+}
+
+/**
+ * @summary Assign or unassign an action in COHO
+ */
+export const assignCohoAction = async (reference: string,
+    cohoActionAssign: CohoActionAssign, options?: Parameters<typeof customFetch>[1]): Promise<CohoActionItem> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CohoActionItem>(getAssignCohoActionUrl(reference),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(cohoActionAssign)
+  }
+);}
+
+
+
+
+
+export const getAssignCohoActionMutationKey = () => ['assignCohoAction'] as const;
+
+export const getAssignCohoActionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignCohoAction>>, TError,AssignCohoActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignCohoAction>>, TError,AssignCohoActionMutationVariables, TContext> => {
+
+const mutationKey = getAssignCohoActionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignCohoAction>>, AssignCohoActionMutationVariables> = (props) => {
+          const {reference,data} = props ?? {};
+
+          return  assignCohoAction(reference,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignCohoActionMutationResult = NonNullable<Awaited<ReturnType<typeof assignCohoAction>>>
+    export type AssignCohoActionMutationBody = BodyType<CohoActionAssign>
+    export type AssignCohoActionMutationError = ErrorType<void>
+    export type AssignCohoActionMutationVariables = {reference: string;data: BodyType<CohoActionAssign>}
+
+    /**
+ * @summary Assign or unassign an action in COHO
+ */
+export const useAssignCohoAction = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignCohoAction>>, TError,AssignCohoActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignCohoAction>>,
+        TError,
+        AssignCohoActionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAssignCohoActionMutationOptions(options));
+    }
+
+export const getSnoozeCohoActionUrl = (reference: string,) => {
+
+
+
+
+  return `/api/coho/actions/${reference}/snooze`
+}
+
+/**
+ * @summary Snooze an action until a date
+ */
+export const snoozeCohoAction = async (reference: string,
+    cohoActionSnooze: CohoActionSnooze, options?: Parameters<typeof customFetch>[1]): Promise<CohoActionItem> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CohoActionItem>(getSnoozeCohoActionUrl(reference),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(cohoActionSnooze)
+  }
+);}
+
+
+
+
+
+export const getSnoozeCohoActionMutationKey = () => ['snoozeCohoAction'] as const;
+
+export const getSnoozeCohoActionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof snoozeCohoAction>>, TError,SnoozeCohoActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof snoozeCohoAction>>, TError,SnoozeCohoActionMutationVariables, TContext> => {
+
+const mutationKey = getSnoozeCohoActionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof snoozeCohoAction>>, SnoozeCohoActionMutationVariables> = (props) => {
+          const {reference,data} = props ?? {};
+
+          return  snoozeCohoAction(reference,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SnoozeCohoActionMutationResult = NonNullable<Awaited<ReturnType<typeof snoozeCohoAction>>>
+    export type SnoozeCohoActionMutationBody = BodyType<CohoActionSnooze>
+    export type SnoozeCohoActionMutationError = ErrorType<void>
+    export type SnoozeCohoActionMutationVariables = {reference: string;data: BodyType<CohoActionSnooze>}
+
+    /**
+ * @summary Snooze an action until a date
+ */
+export const useSnoozeCohoAction = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof snoozeCohoAction>>, TError,SnoozeCohoActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof snoozeCohoAction>>,
+        TError,
+        SnoozeCohoActionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSnoozeCohoActionMutationOptions(options));
+    }
+
+export const getUnsnoozeCohoActionUrl = (reference: string,) => {
+
+
+
+
+  return `/api/coho/actions/${reference}/unsnooze`
+}
+
+/**
+ * @summary Remove the snooze from an action
+ */
+export const unsnoozeCohoAction = async (reference: string, options?: Parameters<typeof customFetch>[1]): Promise<CohoActionItem> => {
+
+  return customFetch<CohoActionItem>(getUnsnoozeCohoActionUrl(reference),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getUnsnoozeCohoActionMutationKey = () => ['unsnoozeCohoAction'] as const;
+
+export const getUnsnoozeCohoActionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unsnoozeCohoAction>>, TError,UnsnoozeCohoActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unsnoozeCohoAction>>, TError,UnsnoozeCohoActionMutationVariables, TContext> => {
+
+const mutationKey = getUnsnoozeCohoActionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unsnoozeCohoAction>>, UnsnoozeCohoActionMutationVariables> = (props) => {
+          const {reference} = props ?? {};
+
+          return  unsnoozeCohoAction(reference,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnsnoozeCohoActionMutationResult = NonNullable<Awaited<ReturnType<typeof unsnoozeCohoAction>>>
+
+    export type UnsnoozeCohoActionMutationError = ErrorType<void>
+    export type UnsnoozeCohoActionMutationVariables = {reference: string}
+
+    /**
+ * @summary Remove the snooze from an action
+ */
+export const useUnsnoozeCohoAction = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unsnoozeCohoAction>>, TError,UnsnoozeCohoActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unsnoozeCohoAction>>,
+        TError,
+        UnsnoozeCohoActionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUnsnoozeCohoActionMutationOptions(options));
+    }
 
 export const getSyncCohoActionsUrl = (params?: SyncCohoActionsParams,) => {
   const normalizedParams = new URLSearchParams();

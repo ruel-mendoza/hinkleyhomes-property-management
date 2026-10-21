@@ -9,6 +9,7 @@ import {
   Hand,
   House,
   Megaphone,
+  Plus,
   RefreshCw,
   Search,
   Users,
@@ -23,6 +24,7 @@ import {
   useListCohoActions,
   useSyncCohoActions,
 } from "@workspace/api-client-react";
+import { ActionDetailModal, CreateActionModal, errorText } from "@/components/action-modals";
 import "./actions.css";
 
 const PAGE_SIZE = 50;
@@ -61,13 +63,6 @@ const ukDate = (value: string | null | undefined) =>
 const ukDateTime = (value: string | null | undefined) =>
   value ? new Date(value).toLocaleString("en-GB", { timeZone: UK, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
 
-function errorText(error: unknown): string {
-  const candidate = error as { data?: { error?: unknown }; message?: unknown } | null;
-  if (typeof candidate?.data?.error === "string") return candidate.data.error;
-  if (typeof candidate?.message === "string") return candidate.message;
-  return "Something went wrong. Please try again.";
-}
-
 export default function ActionsPage({ selectedPropertyReference }: { selectedPropertyReference?: string }) {
   const queryClient = useQueryClient();
   const [category, setCategory] = useState<CohoActionCategory | "all">("all");
@@ -76,6 +71,8 @@ export default function ActionsPage({ selectedPropertyReference }: { selectedPro
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<CohoActionItem | null>(null);
+  const [creating, setCreating] = useState(false);
 
   // Debounce typing so each keystroke doesn't hit the database.
   useEffect(() => {
@@ -143,14 +140,17 @@ export default function ActionsPage({ selectedPropertyReference }: { selectedPro
         <div>
           <div className="eyebrow">Hinkley Homes · COHO</div>
           <h1 className="page-title">Actions</h1>
-          <p className="page-sub">Every COHO action, saved to Supabase and kept up to date automatically.</p>
+          <p className="page-sub">Every COHO action, saved to Supabase and kept up to date. Click an action to change its status, assign it or snooze it.</p>
         </div>
         <div className="head-actions hh-act-sync">
           <span className={syncMessage.startsWith("Sync failed") ? "failed" : ""} role="status">
             {syncMutation.isPending ? "Syncing with COHO…" : syncMessage || (lastSync?.finishedAt ? `Last synced ${ukDateTime(lastSync.finishedAt)}` : "Not synced yet")}
           </span>
-          <button className="button primary" onClick={() => void runSync("manual")} disabled={syncMutation.isPending} data-testid="button-sync-actions">
+          <button className="button" onClick={() => void runSync("manual")} disabled={syncMutation.isPending} data-testid="button-sync-actions">
             <RefreshCw size={14} className={syncMutation.isPending ? "spin" : ""} /> Sync now
+          </button>
+          <button className="button primary" onClick={() => setCreating(true)} data-testid="button-new-action">
+            <Plus size={14} /> New action
           </button>
         </div>
       </div>
@@ -196,7 +196,15 @@ export default function ActionsPage({ selectedPropertyReference }: { selectedPro
               ) : items.length === 0 ? (
                 <tr><td colSpan={7}><div className="empty-state"><ClipboardList size={21} /><h3>No actions match</h3><p>{lastSync ? "Try another tab, status or search." : "Run Sync now to pull actions from COHO."}</p></div></td></tr>
               ) : items.map((action) => (
-                <tr key={action.reference} data-testid={`row-action-${action.reference}`}>
+                <tr
+                  key={action.reference}
+                  className="hh-act-row"
+                  tabIndex={0}
+                  aria-label={`Open ${action.title || action.typeName || "action"}`}
+                  onClick={() => setSelected(action)}
+                  onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelected(action); } }}
+                  data-testid={`row-action-${action.reference}`}
+                >
                   <td>
                     <div className="hh-act-title">
                       <strong>{action.title || action.typeName || "Untitled action"}{new Date(action.firstSeenAt).getTime() > dayAgo && <span className="hh-act-new">NEW</span>}</strong>
@@ -229,6 +237,15 @@ export default function ActionsPage({ selectedPropertyReference }: { selectedPro
           </div>
         )}
       </section>
+
+      {selected && <ActionDetailModal key={selected.reference} action={selected} onClose={() => setSelected(null)} />}
+      {creating && (
+        <CreateActionModal
+          initialPropertyReference={selectedPropertyReference}
+          onClose={() => setCreating(false)}
+          onCreated={(created) => { setCreating(false); setSyncMessage(`Created “${created.title}” in COHO.`); setSelected(created); }}
+        />
+      )}
     </>
   );
 }

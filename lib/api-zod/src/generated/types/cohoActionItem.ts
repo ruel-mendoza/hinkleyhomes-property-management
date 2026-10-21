@@ -46,4 +46,11 @@ export interface CohoActionItem {
   firstSeenAt: Date;
   lastChangedAt: Date;
   removedFromCoho: boolean;
+  archived: boolean;
+  /** @nullable */
+  assignedToGuid: string | null;
+  /** COHO only lets staff mark an action completed when this is true; others complete themselves */
+  canManuallyComplete: boolean;
+  /** Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited */
+  isCustom: boolean;
 }
