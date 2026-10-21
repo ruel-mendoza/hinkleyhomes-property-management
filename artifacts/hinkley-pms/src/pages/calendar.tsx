@@ -80,7 +80,9 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
   const statusQuery = useGetCohoStatus({
     query: { queryKey: getGetCohoStatusQueryKey(), refetchInterval: 15_000 },
   });
-  const fromDate = new Date(Date.UTC(month.getFullYear(), month.getMonth(), 1)).toISOString();
+  // Local midnight on the 1st, not UTC: in BST an entry at 23:00 UTC on the last
+  // day of the previous month is on the 1st locally and must be included.
+  const fromDate = new Date(month.getFullYear(), month.getMonth(), 1).toISOString();
   const calendarParams = useMemo(() => ({ fromDate }), [fromDate]);
   const configured = statusQuery.data?.configured === true;
   const calendarQuery = useListCohoCalendar(calendarParams, {
