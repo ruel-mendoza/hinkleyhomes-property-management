@@ -221,6 +221,52 @@ export interface CohoActionResult {
   success: boolean;
 }
 
+/**
+ * Booked by staff on behalf of a prospective tenant. COHO notifies the property manager and may text the applicant.
+ */
+export interface CohoViewingInput {
+  /** @minLength 1 */
+  propertyReference: string;
+  /** @nullable */
+  roomReference?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  forename: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  surname: string;
+  emailAddress: string;
+  /**
+     * @maxLength 30
+     * @nullable
+     */
+  mobileNumber?: string | null;
+  /** @nullable */
+  proposedDate?: string | null;
+  /**
+     * Length of the viewing in minutes
+     * @minimum 15
+     * @maximum 240
+     * @nullable
+     */
+  proposedDuration?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  requestMessage: string;
+}
+
+export interface CohoViewingCreated {
+  guid: string;
+  /** @nullable */
+  reference: string | null;
+}
+
 export type ListCohoPropertiesParams = {
 /**
  * @minimum 1

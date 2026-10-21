@@ -6,6 +6,8 @@ import {
   CohoCalendarEntry,
   CreateCohoMaintenanceBody,
   CreateCohoMaintenanceResponse,
+  CreateCohoViewingBody,
+  CreateCohoViewingResponse,
   GetCohoStatusResponse,
   ListCohoCalendarQueryParams,
   ListCohoCalendarResponse,
@@ -340,6 +342,43 @@ router.post("/coho/maintenance", async (req, res): Promise<void> => {
   });
   if (payload === undefined) return;
   sendParsed(req, res, CreateCohoMaintenanceResponse, payload);
+});
+
+// Books a viewing for a prospective tenant. COHO notifies the property
+// manager and may text the applicant, so this is a real-world action.
+router.post("/coho/viewings", async (req, res): Promise<void> => {
+  const body = CreateCohoViewingBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: "Check the viewing details and try again." });
+    return;
+  }
+  const { proposedDate, proposedDuration } = body.data;
+  if (proposedDate && proposedDate.getTime() < Date.now() - 5 * 60_000) {
+    res.status(400).json({ error: "The proposed viewing time is in the past." });
+    return;
+  }
+
+  const trimmedOrNull = (value: string | null | undefined) => value?.trim() || null;
+  const payload = await requestCoho(req, res, "/viewings", {
+    method: "POST",
+    body: JSON.stringify({
+      propertyReference: body.data.propertyReference.trim(),
+      roomReference: trimmedOrNull(body.data.roomReference),
+      forename: body.data.forename.trim(),
+      surname: body.data.surname.trim(),
+      emailAddress: body.data.emailAddress.trim(),
+      mobileNumber: trimmedOrNull(body.data.mobileNumber),
+      proposedDate: proposedDate ? proposedDate.toISOString() : null,
+      proposedDuration: proposedDate ? (proposedDuration ?? null) : null,
+      requestMessage: body.data.requestMessage.trim(),
+    }),
+  });
+  if (payload === undefined) return;
+  req.log.info(
+    { propertyReference: body.data.propertyReference, viewingGuid: asRecord(payload).guid },
+    "COHO viewing booked",
+  );
+  sendParsed(req, res, CreateCohoViewingResponse, payload);
 });
 
 router.patch("/coho/maintenance/:guid", async (req, res): Promise<void> => {

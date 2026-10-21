@@ -30,6 +30,8 @@ import type {
   CohoMaintenanceUpdate,
   CohoPropertiesPage,
   CohoStatus,
+  CohoViewingCreated,
+  CohoViewingInput,
   HealthStatus,
   ListCohoCalendarParams,
   ListCohoMaintenanceParams,
@@ -475,6 +477,94 @@ export function useListCohoCalendar<TData = Awaited<ReturnType<typeof listCohoCa
 
 
 
+
+export const getCreateCohoViewingUrl = () => {
+
+
+
+
+  return `/api/coho/viewings`
+}
+
+/**
+ * @summary Book a COHO property viewing
+ */
+export const createCohoViewing = async (cohoViewingInput: CohoViewingInput, options?: Parameters<typeof customFetch>[1]): Promise<CohoViewingCreated> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CohoViewingCreated>(getCreateCohoViewingUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(cohoViewingInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCohoViewingMutationKey = () => ['createCohoViewing'] as const;
+
+export const getCreateCohoViewingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCohoViewing>>, TError,CreateCohoViewingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCohoViewing>>, TError,CreateCohoViewingMutationVariables, TContext> => {
+
+const mutationKey = getCreateCohoViewingMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCohoViewing>>, CreateCohoViewingMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCohoViewing(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCohoViewingMutationResult = NonNullable<Awaited<ReturnType<typeof createCohoViewing>>>
+    export type CreateCohoViewingMutationBody = BodyType<CohoViewingInput>
+    export type CreateCohoViewingMutationError = ErrorType<void>
+    export type CreateCohoViewingMutationVariables = {data: BodyType<CohoViewingInput>}
+
+    /**
+ * @summary Book a COHO property viewing
+ */
+export const useCreateCohoViewing = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCohoViewing>>, TError,CreateCohoViewingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCohoViewing>>,
+        TError,
+        CreateCohoViewingMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateCohoViewingMutationOptions(options));
+    }
 
 export const getListCohoMaintenanceUrl = (params?: ListCohoMaintenanceParams,) => {
   const normalizedParams = new URLSearchParams();

@@ -108,6 +108,30 @@ paths:
           description: COHO returned an error
         "503":
           description: COHO API key is not configured
+  /coho/viewings:
+    post:
+      operationId: createCohoViewing
+      tags: [coho]
+      summary: Book a COHO property viewing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CohoViewingInput"
+      responses:
+        "200":
+          description: Created COHO viewing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoViewingCreated"
+        "400":
+          description: Invalid viewing details
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO API key is not configured
   /coho/maintenance:
     get:
       operationId: listCohoMaintenance
@@ -498,4 +522,49 @@ components:
         success:
           type: boolean
       required: [success]
+    CohoViewingInput:
+      type: object
+      description: Booked by staff on behalf of a prospective tenant. COHO notifies the property manager and may text the applicant.
+      properties:
+        propertyReference:
+          type: string
+          minLength: 1
+        roomReference:
+          type: ["string", "null"]
+        forename:
+          type: string
+          minLength: 1
+          maxLength: 100
+        surname:
+          type: string
+          minLength: 1
+          maxLength: 100
+        emailAddress:
+          type: string
+          format: email
+        mobileNumber:
+          type: ["string", "null"]
+          maxLength: 30
+        proposedDate:
+          type: ["string", "null"]
+          format: date-time
+        proposedDuration:
+          description: Length of the viewing in minutes
+          type: ["integer", "null"]
+          minimum: 15
+          maximum: 240
+        requestMessage:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required: [propertyReference, forename, surname, emailAddress, requestMessage]
+    CohoViewingCreated:
+      type: object
+      properties:
+        guid:
+          type: string
+          format: uuid
+        reference:
+          type: ["string", "null"]
+      required: [guid, reference]
 

@@ -4,20 +4,27 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
+  CalendarPlus,
+  Check,
   ChevronDown,
   Clock3,
   List,
   RefreshCw,
   Search,
   Table2,
+  Wrench,
 } from "lucide-react";
+import { Link } from "wouter";
 import {
   getGetCohoStatusQueryKey,
   getListCohoCalendarQueryKey,
+  getListCohoPropertiesQueryKey,
   type CohoCalendarEntry,
   useGetCohoStatus,
   useListCohoCalendar,
+  useListCohoProperties,
 } from "@workspace/api-client-react";
+import { BookViewingModal } from "@/components/book-viewing-modal";
 import "./calendar.css";
 
 type CalendarProps = {
@@ -31,7 +38,9 @@ type CalendarEvent = {
   endDate: string;
   person: string;
   property: string;
+  propertyReference: string;
   room: string;
+  roomReference: string;
   type: string;
   allDay: boolean;
   startsAt: Date;
@@ -51,6 +60,13 @@ const formatTime = (date: Date) => date.toLocaleTimeString("en-GB", { hour: "2-d
 const eventType = (entry: CohoCalendarEntry) => entry.entryType || entry.source;
 const typeClass = (type: string) => type.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 const errorText = (error: unknown) => error instanceof Error ? error.message : "Please try again in a moment.";
+// Opens the maintenance page with its "New issue" form prefilled.
+const reportMaintenanceHref = (propertyReference?: string, roomReference?: string) => {
+  const params = new URLSearchParams({ report: "1" });
+  if (propertyReference) params.set("property", propertyReference);
+  if (roomReference) params.set("room", roomReference);
+  return `/maintenance?${params}`;
+};
 
 export default function CalendarPage({ selectedPropertyReference }: CalendarProps) {
   const [month, setMonth] = useState(() => monthStart(new Date()));
@@ -58,6 +74,8 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
   const [mode, setMode] = useState<Mode>("calendar");
   const [kind, setKind] = useState("all");
   const [search, setSearch] = useState("");
+  const [viewingOpen, setViewingOpen] = useState(false);
+  const [notice, setNotice] = useState("");
 
   const statusQuery = useGetCohoStatus({
     query: { queryKey: getGetCohoStatusQueryKey(), refetchInterval: 15_000 },
@@ -71,6 +89,11 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
       enabled: configured,
     },
   });
+  // Same query as the app shell's property selector, so it comes from cache.
+  const propertiesQuery = useListCohoProperties({ page: 1, pageSize: 100 }, {
+    query: { queryKey: getListCohoPropertiesQueryKey({ page: 1, pageSize: 100 }), enabled: configured },
+  });
+  const properties = propertiesQuery.data?.items ?? [];
 
   const events = useMemo<CalendarEvent[]>(() => {
     const entries = calendarQuery.data?.items ?? [];
@@ -85,7 +108,9 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
           endDate: entry.endDate ? dateKey(new Date(entry.endDate)) : dateKey(startsAt),
           person: entry.personName || "",
           property: entry.propertyName || entry.propertyReference || "",
+          propertyReference: entry.propertyReference || "",
           room: entry.roomName || entry.roomReference || "",
+          roomReference: entry.roomReference || "",
           type: eventType(entry),
           allDay: entry.isAllDay,
           startsAt,
@@ -145,8 +170,14 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
         </div>
         <div className="hh-cal-head-actions">
           <span className="hh-cal-property"><i />{selectedPropertyReference ? "Selected property" : "All properties"}</span>
+          <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Link href={reportMaintenanceHref(selectedPropertyReference)} className="hh-cal-today" style={{ height: 36, padding: "0 12px", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 7 }} data-testid="link-report-maintenance"><Wrench size={14} /> Report maintenance</Link>
+            <button className="hh-cal-primary" onClick={() => { setNotice(""); setViewingOpen(true); }} disabled={!configured || properties.length === 0} data-testid="button-book-viewing"><CalendarPlus size={15} /> Book a viewing</button>
+          </span>
         </div>
       </header>
+
+      {notice && <div className="status ready" role="status" style={{ margin: "0 0 12px" }} data-testid="calendar-notice"><Check size={13} /> {notice}</div>}
 
       <div className="hh-cal-summary">
         <div className="hh-cal-summary-main"><span className="hh-cal-summary-label">Showing</span><strong>{monthLabel}</strong><span className="hh-cal-summary-divider" /><span className="hh-cal-summary-live"><i /> {monthEvents.length} COHO {monthEvents.length === 1 ? "event" : "events"}</span></div>
@@ -203,6 +234,10 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
             <div className="hh-inspector-section-title hh-live-section-title"><span className="hh-inspector-icon live"><CalendarDays size={13} /></span>COHO activity <span className="hh-section-count live">{selectedEvents.length}</span></div>
             {selectedEvents.length ? <div className="hh-inspector-events">{selectedEvents.map((event) => <EventCard key={event.id} event={event} />)}</div>
               : <div className="hh-live-empty">{configured ? "No COHO events on this date." : "Live activity unavailable until COHO is configured."}</div>}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "12px 0" }}>
+              <button className="hh-cal-today" style={{ height: 32 }} onClick={() => { setNotice(""); setViewingOpen(true); }} disabled={!configured || properties.length === 0} data-testid="button-book-viewing-day"><CalendarPlus size={13} /> Book viewing this day</button>
+              <Link href={reportMaintenanceHref(selectedPropertyReference)} className="hh-cal-today" style={{ height: 32, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}><Wrench size={13} /> Report maintenance</Link>
+            </div>
             <div className="hh-inspector-footer"><span><i className="hh-dot-live" /> COHO Public API 1.1</span></div>
           </aside>
         </div>
@@ -211,6 +246,13 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
       {mode === "agenda" && <Agenda events={selectedEvents} date={selectedDay} />}
       {mode === "log" && <EventLog events={monthEvents} monthLabel={monthLabel} />}
       <footer className="hh-cal-foot"><span><Clock3 size={12} /> COHO timestamps display in your browser’s local timezone.</span><span>Live entries refresh when the calendar month changes.</span></footer>
+      {viewingOpen && <BookViewingModal
+        properties={properties}
+        initialPropertyReference={selectedPropertyReference}
+        initialDate={selectedDay >= dateKey(new Date()) ? selectedDay : dateKey(new Date())}
+        onClose={() => setViewingOpen(false)}
+        onBooked={(message) => { setViewingOpen(false); setNotice(message); }}
+      />}
     </div>
   );
 }
@@ -222,6 +264,7 @@ function EventCard({ event }: { event: CalendarEvent }) {
     <strong>{event.title}</strong>
     <div className="hh-event-meta">{[location, event.person].filter(Boolean).join(" · ") || event.type}</div>
     <div className="hh-event-dates">{formatShort(event.date)}{event.endDate !== event.date ? ` — ${formatShort(event.endDate)}` : ""}</div>
+    {event.propertyReference && <Link href={reportMaintenanceHref(event.propertyReference, event.roomReference)} style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 8, fontSize: 12, color: "#7fc4a8" }} data-testid={`link-report-maintenance-${event.id}`}><Wrench size={12} /> Report maintenance here</Link>}
   </article>;
 }
 

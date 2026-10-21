@@ -25,6 +25,8 @@ export * from './cohoPropertiesPage';
 export * from './cohoProperty';
 export * from './cohoRoom';
 export * from './cohoStatus';
+export * from './cohoViewingCreated';
+export * from './cohoViewingInput';
 export * from './healthStatus';
 export * from './listCohoCalendarParams';
 export * from './listCohoMaintenanceParams';

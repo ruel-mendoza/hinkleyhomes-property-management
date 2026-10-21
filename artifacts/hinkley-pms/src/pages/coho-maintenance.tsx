@@ -1,5 +1,6 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLocation, useSearch } from "wouter";
 import {
   AlertCircle,
   ArrowLeft,
@@ -63,11 +64,26 @@ function isClosed(issue: CohoMaintenance): boolean {
 
 export default function CohoMaintenancePage() {
   const queryClient = useQueryClient();
+  // ?report=1&property=…&room=… (from the calendar) opens "New issue" prefilled.
+  const urlSearch = useSearch();
+  const [, navigate] = useLocation();
+  const [prefill] = useState(() => {
+    const params = new URLSearchParams(urlSearch);
+    return {
+      open: params.get("report") === "1",
+      property: params.get("property") ?? "",
+      room: params.get("room") ?? "",
+    };
+  });
   const [page, setPage] = useState(1);
   const [propertyReference, setPropertyReference] = useState("");
-  const [newPropertyReference, setNewPropertyReference] = useState("");
+  const [newPropertyReference, setNewPropertyReference] = useState(prefill.property);
   const [search, setSearch] = useState("");
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(prefill.open);
+  useEffect(() => {
+    // Drop the query so a refresh doesn't reopen the form.
+    if (prefill.open) navigate("/maintenance", { replace: true });
+  }, []);
   const [selected, setSelected] = useState<CohoMaintenance | null>(null);
   const [notice, setNotice] = useState("");
   const [formError, setFormError] = useState("");
@@ -549,10 +565,13 @@ export default function CohoMaintenancePage() {
                 <div className="field">
                   <label htmlFor="coho-room">Room (optional)</label>
                   <select
-                    key={newPropertyReference}
+                    // Remount once properties load so a prefilled room can be selected.
+                    key={`${newPropertyReference}:${properties.length}`}
                     id="coho-room"
                     name="roomReference"
-                    defaultValue=""
+                    defaultValue={
+                      newPropertyReference === prefill.property ? prefill.room : ""
+                    }
                   >
                     <option value="">No specific room</option>
                     {(selectedProperty?.rooms ?? []).map((room) => (

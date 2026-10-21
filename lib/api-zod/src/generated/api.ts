@@ -96,6 +96,41 @@ export const ListCohoCalendarResponse = zod.object({
 
 
 /**
+ * @summary Book a COHO property viewing
+ */
+
+export const createCohoViewingBodyForenameMax = 100;
+
+export const createCohoViewingBodySurnameMax = 100;
+
+export const createCohoViewingBodyMobileNumberMax = 30;
+
+export const createCohoViewingBodyProposedDurationMin = 15;
+export const createCohoViewingBodyProposedDurationMax = 240;
+
+export const createCohoViewingBodyRequestMessageMax = 2000;
+
+
+
+export const CreateCohoViewingBody = zod.object({
+  "propertyReference": zod.string().min(1),
+  "roomReference": zod.string().nullish(),
+  "forename": zod.string().min(1).max(createCohoViewingBodyForenameMax),
+  "surname": zod.string().min(1).max(createCohoViewingBodySurnameMax),
+  "emailAddress": zod.string().email(),
+  "mobileNumber": zod.string().max(createCohoViewingBodyMobileNumberMax).nullish(),
+  "proposedDate": zod.coerce.date().nullish(),
+  "proposedDuration": zod.number().int().min(createCohoViewingBodyProposedDurationMin).max(createCohoViewingBodyProposedDurationMax).nullish().describe('Length of the viewing in minutes'),
+  "requestMessage": zod.string().min(1).max(createCohoViewingBodyRequestMessageMax)
+}).describe('Booked by staff on behalf of a prospective tenant. COHO notifies the property manager and may text the applicant.')
+
+export const CreateCohoViewingResponse = zod.object({
+  "guid": zod.string().uuid(),
+  "reference": zod.string().nullable()
+})
+
+
+/**
  * @summary List COHO maintenance issues
  */
 
