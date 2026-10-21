@@ -84,7 +84,7 @@ const STORAGE='hinkley-pms-demo-v1';
 const navGroups=[{label:'CORE',items:[['/dashboard','Overview',LayoutDashboard]]},{label:'FRONT DESK',items:[['/guests','Guests',Users],['/calendar','Calendar',CalendarDays],['/function-rooms','Function rooms',Building2],['/check-ins','Check-ins',DoorOpen],['/payments','Payments',Wallet],['/menu-orders','Menu orders',Utensils]]},{label:'ROOMS & SERVICE',items:[['/rooms','Rooms',BedDouble],['/housekeeping','Housekeeping',Brush],['/maintenance','Maintenance',Wrench],['/inventory','Inventory',Boxes]]}] as const;
 const routeInfo:Record<string,{title:string;subtitle:string;group:string}>={
  '/guests':{title:'Guest directory',subtitle:'Guest profiles and contact details',group:'Front desk'},
-  '/calendar':{title:'Calendar',subtitle:'Bookings, property activity and the day ahead',group:'Front desk'},
+  '/calendar':{title:'Calendar',subtitle:'COHO tenancies, viewings, maintenance and actions',group:'Front desk'},
  '/function-rooms':{title:'Function rooms',subtitle:'Event spaces, bookings and setup readiness',group:'Front desk'},
  '/check-ins':{title:'Arrivals & departures',subtitle:'A clear view of today’s front desk flow',group:'Front desk'},
  '/payments':{title:'Payments',subtitle:'Track collections and outstanding balances',group:'Finance'},
@@ -158,8 +158,8 @@ function AppShell(){
     <Switch>
      <Route path="/dashboard" component={()=> <Dashboard data={data} setRange={setRange} range={range} arrivals={todayArrivals} occupied={occupied} ready={ready} revenue={revenue} pending={moneyPending} openReservation={()=>setModal(true)} branch={selectedPropertyName}/>}/>
      <Route path="/guests" component={()=> <Guests data={data} query={query} setQuery={setQuery}/>}/>
-      <Route path="/calendar" component={()=> <CalendarPage reservations={data.reservations} guests={data.guests} rooms={data.rooms} selectedPropertyReference={branch==='all'?undefined:branch} onNewReservation={()=>setModal(true)} onCheckIn={(reservationId)=>updateStatus('checkins',reservationId,'Checked in')}/>}/>
-      <Route path="/reservations" component={()=> <CalendarPage reservations={data.reservations} guests={data.guests} rooms={data.rooms} selectedPropertyReference={branch==='all'?undefined:branch} onNewReservation={()=>setModal(true)} onCheckIn={(reservationId)=>updateStatus('checkins',reservationId,'Checked in')}/>}/>
+      <Route path="/calendar"><CalendarPage selectedPropertyReference={branch==='all'?undefined:branch}/></Route>
+      <Route path="/reservations"><CalendarPage selectedPropertyReference={branch==='all'?undefined:branch}/></Route>
      <Route path="/function-rooms" component={()=> <FunctionRooms data={data} query={query} setQuery={setQuery} update={updateStatus}/>}/>
      <Route path="/check-ins" component={()=> <CheckIns data={data} query={query} setQuery={setQuery} update={updateStatus}/>}/>
      <Route path="/payments" component={()=> <Payments data={data} query={query} setQuery={setQuery} update={updateStatus}/>}/>
