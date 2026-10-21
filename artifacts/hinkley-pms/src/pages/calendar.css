@@ -13,3 +13,15 @@
 @media(max-width:1250px){.hh-cal-toolbar{align-items:flex-start;flex-direction:column}.hh-cal-controls{width:100%;flex-wrap:wrap}.hh-cal-layout{grid-template-columns:minmax(0,1fr) 250px}.hh-cal-day{height:98px}}
 @media(max-width:900px){.hh-cal-layout{grid-template-columns:1fr}.hh-cal-inspector{min-height:280px}.hh-inspector-events{max-height:none}.hh-inspector-footer{margin-top:14px}.hh-cal-day{height:90px}.hh-cal-event{font-size:12px}}
 @media(max-width:600px){.hh-cal-head{align-items:flex-start;flex-direction:column}.hh-cal-head-actions{width:100%;justify-content:space-between}.hh-cal-head h1{font-size:24px}.hh-cal-summary{align-items:flex-start;flex-direction:column}.hh-cal-summary-main{flex-wrap:wrap;gap:7px}.hh-cal-toolbar{padding:7px}.hh-cal-modes{width:100%;justify-content:space-between}.hh-cal-modes button{justify-content:center;flex:1;padding:7px 4px;font-size:12px}.hh-cal-controls{gap:6px}.hh-cal-month-nav{flex:1}.hh-cal-select{flex:1}.hh-cal-select select{max-width:none;flex:1}.hh-cal-kind{min-width:0}.hh-cal-search{width:100%;order:5}.hh-cal-grid-panel{overflow:auto}.hh-cal-weekdays,.hh-cal-grid{min-width:550px}.hh-cal-weekdays{position:sticky;top:0;z-index:1}.hh-cal-day{height:88px;padding:6px 4px}.hh-cal-day-count{display:none}.hh-cal-event{font-size:12px;padding:3px 2px}.hh-cal-foot{flex-direction:column}.hh-log-heading{align-items:flex-start;gap:10px;flex-direction:column}.hh-agenda-row{grid-template-columns:55px minmax(0,1fr);gap:7px}.hh-cal-api-state{align-items:flex-start}.hh-cal-api-state button{font-size:0}.hh-cal-api-state button svg{width:14px;height:14px}}
+/* Calendar actions (book viewing / report maintenance) */
+.hh-cal-head-buttons{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hh-cal-action{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 12px;border:1px solid #37475e;border-radius:6px;background:#1c2a3e;color:#cbd5e1;font:inherit;font-size:12px;font-weight:600;line-height:1;white-space:nowrap;text-decoration:none;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+.hh-cal-action:hover{border-color:#639b8e;color:#fff}
+.hh-cal-action:disabled{opacity:.5;cursor:not-allowed}
+.hh-cal-action svg{flex:none}
+.hh-cal-action.accent{border-color:#2f6f60;background:#173d35;color:#9fe0c4}
+.hh-cal-action.accent:hover{background:#1d4a40;border-color:#4f9c88;color:#fff}
+.hh-inspector-actions{display:grid;gap:8px;margin:14px 0 4px}
+.hh-inspector-actions .hh-cal-action{width:100%;height:34px}
+.hh-event-link{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:12px;font-weight:600;color:#7fc4a8;text-decoration:none}
+.hh-event-link:hover{color:#a9e2cb;text-decoration:underline}

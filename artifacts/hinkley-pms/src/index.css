@@ -103,6 +103,16 @@ button {cursor:pointer}
 .filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .modal-backdrop{position:fixed;inset:0;background:#16233780;z-index:60;display:grid;place-items:center;padding:18px;animation:fade .15s ease}
 .modal{width:min(480px,100%);background:white;border-radius:12px;box-shadow:0 20px 70px #10203540;overflow:hidden;animation:rise .18s ease}.modal-head{padding:18px 20px;border-bottom:1px solid #edf0f3;display:flex;justify-content:space-between;align-items:center}.modal-head h2{font-family:Manrope;font-size:18px;margin:0}.modal-body{padding:18px 20px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}.field label{font-size:12px;font-weight:700;color:#627083}.field input,.field select{padding:9px;border:1px solid #dfe5ea;border-radius:6px;font-size:12px;outline:0}.field input:focus,.field select:focus{border-color:#51947f}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+/* Modal forms: stay inside the dialog (long property/room names used to push the grid wider), scroll when tall, and style textareas like inputs. */
+.modal{width:min(560px,100%);max-height:calc(100vh - 36px);display:flex;flex-direction:column}
+.modal > form, .modal-body{min-height:0}
+.modal-body{overflow-y:auto}
+.form-grid > *{min-width:0}
+.field input,.field select,.field textarea{width:100%;min-width:0;box-sizing:border-box;font-family:inherit}
+.field textarea{padding:9px;border:1px solid #dfe5ea;border-radius:6px;font-size:12px;line-height:1.45;outline:0;resize:vertical;min-height:84px}
+.field textarea:focus{border-color:#51947f}
+.field input[type=checkbox]{width:auto;padding:0}
+.field label:has(input[type=checkbox]){flex-direction:row;cursor:pointer}
 .toast-msg{position:fixed;right:22px;bottom:20px;z-index:80;background:#233849;color:white;border-radius:8px;padding:11px 15px;font-size:12px;box-shadow:0 8px 24px #12243635;animation:rise .18s ease}
 .mobile-overlay{display:none}
 @keyframes fade{from{opacity:0}to{opacity:1}}@keyframes rise{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -165,7 +175,7 @@ tbody tr:hover { background:#1e2b40 }
 .table-action:hover { background:#23453d }
 .empty-state { color:#9ba8b9 }
 .empty-state h3 { color:#d9e2ec }
-.room-select,.field input,.field select { background:#141f30; color:#dce4ed; border-color:#334157 }
+.room-select,.field input,.field select,.field textarea { background:#141f30; color:#dce4ed; border-color:#334157 }
 .field label { color:#a9b5c5 }
 .button { background:#1b293c; border-color:#344157; color:#d0d9e5 }
 .button:hover { background:#25354b }

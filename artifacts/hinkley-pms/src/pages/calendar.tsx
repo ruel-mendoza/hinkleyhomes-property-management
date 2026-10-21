@@ -170,8 +170,8 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
         </div>
         <div className="hh-cal-head-actions">
           <span className="hh-cal-property"><i />{selectedPropertyReference ? "Selected property" : "All properties"}</span>
-          <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Link href={reportMaintenanceHref(selectedPropertyReference)} className="hh-cal-today" style={{ height: 36, padding: "0 12px", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 7 }} data-testid="link-report-maintenance"><Wrench size={14} /> Report maintenance</Link>
+          <span className="hh-cal-head-buttons">
+            <Link href={reportMaintenanceHref(selectedPropertyReference)} className="hh-cal-action" data-testid="link-report-maintenance"><Wrench size={14} /> Report maintenance</Link>
             <button className="hh-cal-primary" onClick={() => { setNotice(""); setViewingOpen(true); }} disabled={!configured || properties.length === 0} data-testid="button-book-viewing"><CalendarPlus size={15} /> Book a viewing</button>
           </span>
         </div>
@@ -234,9 +234,9 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
             <div className="hh-inspector-section-title hh-live-section-title"><span className="hh-inspector-icon live"><CalendarDays size={13} /></span>COHO activity <span className="hh-section-count live">{selectedEvents.length}</span></div>
             {selectedEvents.length ? <div className="hh-inspector-events">{selectedEvents.map((event) => <EventCard key={event.id} event={event} />)}</div>
               : <div className="hh-live-empty">{configured ? "No COHO events on this date." : "Live activity unavailable until COHO is configured."}</div>}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "12px 0" }}>
-              <button className="hh-cal-today" style={{ height: 32 }} onClick={() => { setNotice(""); setViewingOpen(true); }} disabled={!configured || properties.length === 0} data-testid="button-book-viewing-day"><CalendarPlus size={13} /> Book viewing this day</button>
-              <Link href={reportMaintenanceHref(selectedPropertyReference)} className="hh-cal-today" style={{ height: 32, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}><Wrench size={13} /> Report maintenance</Link>
+            <div className="hh-inspector-actions">
+              <button type="button" className="hh-cal-action accent" onClick={() => { setNotice(""); setViewingOpen(true); }} disabled={!configured || properties.length === 0} data-testid="button-book-viewing-day"><CalendarPlus size={14} /> Book a viewing on this day</button>
+              <Link href={reportMaintenanceHref(selectedPropertyReference)} className="hh-cal-action"><Wrench size={14} /> Report maintenance</Link>
             </div>
             <div className="hh-inspector-footer"><span><i className="hh-dot-live" /> COHO Public API 1.1</span></div>
           </aside>
@@ -264,7 +264,7 @@ function EventCard({ event }: { event: CalendarEvent }) {
     <strong>{event.title}</strong>
     <div className="hh-event-meta">{[location, event.person].filter(Boolean).join(" · ") || event.type}</div>
     <div className="hh-event-dates">{formatShort(event.date)}{event.endDate !== event.date ? ` — ${formatShort(event.endDate)}` : ""}</div>
-    {event.propertyReference && <Link href={reportMaintenanceHref(event.propertyReference, event.roomReference)} style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 8, fontSize: 12, color: "#7fc4a8" }} data-testid={`link-report-maintenance-${event.id}`}><Wrench size={12} /> Report maintenance here</Link>}
+    {event.propertyReference && <Link href={reportMaintenanceHref(event.propertyReference, event.roomReference)} className="hh-event-link" data-testid={`link-report-maintenance-${event.id}`}><Wrench size={12} /> Report maintenance here</Link>}
   </article>;
 }
 
