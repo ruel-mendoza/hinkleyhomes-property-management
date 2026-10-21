@@ -11,6 +11,33 @@ export function cohoApiKey(): string | undefined {
   return read("COHO_API_KEY");
 }
 
+// Xero via the n8n gateway workflow (n8n/xero-gateway.workflow.json), which
+// reuses n8n's existing Xero connection to all five organisations.
+export type XeroGatewayEnvResult =
+  | { status: "configured"; url: string; key: string }
+  | { status: "unconfigured" }
+  | { status: "invalid"; problems: string[] };
+
+export function readXeroGatewayEnv(): XeroGatewayEnvResult {
+  const url = read("N8N_XERO_GATEWAY_URL");
+  const key = read("N8N_XERO_GATEWAY_KEY");
+  if (!url && !key) return { status: "unconfigured" };
+
+  const problems: string[] = [];
+  if (!url) problems.push("N8N_XERO_GATEWAY_URL is not set");
+  if (!key) problems.push("N8N_XERO_GATEWAY_KEY is not set");
+  else if (key.length < 32) problems.push("N8N_XERO_GATEWAY_KEY must be at least 32 characters");
+  if (url) {
+    try {
+      if (new URL(url).protocol !== "https:") problems.push("N8N_XERO_GATEWAY_URL must use https");
+    } catch {
+      problems.push("N8N_XERO_GATEWAY_URL is not a valid URL");
+    }
+  }
+  if (problems.length) return { status: "invalid", problems };
+  return { status: "configured", url: url!, key: key! };
+}
+
 export type XeroConfig = {
   clientId: string;
   clientSecret: string;
