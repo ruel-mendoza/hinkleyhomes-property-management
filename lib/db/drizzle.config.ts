@@ -6,7 +6,8 @@ if (!process.env.SUPABASE_DATABASE_URL) {
 }
 
 export default defineConfig({
-  schema: path.join(__dirname, "./src/schema/index.ts"),
+  // drizzle-kit globs this path, so it needs forward slashes on Windows too.
+  schema: path.join(__dirname, "./src/schema/index.ts").replaceAll("\\", "/"),
   dialect: "postgresql",
   dbCredentials: {
     url: process.env.SUPABASE_DATABASE_URL,
