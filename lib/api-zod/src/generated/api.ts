@@ -650,3 +650,153 @@ export const CompleteCohoMaintenanceResponse = zod.object({
 })
 
 
+/**
+ * @summary COHO properties plus register-only properties, with open action counts
+ */
+export const ListPropertiesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().describe('COHO reference for COHO properties, register id for register-only ones'),
+  "source": zod.enum(['coho', 'register']),
+  "cohoReference": zod.string().nullable(),
+  "name": zod.string(),
+  "houseNumber": zod.string().nullable(),
+  "streetName": zod.string().nullable(),
+  "postcode": zod.string().nullable(),
+  "town": zod.string().nullable(),
+  "imageUrl": zod.string().nullable(),
+  "tags": zod.array(zod.string()),
+  "totalRooms": zod.number().int(),
+  "roomsOccupied": zod.number().int().nullable().describe('Null for register-only properties, whose occupancy isn\'t known'),
+  "rentalType": zod.enum(['room', 'whole_property']),
+  "propertyType": zod.string().nullable(),
+  "deactivated": zod.boolean(),
+  "openActionsCount": zod.number().int(),
+  "buildings": zod.array(zod.string()),
+  "entityName": zod.string().nullable()
+})),
+  "buildings": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "addressLine1": zod.string().nullable(),
+  "postcode": zod.string().nullable(),
+  "propertyCount": zod.number().int()
+})),
+  "cohoError": zod.string().nullable().describe('Set when COHO could not be reached; register-only properties are still listed')
+})
+
+
+/**
+ * @summary Add a property to the Supabase register (it is not created in COHO)
+ */
+export const createPropertyBodyHouseNumberMax = 40;
+
+export const createPropertyBodyStreetNameMax = 120;
+
+export const createPropertyBodyTownMax = 80;
+
+export const createPropertyBodyPostcodeMin = 5;
+export const createPropertyBodyPostcodeMax = 9;
+
+export const createPropertyBodyTotalRoomsMax = 50;
+
+export const createPropertyBodyTagsItemMax = 40;
+
+export const createPropertyBodyTagsMax = 20;
+
+export const createPropertyBodyImageUrlMax = 500;
+
+
+
+export const CreatePropertyBody = zod.object({
+  "entityId": zod.string().uuid(),
+  "houseNumber": zod.string().max(createPropertyBodyHouseNumberMax).nullish(),
+  "streetName": zod.string().min(1).max(createPropertyBodyStreetNameMax),
+  "town": zod.string().min(1).max(createPropertyBodyTownMax),
+  "postcode": zod.string().min(createPropertyBodyPostcodeMin).max(createPropertyBodyPostcodeMax),
+  "rentalType": zod.enum(['room', 'whole_property']),
+  "totalRooms": zod.number().int().min(1).max(createPropertyBodyTotalRoomsMax),
+  "tags": zod.array(zod.string().min(1).max(createPropertyBodyTagsItemMax)).max(createPropertyBodyTagsMax).optional(),
+  "imageUrl": zod.string().url().max(createPropertyBodyImageUrlMax).nullish()
+})
+
+export const CreatePropertyResponse = zod.object({
+  "id": zod.string().describe('COHO reference for COHO properties, register id for register-only ones'),
+  "source": zod.enum(['coho', 'register']),
+  "cohoReference": zod.string().nullable(),
+  "name": zod.string(),
+  "houseNumber": zod.string().nullable(),
+  "streetName": zod.string().nullable(),
+  "postcode": zod.string().nullable(),
+  "town": zod.string().nullable(),
+  "imageUrl": zod.string().nullable(),
+  "tags": zod.array(zod.string()),
+  "totalRooms": zod.number().int(),
+  "roomsOccupied": zod.number().int().nullable().describe('Null for register-only properties, whose occupancy isn\'t known'),
+  "rentalType": zod.enum(['room', 'whole_property']),
+  "propertyType": zod.string().nullable(),
+  "deactivated": zod.boolean(),
+  "openActionsCount": zod.number().int(),
+  "buildings": zod.array(zod.string()),
+  "entityName": zod.string().nullable()
+})
+
+
+/**
+ * @summary Create a building and attach properties to it
+ */
+export const createBuildingBodyNameMax = 120;
+
+export const createBuildingBodyAddressLine1Max = 200;
+
+export const createBuildingBodyPostcodeMax = 9;
+
+export const createBuildingBodyPropertyIdsItemMax = 200;
+
+export const createBuildingBodyPropertyIdsMax = 200;
+
+
+
+export const CreateBuildingBody = zod.object({
+  "name": zod.string().min(1).max(createBuildingBodyNameMax),
+  "addressLine1": zod.string().max(createBuildingBodyAddressLine1Max).nullish(),
+  "postcode": zod.string().max(createBuildingBodyPostcodeMax).nullish(),
+  "propertyIds": zod.array(zod.string().min(1).max(createBuildingBodyPropertyIdsItemMax)).max(createBuildingBodyPropertyIdsMax).describe('Property ids from listProperties')
+})
+
+export const CreateBuildingResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "addressLine1": zod.string().nullable(),
+  "postcode": zod.string().nullable(),
+  "propertyCount": zod.number().int()
+})
+
+
+/**
+ * @summary Hinkley Homes group companies a property can belong to
+ */
+export const ListEntitiesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string()
+}))
+})
+
+
+/**
+ * @summary Available rooms and properties for the website widget (no sign-in; no house numbers)
+ */
+export const ListPublicListingsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string().describe('Street and town only, never the house number'),
+  "town": zod.string().nullable(),
+  "postcodeArea": zod.string().nullable().describe('Outward part of the postcode, e.g. TA6'),
+  "imageUrl": zod.string().nullable(),
+  "roomsAvailable": zod.number().int(),
+  "totalRooms": zod.number().int(),
+  "rentalType": zod.enum(['room', 'whole_property'])
+}))
+})
+
+

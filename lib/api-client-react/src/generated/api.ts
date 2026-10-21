@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BuildingCreate,
+  BuildingSummary,
   CohoActionAssign,
   CohoActionAssigneeList,
   CohoActionCreate,
@@ -41,11 +43,16 @@ import type {
   CohoStatus,
   CohoViewingCreated,
   CohoViewingInput,
+  EntityList,
   HealthStatus,
   ListCohoActionsParams,
   ListCohoCalendarParams,
   ListCohoMaintenanceParams,
   ListCohoPropertiesParams,
+  PropertyCreate,
+  PropertyRegister,
+  PropertySummary,
+  PublicListingList,
   SignupEmailCheckRequest,
   SignupEmailCheckResult,
   SyncCohoActionsParams
@@ -1763,4 +1770,411 @@ export const useCompleteCohoMaintenance = <TError = ErrorType<void>,
       > => {
       return useMutation(getCompleteCohoMaintenanceMutationOptions(options));
     }
+
+export const getListPropertiesUrl = () => {
+
+
+
+
+  return `/api/properties`
+}
+
+/**
+ * @summary COHO properties plus register-only properties, with open action counts
+ */
+export const listProperties = async ( options?: Parameters<typeof customFetch>[1]): Promise<PropertyRegister> => {
+
+  return customFetch<PropertyRegister>(getListPropertiesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPropertiesQueryKey = () => {
+    return [
+    `/api/properties`
+    ] as const;
+    }
+
+
+export const getListPropertiesQueryOptions = <TData = Awaited<ReturnType<typeof listProperties>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listProperties>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPropertiesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listProperties>>> = ({ signal }) => listProperties({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listProperties>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPropertiesQueryResult = NonNullable<Awaited<ReturnType<typeof listProperties>>>
+export type ListPropertiesQueryError = ErrorType<void>
+
+
+/**
+ * @summary COHO properties plus register-only properties, with open action counts
+ */
+
+export function useListProperties<TData = Awaited<ReturnType<typeof listProperties>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listProperties>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPropertiesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePropertyUrl = () => {
+
+
+
+
+  return `/api/properties`
+}
+
+/**
+ * @summary Add a property to the Supabase register (it is not created in COHO)
+ */
+export const createProperty = async (propertyCreate: PropertyCreate, options?: Parameters<typeof customFetch>[1]): Promise<PropertySummary> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PropertySummary>(getCreatePropertyUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(propertyCreate)
+  }
+);}
+
+
+
+
+
+export const getCreatePropertyMutationKey = () => ['createProperty'] as const;
+
+export const getCreatePropertyMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProperty>>, TError,CreatePropertyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createProperty>>, TError,CreatePropertyMutationVariables, TContext> => {
+
+const mutationKey = getCreatePropertyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createProperty>>, CreatePropertyMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createProperty(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePropertyMutationResult = NonNullable<Awaited<ReturnType<typeof createProperty>>>
+    export type CreatePropertyMutationBody = BodyType<PropertyCreate>
+    export type CreatePropertyMutationError = ErrorType<void>
+    export type CreatePropertyMutationVariables = {data: BodyType<PropertyCreate>}
+
+    /**
+ * @summary Add a property to the Supabase register (it is not created in COHO)
+ */
+export const useCreateProperty = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProperty>>, TError,CreatePropertyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createProperty>>,
+        TError,
+        CreatePropertyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreatePropertyMutationOptions(options));
+    }
+
+export const getCreateBuildingUrl = () => {
+
+
+
+
+  return `/api/buildings`
+}
+
+/**
+ * @summary Create a building and attach properties to it
+ */
+export const createBuilding = async (buildingCreate: BuildingCreate, options?: Parameters<typeof customFetch>[1]): Promise<BuildingSummary> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BuildingSummary>(getCreateBuildingUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(buildingCreate)
+  }
+);}
+
+
+
+
+
+export const getCreateBuildingMutationKey = () => ['createBuilding'] as const;
+
+export const getCreateBuildingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBuilding>>, TError,CreateBuildingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBuilding>>, TError,CreateBuildingMutationVariables, TContext> => {
+
+const mutationKey = getCreateBuildingMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBuilding>>, CreateBuildingMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBuilding(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBuildingMutationResult = NonNullable<Awaited<ReturnType<typeof createBuilding>>>
+    export type CreateBuildingMutationBody = BodyType<BuildingCreate>
+    export type CreateBuildingMutationError = ErrorType<void>
+    export type CreateBuildingMutationVariables = {data: BodyType<BuildingCreate>}
+
+    /**
+ * @summary Create a building and attach properties to it
+ */
+export const useCreateBuilding = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBuilding>>, TError,CreateBuildingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBuilding>>,
+        TError,
+        CreateBuildingMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateBuildingMutationOptions(options));
+    }
+
+export const getListEntitiesUrl = () => {
+
+
+
+
+  return `/api/entities`
+}
+
+/**
+ * @summary Hinkley Homes group companies a property can belong to
+ */
+export const listEntities = async ( options?: Parameters<typeof customFetch>[1]): Promise<EntityList> => {
+
+  return customFetch<EntityList>(getListEntitiesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEntitiesQueryKey = () => {
+    return [
+    `/api/entities`
+    ] as const;
+    }
+
+
+export const getListEntitiesQueryOptions = <TData = Awaited<ReturnType<typeof listEntities>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEntities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEntitiesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEntities>>> = ({ signal }) => listEntities({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEntities>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEntitiesQueryResult = NonNullable<Awaited<ReturnType<typeof listEntities>>>
+export type ListEntitiesQueryError = ErrorType<void>
+
+
+/**
+ * @summary Hinkley Homes group companies a property can belong to
+ */
+
+export function useListEntities<TData = Awaited<ReturnType<typeof listEntities>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEntities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEntitiesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListPublicListingsUrl = () => {
+
+
+
+
+  return `/api/public/listings`
+}
+
+/**
+ * @summary Available rooms and properties for the website widget (no sign-in; no house numbers)
+ */
+export const listPublicListings = async ( options?: Parameters<typeof customFetch>[1]): Promise<PublicListingList> => {
+
+  return customFetch<PublicListingList>(getListPublicListingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPublicListingsQueryKey = () => {
+    return [
+    `/api/public/listings`
+    ] as const;
+    }
+
+
+export const getListPublicListingsQueryOptions = <TData = Awaited<ReturnType<typeof listPublicListings>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPublicListings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPublicListingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPublicListings>>> = ({ signal }) => listPublicListings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPublicListings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPublicListingsQueryResult = NonNullable<Awaited<ReturnType<typeof listPublicListings>>>
+export type ListPublicListingsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Available rooms and properties for the website widget (no sign-in; no house numbers)
+ */
+
+export function useListPublicListings<TData = Awaited<ReturnType<typeof listPublicListings>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPublicListings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPublicListingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

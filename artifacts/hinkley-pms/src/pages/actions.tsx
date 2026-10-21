@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSearch } from "wouter";
 import {
   ArrowLeft,
   ArrowRight,
@@ -63,7 +64,10 @@ const ukDate = (value: string | null | undefined) =>
 const ukDateTime = (value: string | null | undefined) =>
   value ? new Date(value).toLocaleString("en-GB", { timeZone: UK, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
 
-export default function ActionsPage({ selectedPropertyReference }: { selectedPropertyReference?: string }) {
+export default function ActionsPage({ selectedPropertyReference: topBarProperty }: { selectedPropertyReference?: string }) {
+  // The top-bar property wins; otherwise ?property= (e.g. from a Properties card).
+  const urlProperty = new URLSearchParams(useSearch()).get("property") || undefined;
+  const selectedPropertyReference = topBarProperty ?? urlProperty;
   const queryClient = useQueryClient();
   const [category, setCategory] = useState<CohoActionCategory | "all">("all");
   const [status, setStatus] = useState<ListCohoActionsStatus>("open");

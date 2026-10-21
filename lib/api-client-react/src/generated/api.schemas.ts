@@ -5,6 +5,173 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type PropertyRentalType = typeof PropertyRentalType[keyof typeof PropertyRentalType];
+
+
+export const PropertyRentalType = {
+  room: 'room',
+  whole_property: 'whole_property',
+} as const;
+
+export type PropertySummarySource = typeof PropertySummarySource[keyof typeof PropertySummarySource];
+
+
+export const PropertySummarySource = {
+  coho: 'coho',
+  register: 'register',
+} as const;
+
+export interface PropertySummary {
+  /** COHO reference for COHO properties, register id for register-only ones */
+  id: string;
+  source: PropertySummarySource;
+  /** @nullable */
+  cohoReference: string | null;
+  name: string;
+  /** @nullable */
+  houseNumber: string | null;
+  /** @nullable */
+  streetName: string | null;
+  /** @nullable */
+  postcode: string | null;
+  /** @nullable */
+  town: string | null;
+  /** @nullable */
+  imageUrl: string | null;
+  tags: string[];
+  totalRooms: number;
+  /**
+     * Null for register-only properties, whose occupancy isn't known
+     * @nullable
+     */
+  roomsOccupied: number | null;
+  rentalType: PropertyRentalType;
+  /** @nullable */
+  propertyType: string | null;
+  deactivated: boolean;
+  openActionsCount: number;
+  buildings: string[];
+  /** @nullable */
+  entityName: string | null;
+}
+
+export interface BuildingSummary {
+  id: string;
+  name: string;
+  /** @nullable */
+  addressLine1: string | null;
+  /** @nullable */
+  postcode: string | null;
+  propertyCount: number;
+}
+
+export interface PropertyRegister {
+  items: PropertySummary[];
+  buildings: BuildingSummary[];
+  /**
+     * Set when COHO could not be reached; register-only properties are still listed
+     * @nullable
+     */
+  cohoError: string | null;
+}
+
+export interface PropertyCreate {
+  entityId: string;
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  houseNumber?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  streetName: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  town: string;
+  /**
+     * @minLength 5
+     * @maxLength 9
+     */
+  postcode: string;
+  rentalType: PropertyRentalType;
+  /**
+     * @minimum 1
+     * @maximum 50
+     */
+  totalRooms: number;
+  /**
+     * @maxItems 20
+     * @items.minLength 1
+     * @items.maxLength 40
+     */
+  tags?: string[];
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  imageUrl?: string | null;
+}
+
+export interface BuildingCreate {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  addressLine1?: string | null;
+  /**
+     * @maxLength 9
+     * @nullable
+     */
+  postcode?: string | null;
+  /**
+     * Property ids from listProperties
+     * @maxItems 200
+     * @items.minLength 1
+     * @items.maxLength 200
+     */
+  propertyIds: string[];
+}
+
+export interface Entity {
+  id: string;
+  name: string;
+}
+
+export interface EntityList {
+  items: Entity[];
+}
+
+export interface PublicListing {
+  id: string;
+  /** Street and town only, never the house number */
+  title: string;
+  /** @nullable */
+  town: string | null;
+  /**
+     * Outward part of the postcode, e.g. TA6
+     * @nullable
+     */
+  postcodeArea: string | null;
+  /** @nullable */
+  imageUrl: string | null;
+  roomsAvailable: number;
+  totalRooms: number;
+  rentalType: PropertyRentalType;
+}
+
+export interface PublicListingList {
+  items: PublicListing[];
+}
+
 export interface HealthStatus {
   status: string;
 }

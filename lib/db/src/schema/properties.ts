@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, pgEnum, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, index, integer, pgEnum, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { id, timestamps } from "./columns";
@@ -41,9 +41,45 @@ export const propertiesTable = pgTable(
     status: recordStatusEnum("status").notNull().default("active"),
     cohoPropertyReference: text("coho_property_reference").unique(),
     smoobuPropertyId: text("smoobu_property_id").unique(),
+    // Set when staff add a property in this app before it exists in COHO.
+    houseNumber: text("house_number"),
+    streetName: text("street_name"),
+    totalRooms: integer("total_rooms").notNull().default(1),
+    imageUrl: text("image_url"),
+    tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
     ...timestamps,
   },
   (t) => [index("properties_entity_id_idx").on(t.entityId)],
+).enableRLS();
+
+// A group of properties (e.g. flats in one block). Members can be COHO
+// properties (by reference) or register-only properties.
+export const buildingsTable = pgTable("buildings", {
+  id: id(),
+  name: text("name").notNull(),
+  addressLine1: text("address_line_1"),
+  postcode: text("postcode"),
+  ...timestamps,
+}).enableRLS();
+
+export const buildingPropertiesTable = pgTable(
+  "building_properties",
+  {
+    id: id(),
+    buildingId: uuid("building_id")
+      .notNull()
+      .references(() => buildingsTable.id, { onDelete: "cascade" }),
+    propertyId: uuid("property_id").references(() => propertiesTable.id, { onDelete: "cascade" }),
+    cohoPropertyReference: text("coho_property_reference"),
+    ...timestamps,
+  },
+  (t) => [
+    index("building_properties_building_id_idx").on(t.buildingId),
+    index("building_properties_property_id_idx").on(t.propertyId).where(sql`${t.propertyId} is not null`),
+    uniqueIndex("building_properties_property_uq").on(t.buildingId, t.propertyId).where(sql`${t.propertyId} is not null`),
+    uniqueIndex("building_properties_coho_uq").on(t.buildingId, t.cohoPropertyReference).where(sql`${t.cohoPropertyReference} is not null`),
+    check("building_properties_one_target", sql`(${t.propertyId} is null) <> (${t.cohoPropertyReference} is null)`),
+  ],
 ).enableRLS();
 
 // Lettable rooms / units inside a property (HMO rooms or short-stay apartments).
@@ -107,5 +143,6 @@ export type Property = typeof propertiesTable.$inferSelect;
 export type InsertProperty = z.infer<typeof insertPropertySchema>;
 export type Room = typeof roomsTable.$inferSelect;
 export type InsertRoom = z.infer<typeof insertRoomSchema>;
+export type Building = typeof buildingsTable.$inferSelect;
 export type PropertyAlias = typeof propertyAliasesTable.$inferSelect;
 export type InsertPropertyAlias = z.infer<typeof insertPropertyAliasSchema>;

@@ -14,6 +14,9 @@ _Replace the heading above with the project's name, and this line with one sente
 
 - COHO actions mirror: `coho_actions` in Supabase, filled by `syncCohoActions` (artifacts/api-server/src/lib/coho-actions-sync.ts). Runs from the Actions page (Sync now, or automatically when data is >5 min old) and every 15 min from n8n (`n8n/coho-actions-sync.workflow.json` → `POST /api/integrations/coho/actions/sync`, header `X-Hinkley-Sync-Key` = `PMS_SYNC_KEY`). Runs are logged in `integration_sync_runs` with trigger `actions:*`. Changes made on the Actions page (status, assign, snooze, edit/create custom actions) go to COHO first, then the action is re-read into `coho_actions` and written to `audit_log` with the staff email. COHO accepts action statuses only as SCREAMING_SNAKE (`IN_PROGRESS`), although it returns camelCase.
 
+- Properties page (`/properties`): `GET /api/properties` merges live COHO properties, open-action counts from `coho_actions`, and register-only properties from Supabase `properties` (added with New property; COHO has no create-property API, so staff add them in COHO too). Buildings live in `buildings` / `building_properties`. Group companies are in `entities` (5 Xero orgs seeded with `pnpm --filter @workspace/db run seed:entities`).
+- Website widget: public page `/widget` (no sign-in) reads `GET /api/public/listings`, which lists only properties with a room free, by street, town and postcode area, never house numbers. Cached 5 min.
+
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9

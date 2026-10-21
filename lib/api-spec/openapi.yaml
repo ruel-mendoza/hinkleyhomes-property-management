@@ -509,6 +509,95 @@ paths:
           description: COHO returned an error
         "503":
           description: COHO API key is not configured
+  /properties:
+    get:
+      operationId: listProperties
+      tags: [properties]
+      summary: COHO properties plus register-only properties, with open action counts
+      responses:
+        "200":
+          description: All properties
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertyRegister"
+        "503":
+          description: Database is not configured
+    post:
+      operationId: createProperty
+      tags: [properties]
+      summary: Add a property to the Supabase register (it is not created in COHO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PropertyCreate"
+      responses:
+        "200":
+          description: The saved property
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertySummary"
+        "400":
+          description: Invalid property details
+        "409":
+          description: A property with this address already exists
+        "503":
+          description: Database is not configured
+  /buildings:
+    post:
+      operationId: createBuilding
+      tags: [properties]
+      summary: Create a building and attach properties to it
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuildingCreate"
+      responses:
+        "200":
+          description: The saved building
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuildingSummary"
+        "400":
+          description: Invalid building details
+        "503":
+          description: Database is not configured
+  /entities:
+    get:
+      operationId: listEntities
+      tags: [properties]
+      summary: Hinkley Homes group companies a property can belong to
+      responses:
+        "200":
+          description: Group companies
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityList"
+        "503":
+          description: Database is not configured
+  /public/listings:
+    get:
+      operationId: listPublicListings
+      tags: [public]
+      summary: Available rooms and properties for the website widget (no sign-in; no house numbers)
+      responses:
+        "200":
+          description: Properties with at least one room available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicListingList"
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO API key is not configured
 components:
   parameters:
     CohoActionReference:
@@ -520,6 +609,192 @@ components:
         minLength: 1
         maxLength: 200
   schemas:
+    PropertyRentalType:
+      type: string
+      enum: [room, whole_property]
+    PropertySummary:
+      type: object
+      properties:
+        id:
+          description: COHO reference for COHO properties, register id for register-only ones
+          type: string
+        source:
+          type: string
+          enum: [coho, register]
+        cohoReference:
+          type: ["string", "null"]
+        name:
+          type: string
+        houseNumber:
+          type: ["string", "null"]
+        streetName:
+          type: ["string", "null"]
+        postcode:
+          type: ["string", "null"]
+        town:
+          type: ["string", "null"]
+        imageUrl:
+          type: ["string", "null"]
+        tags:
+          type: array
+          items:
+            type: string
+        totalRooms:
+          type: integer
+        roomsOccupied:
+          description: Null for register-only properties, whose occupancy isn't known
+          type: ["integer", "null"]
+        rentalType:
+          $ref: "#/components/schemas/PropertyRentalType"
+        propertyType:
+          type: ["string", "null"]
+        deactivated:
+          type: boolean
+        openActionsCount:
+          type: integer
+        buildings:
+          type: array
+          items:
+            type: string
+        entityName:
+          type: ["string", "null"]
+      required: [id, source, cohoReference, name, houseNumber, streetName, postcode, town, imageUrl, tags, totalRooms, roomsOccupied, rentalType, propertyType, deactivated, openActionsCount, buildings, entityName]
+    BuildingSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        addressLine1:
+          type: ["string", "null"]
+        postcode:
+          type: ["string", "null"]
+        propertyCount:
+          type: integer
+      required: [id, name, addressLine1, postcode, propertyCount]
+    PropertyRegister:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertySummary"
+        buildings:
+          type: array
+          items:
+            $ref: "#/components/schemas/BuildingSummary"
+        cohoError:
+          description: Set when COHO could not be reached; register-only properties are still listed
+          type: ["string", "null"]
+      required: [items, buildings, cohoError]
+    PropertyCreate:
+      type: object
+      properties:
+        entityId:
+          type: string
+          format: uuid
+        houseNumber:
+          type: ["string", "null"]
+          maxLength: 40
+        streetName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        town:
+          type: string
+          minLength: 1
+          maxLength: 80
+        postcode:
+          type: string
+          minLength: 5
+          maxLength: 9
+        rentalType:
+          $ref: "#/components/schemas/PropertyRentalType"
+        totalRooms:
+          type: integer
+          minimum: 1
+          maximum: 50
+        tags:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            minLength: 1
+            maxLength: 40
+        imageUrl:
+          type: ["string", "null"]
+          format: uri
+          maxLength: 500
+      required: [entityId, streetName, town, postcode, rentalType, totalRooms]
+    BuildingCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        addressLine1:
+          type: ["string", "null"]
+          maxLength: 200
+        postcode:
+          type: ["string", "null"]
+          maxLength: 9
+        propertyIds:
+          description: Property ids from listProperties
+          type: array
+          maxItems: 200
+          items:
+            type: string
+            minLength: 1
+            maxLength: 200
+      required: [name, propertyIds]
+    Entity:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      required: [id, name]
+    EntityList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Entity"
+      required: [items]
+    PublicListing:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          description: Street and town only, never the house number
+          type: string
+        town:
+          type: ["string", "null"]
+        postcodeArea:
+          description: Outward part of the postcode, e.g. TA6
+          type: ["string", "null"]
+        imageUrl:
+          type: ["string", "null"]
+        roomsAvailable:
+          type: integer
+        totalRooms:
+          type: integer
+        rentalType:
+          $ref: "#/components/schemas/PropertyRentalType"
+      required: [id, title, town, postcodeArea, imageUrl, roomsAvailable, totalRooms, rentalType]
+    PublicListingList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicListing"
+      required: [items]
     HealthStatus:
       type: object
       properties:
