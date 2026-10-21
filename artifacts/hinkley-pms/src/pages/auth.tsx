@@ -76,7 +76,7 @@ function AuthLayout({
           </div>
           <h1>Make every property day run smoothly.</h1>
           <p>
-            A single, secure workspace for reservations, property activity, and
+            A single, secure workspace for tenancies, maintenance, property activity, and
             the teams who keep Hinkley Homes moving.
           </p>
           <div className="auth-story-card">
