@@ -1,0 +1,26 @@
+/* Actions page: COHO-style category tabs over the app's dark panels. */
+.hh-act-tabs{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:0 0 14px}
+.hh-act-tab{display:flex;align-items:center;gap:10px;min-width:0;padding:10px 12px;border:1px solid #2a374d;border-radius:8px;background:#192538;color:#c6d1de;font:inherit;text-align:left;cursor:pointer;transition:border-color .15s,background .15s}
+.hh-act-tab:hover{border-color:#4f9c88}
+.hh-act-tab.active{border-color:#4f9c88;background:#173d35;color:#e7f6ef;box-shadow:inset 0 -2px #79cdb0}
+.hh-act-tab svg{flex:none;color:#79cdb0}
+.hh-act-tab span{display:flex;flex-direction:column;min-width:0}
+.hh-act-tab strong{font-size:13px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hh-act-tab small{font-size:12px;color:#95a2b5}
+.hh-act-tab.active small{color:#a9dcc8}
+.hh-act-sync{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:#95a2b5}
+.hh-act-sync .failed{color:#f08f91}
+.hh-act-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hh-act-filters label{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#b8c4d3;cursor:pointer}
+.hh-act-title{display:flex;flex-direction:column;gap:3px;min-width:220px}
+.hh-act-title strong{color:#e2e9f1;font-weight:600}
+.hh-act-title small,.hh-act-sub{font-size:12px;color:#8f9db0}
+.hh-act-due{white-space:nowrap}
+.hh-act-tags{display:flex;gap:4px;flex-wrap:wrap}
+.hh-act-tags span{font-size:12px;padding:2px 7px;border-radius:999px;background:#22324a;color:#b7c4d6}
+.hh-act-new{font-size:12px;font-weight:700;color:#79d0a9;margin-left:6px}
+.hh-act-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-top:1px solid #2b394c;font-size:12px;color:#95a2b5}
+.hh-act-pager div{display:flex;gap:8px}
+@media(max-width:1100px){.hh-act-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:620px){.hh-act-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.spin{animation:hh-act-spin .9s linear infinite}@keyframes hh-act-spin{to{transform:rotate(360deg)}}

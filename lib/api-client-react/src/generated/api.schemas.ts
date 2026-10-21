@@ -261,6 +261,130 @@ export interface CohoViewingInput {
   requestMessage: string;
 }
 
+export type CohoActionCategory = typeof CohoActionCategory[keyof typeof CohoActionCategory];
+
+
+export const CohoActionCategory = {
+  property: 'property',
+  tenancy: 'tenancy',
+  maintenance: 'maintenance',
+  onboarding: 'onboarding',
+  viewing: 'viewing',
+  other: 'other',
+} as const;
+
+export type CohoActionStatus = typeof CohoActionStatus[keyof typeof CohoActionStatus];
+
+
+export const CohoActionStatus = {
+  not_set: 'not_set',
+  new: 'new',
+  in_progress: 'in_progress',
+  on_hold: 'on_hold',
+  completed: 'completed',
+} as const;
+
+export interface CohoActionItem {
+  reference: string;
+  /** @nullable */
+  title: string | null;
+  /** @nullable */
+  message: string | null;
+  /** @nullable */
+  notes: string | null;
+  status: CohoActionStatus;
+  type: string;
+  /** @nullable */
+  typeName: string | null;
+  category: CohoActionCategory;
+  /** @nullable */
+  dueDate: string | null;
+  overdue: boolean;
+  snoozed: boolean;
+  /** @nullable */
+  snoozedUntil: string | null;
+  /** @nullable */
+  completedAt: string | null;
+  /** @nullable */
+  propertyReference: string | null;
+  /** @nullable */
+  propertyName: string | null;
+  /** @nullable */
+  roomReference: string | null;
+  /** @nullable */
+  roomName: string | null;
+  /** @nullable */
+  assignedToName: string | null;
+  tags: string[];
+  progressionStepsCompleted: number;
+  progressionStepsCount: number;
+  /** When the sync first saved this action */
+  firstSeenAt: string;
+  lastChangedAt: string;
+  removedFromCoho: boolean;
+}
+
+export interface CohoActionCategoryCounts {
+  property: number;
+  tenancy: number;
+  maintenance: number;
+  onboarding: number;
+  viewing: number;
+  other: number;
+}
+
+export type CohoActionLastSyncStatus = typeof CohoActionLastSyncStatus[keyof typeof CohoActionLastSyncStatus];
+
+
+export const CohoActionLastSyncStatus = {
+  running: 'running',
+  succeeded: 'succeeded',
+  failed: 'failed',
+} as const;
+
+export interface CohoActionLastSync {
+  status: CohoActionLastSyncStatus;
+  trigger: string;
+  startedAt: string;
+  /** @nullable */
+  finishedAt: string | null;
+  /** @nullable */
+  error: string | null;
+}
+
+export interface CohoActionList {
+  items: CohoActionItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  hasNextPage: boolean;
+  /** Matching actions per tab, ignoring the category filter */
+  categoryCounts: CohoActionCategoryCounts;
+  /** Most recent successful sync, or null if none has run */
+  lastSync: CohoActionLastSync | null;
+}
+
+export type CohoActionSyncResultStatus = typeof CohoActionSyncResultStatus[keyof typeof CohoActionSyncResultStatus];
+
+
+export const CohoActionSyncResultStatus = {
+  succeeded: 'succeeded',
+  failed: 'failed',
+  skipped: 'skipped',
+} as const;
+
+export interface CohoActionSyncResult {
+  status: CohoActionSyncResultStatus;
+  fetched: number;
+  created: number;
+  updated: number;
+  removed: number;
+  startedAt: string;
+  finishedAt: string;
+  /** @nullable */
+  error: string | null;
+}
+
 export interface CohoViewingCreated {
   guid: string;
   /** @nullable */
@@ -285,6 +409,56 @@ export type ListCohoCalendarParams = {
  */
 fromDate?: string;
 };
+
+export type ListCohoActionsParams = {
+category?: CohoActionCategory;
+/**
+ * open = new, in progress or on hold (default); completed; all
+ */
+status?: ListCohoActionsStatus;
+includeSnoozed?: boolean;
+/**
+ * @maxLength 200
+ */
+propertyReference?: string;
+/**
+ * @maxLength 200
+ */
+search?: string;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+};
+
+export type ListCohoActionsStatus = typeof ListCohoActionsStatus[keyof typeof ListCohoActionsStatus];
+
+
+export const ListCohoActionsStatus = {
+  open: 'open',
+  completed: 'completed',
+  all: 'all',
+} as const;
+
+export type SyncCohoActionsParams = {
+/**
+ * Recorded on the sync run; page-open when the Actions page refreshes stale data
+ */
+trigger?: SyncCohoActionsTrigger;
+};
+
+export type SyncCohoActionsTrigger = typeof SyncCohoActionsTrigger[keyof typeof SyncCohoActionsTrigger];
+
+
+export const SyncCohoActionsTrigger = {
+  manual: 'manual',
+  'page-open': 'page-open',
+} as const;
 
 export type ListCohoMaintenanceParams = {
 /**

@@ -96,6 +96,96 @@ export const ListCohoCalendarResponse = zod.object({
 
 
 /**
+ * @summary List COHO actions from the Supabase mirror
+ */
+export const listCohoActionsQueryPropertyReferenceMax = 200;
+
+export const listCohoActionsQuerySearchMax = 200;
+
+
+export const listCohoActionsQueryPageSizeMax = 100;
+
+
+
+export const ListCohoActionsQueryParams = zod.object({
+  "category": zod.enum(['property', 'tenancy', 'maintenance', 'onboarding', 'viewing', 'other']).optional(),
+  "status": zod.enum(['open', 'completed', 'all']).optional().describe('open = new, in progress or on hold (default); completed; all'),
+  "includeSnoozed": zod.coerce.boolean().optional(),
+  "propertyReference": zod.coerce.string().max(listCohoActionsQueryPropertyReferenceMax).optional(),
+  "search": zod.coerce.string().max(listCohoActionsQuerySearchMax).optional(),
+  "page": zod.coerce.number().int().min(1).optional(),
+  "pageSize": zod.coerce.number().int().min(1).max(listCohoActionsQueryPageSizeMax).optional()
+})
+
+export const ListCohoActionsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "reference": zod.string(),
+  "title": zod.string().nullable(),
+  "message": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['not_set', 'new', 'in_progress', 'on_hold', 'completed']),
+  "type": zod.string(),
+  "typeName": zod.string().nullable(),
+  "category": zod.enum(['property', 'tenancy', 'maintenance', 'onboarding', 'viewing', 'other']),
+  "dueDate": zod.coerce.date().nullable(),
+  "overdue": zod.boolean(),
+  "snoozed": zod.boolean(),
+  "snoozedUntil": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "propertyReference": zod.string().nullable(),
+  "propertyName": zod.string().nullable(),
+  "roomReference": zod.string().nullable(),
+  "roomName": zod.string().nullable(),
+  "assignedToName": zod.string().nullable(),
+  "tags": zod.array(zod.string()),
+  "progressionStepsCompleted": zod.number().int(),
+  "progressionStepsCount": zod.number().int(),
+  "firstSeenAt": zod.coerce.date().describe('When the sync first saved this action'),
+  "lastChangedAt": zod.coerce.date(),
+  "removedFromCoho": zod.boolean()
+})),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int(),
+  "totalCount": zod.number().int(),
+  "hasNextPage": zod.boolean(),
+  "categoryCounts": zod.object({
+  "property": zod.number().int(),
+  "tenancy": zod.number().int(),
+  "maintenance": zod.number().int(),
+  "onboarding": zod.number().int(),
+  "viewing": zod.number().int(),
+  "other": zod.number().int()
+}).describe('Matching actions per tab, ignoring the category filter'),
+  "lastSync": zod.union([zod.object({
+  "status": zod.enum(['running', 'succeeded', 'failed']),
+  "trigger": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "finishedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),zod.null()]).describe('Most recent successful sync, or null if none has run')
+})
+
+
+/**
+ * @summary Pull every COHO action and save new or changed ones to Supabase
+ */
+export const SyncCohoActionsQueryParams = zod.object({
+  "trigger": zod.enum(['manual', 'page-open']).optional().describe('Recorded on the sync run; page-open when the Actions page refreshes stale data')
+})
+
+export const SyncCohoActionsResponse = zod.object({
+  "status": zod.enum(['succeeded', 'failed', 'skipped']),
+  "fetched": zod.number().int(),
+  "created": zod.number().int(),
+  "updated": zod.number().int(),
+  "removed": zod.number().int(),
+  "startedAt": zod.coerce.date(),
+  "finishedAt": zod.coerce.date(),
+  "error": zod.string().nullable()
+})
+
+
+/**
  * @summary Book a COHO property viewing
  */
 

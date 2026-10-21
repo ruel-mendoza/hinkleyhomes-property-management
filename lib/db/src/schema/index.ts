@@ -7,3 +7,4 @@ export * from "./suppliers";
 export * from "./maintenance";
 export * from "./finance";
 export * from "./operations";
+export * from "./coho";

@@ -12,6 +12,8 @@ _Replace the heading above with the project's name, and this line with one sente
 - Required env: `SUPABASE_DATABASE_URL` — Supabase session pooler connection string (`DATABASE_URL` is reserved by Replit and not used)
 - Integration env: `COHO_API_KEY`; Xero `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, `XERO_REDIRECT_URI`, `XERO_TOKEN_ENCRYPTION_KEY` (optional `XERO_SCOPES`, `XERO_WEBHOOK_KEY`). All names and formats are documented in `.env.example`; values go in Replit Secrets. The API server logs which integrations are configured at startup.
 
+- COHO actions mirror: `coho_actions` in Supabase, filled by `syncCohoActions` (artifacts/api-server/src/lib/coho-actions-sync.ts). Runs from the Actions page (Sync now, or automatically when data is >5 min old) and every 15 min from n8n (`n8n/coho-actions-sync.workflow.json` → `POST /api/integrations/coho/actions/sync`, header `X-Hinkley-Sync-Key` = `PMS_SYNC_KEY`). Runs are logged in `integration_sync_runs` with trigger `actions:*`.
+
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9

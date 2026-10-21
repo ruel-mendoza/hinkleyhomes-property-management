@@ -20,7 +20,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  CohoActionList,
   CohoActionResult,
+  CohoActionSyncResult,
   CohoCalendarPage,
   CohoMaintenanceCategories,
   CohoMaintenanceComplete,
@@ -33,11 +35,13 @@ import type {
   CohoViewingCreated,
   CohoViewingInput,
   HealthStatus,
+  ListCohoActionsParams,
   ListCohoCalendarParams,
   ListCohoMaintenanceParams,
   ListCohoPropertiesParams,
   SignupEmailCheckRequest,
-  SignupEmailCheckResult
+  SignupEmailCheckResult,
+  SyncCohoActionsParams
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -477,6 +481,171 @@ export function useListCohoCalendar<TData = Awaited<ReturnType<typeof listCohoCa
 
 
 
+
+export const getListCohoActionsUrl = (params?: ListCohoActionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/coho/actions?${stringifiedParams}` : `/api/coho/actions`
+}
+
+/**
+ * @summary List COHO actions from the Supabase mirror
+ */
+export const listCohoActions = async (params?: ListCohoActionsParams, options?: Parameters<typeof customFetch>[1]): Promise<CohoActionList> => {
+
+  return customFetch<CohoActionList>(getListCohoActionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCohoActionsQueryKey = (params?: ListCohoActionsParams,) => {
+    return [
+    `/api/coho/actions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCohoActionsQueryOptions = <TData = Awaited<ReturnType<typeof listCohoActions>>, TError = ErrorType<void>>(params?: ListCohoActionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCohoActions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCohoActionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCohoActions>>> = ({ signal }) => listCohoActions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCohoActions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCohoActionsQueryResult = NonNullable<Awaited<ReturnType<typeof listCohoActions>>>
+export type ListCohoActionsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List COHO actions from the Supabase mirror
+ */
+
+export function useListCohoActions<TData = Awaited<ReturnType<typeof listCohoActions>>, TError = ErrorType<void>>(
+ params?: ListCohoActionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCohoActions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCohoActionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSyncCohoActionsUrl = (params?: SyncCohoActionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/coho/actions/sync?${stringifiedParams}` : `/api/coho/actions/sync`
+}
+
+/**
+ * @summary Pull every COHO action and save new or changed ones to Supabase
+ */
+export const syncCohoActions = async (params?: SyncCohoActionsParams, options?: Parameters<typeof customFetch>[1]): Promise<CohoActionSyncResult> => {
+
+  return customFetch<CohoActionSyncResult>(getSyncCohoActionsUrl(params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSyncCohoActionsMutationKey = () => ['syncCohoActions'] as const;
+
+export const getSyncCohoActionsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncCohoActions>>, TError,SyncCohoActionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncCohoActions>>, TError,SyncCohoActionsMutationVariables, TContext> => {
+
+const mutationKey = getSyncCohoActionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncCohoActions>>, SyncCohoActionsMutationVariables> = (props) => {
+          const {params} = props ?? {};
+
+          return  syncCohoActions(params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncCohoActionsMutationResult = NonNullable<Awaited<ReturnType<typeof syncCohoActions>>>
+
+    export type SyncCohoActionsMutationError = ErrorType<void>
+    export type SyncCohoActionsMutationVariables = {params?: SyncCohoActionsParams}
+
+    /**
+ * @summary Pull every COHO action and save new or changed ones to Supabase
+ */
+export const useSyncCohoActions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncCohoActions>>, TError,SyncCohoActionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncCohoActions>>,
+        TError,
+        SyncCohoActionsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSyncCohoActionsMutationOptions(options));
+    }
 
 export const getCreateCohoViewingUrl = () => {
 

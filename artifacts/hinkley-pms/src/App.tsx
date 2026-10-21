@@ -9,7 +9,7 @@ import { shadcn } from '@clerk/themes';
 import NotFound from '@/pages/not-found';
 import { Link, Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import {
-  ArrowUpRight, BedDouble, Building2, CalendarDays, House, LayoutDashboard, LogOut, MapPin, Menu, PlugZap, Search, Wrench, X,
+  ArrowUpRight, BedDouble, Building2, CalendarDays, ClipboardList, House, LayoutDashboard, LogOut, MapPin, Menu, PlugZap, Search, Wrench, X,
 } from 'lucide-react';
 import {
   getGetCohoStatusQueryKey,
@@ -22,6 +22,7 @@ import {
 } from '@workspace/api-client-react';
 import CohoMaintenancePage from '@/pages/coho-maintenance';
 import CalendarPage from '@/pages/calendar';
+import ActionsPage from '@/pages/actions';
 import {
   AccessRestrictedPage,
   AuthLandingPage,
@@ -35,7 +36,7 @@ import { isAllowedStaffEmail } from '@/lib/staff-email';
 const LEGACY_DEMO_STORAGE = 'hinkley-pms-demo-v1';
 const navGroups = [
   { label: 'CORE', items: [['/dashboard', 'Overview', LayoutDashboard]] },
-  { label: 'OPERATIONS', items: [['/calendar', 'Calendar', CalendarDays], ['/maintenance', 'Maintenance', Wrench]] },
+  { label: 'OPERATIONS', items: [['/calendar', 'Calendar', CalendarDays], ['/actions', 'Actions', ClipboardList], ['/maintenance', 'Maintenance', Wrench]] },
 ] as const;
 const initials = (s: string) => s.split(' ').map(a => a[0]).slice(0, 2).join('').toUpperCase();
 const greeting = (date: Date) => date.getHours() < 12 ? 'Good morning' : date.getHours() < 18 ? 'Good afternoon' : 'Good evening';
@@ -106,6 +107,7 @@ function AppShell() {
         <Switch>
           <Route path="/dashboard"><Overview profileName={profileName} configured={cohoConfigured} statusLoading={cohoStatusQuery.isLoading} properties={selectedProperty ? [selectedProperty] : cohoProperties} propertiesLoading={cohoPropertiesQuery.isLoading} propertyName={selectedPropertyName} propertyReference={selectedPropertyReference} /></Route>
           <Route path="/calendar"><CalendarPage selectedPropertyReference={selectedPropertyReference} /></Route>
+          <Route path="/actions"><ActionsPage selectedPropertyReference={selectedPropertyReference} /></Route>
           <Route path="/maintenance" component={CohoMaintenancePage} />
           <Route component={NotFound} />
         </Switch>
@@ -173,7 +175,7 @@ function SignedOutOnly({ children }: { children: ReactNode }) { const { isLoaded
 function ProtectedCRM() { const { isLoaded, isSignedIn } = useAuth(); const { user, isLoaded: userLoaded } = useUser(); const { signOut } = useClerk(); if (!isLoaded || !userLoaded) return <AuthLoadingPage />; if (!isSignedIn) return <Redirect to="/sign-in" />; const email = user?.primaryEmailAddress?.emailAddress ?? ''; if (!isAllowedStaffEmail(email)) return <AccessRestrictedPage onSignOut={() => void signOut({ redirectUrl: basePath || '/' })} />; return <AppShell />; }
 function ClerkQueryClientCacheInvalidator() { const { addListener } = useClerk(); const client = useRef<string | null | undefined>(undefined); useEffect(() => addListener(({ user }) => { const userId = user?.id ?? null; if (client.current !== undefined && client.current !== userId) queryClient.clear(); client.current = userId; }), []); return null; }
 function RoutedErrorBoundary({ children }: { children: ReactNode }) { const [location] = useLocation(); return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>; }
-function Router() { return <RoutedErrorBoundary><Switch><Route path="/" component={HomeRedirect} /><Route path="/sign-in/*?" component={() => <SignedOutOnly><SignInPage /></SignedOutOnly>} /><Route path="/sign-up/*?" component={() => <SignedOutOnly><SignUpPage /></SignedOutOnly>} /><Route path="/dashboard" component={ProtectedCRM} /><Route path="/calendar" component={ProtectedCRM} /><Route path="/maintenance" component={ProtectedCRM} /><Route component={NotFound} /></Switch></RoutedErrorBoundary>; }
+function Router() { return <RoutedErrorBoundary><Switch><Route path="/" component={HomeRedirect} /><Route path="/sign-in/*?" component={() => <SignedOutOnly><SignInPage /></SignedOutOnly>} /><Route path="/sign-up/*?" component={() => <SignedOutOnly><SignUpPage /></SignedOutOnly>} /><Route path="/dashboard" component={ProtectedCRM} /><Route path="/calendar" component={ProtectedCRM} /><Route path="/actions" component={ProtectedCRM} /><Route path="/maintenance" component={ProtectedCRM} /><Route component={NotFound} /></Switch></RoutedErrorBoundary>; }
 function ClerkApp() { const [, setLocation] = useLocation(); function stripBase(path: string) { return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || '/' : path; } return <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={clerkAppearance} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} localization={{ signIn: { start: { title: 'Welcome back', subtitle: 'Sign in to access your Hinkley Homes staff account' } }, signUp: { start: { title: 'Create your account', subtitle: 'Use your Hinkley Homes company email to register' } } }} routerPush={to => setLocation(stripBase(to))} routerReplace={to => setLocation(stripBase(to), { replace: true })}><QueryClientProvider client={queryClient}><TooltipProvider><ClerkQueryClientCacheInvalidator /><Router /><Toaster /></TooltipProvider></QueryClientProvider></ClerkProvider>; }
 function App() { return <WouterRouter base={basePath}><ClerkApp /></WouterRouter>; }
 export default App;

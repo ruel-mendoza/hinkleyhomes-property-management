@@ -1,0 +1,57 @@
+{
+  "name": "Hinkley PMS – COHO actions sync (every 15 min)",
+  "nodes": [
+    {
+      "id": "26c2b89f-f86a-42d8-909f-93c4998bd0e0",
+      "name": "Every 15 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "caa38586-061c-4863-ba47-73ef8b2d5562",
+      "name": "Sync COHO actions to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 0],
+      "notes": "Calls the PMS API, which pulls every COHO action and saves new or changed ones to Supabase. Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret.",
+      "parameters": {
+        "method": "POST",
+        "url": "https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/coho/actions/sync",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 15 minutes": {
+      "main": [
+        [
+          {
+            "node": "Sync COHO actions to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none"
+  },
+  "pinData": {}
+}

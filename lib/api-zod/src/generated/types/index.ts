@@ -6,7 +6,16 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './cohoActionCategory';
+export * from './cohoActionCategoryCounts';
+export * from './cohoActionItem';
+export * from './cohoActionLastSync';
+export * from './cohoActionLastSyncStatus';
+export * from './cohoActionList';
 export * from './cohoActionResult';
+export * from './cohoActionStatus';
+export * from './cohoActionSyncResult';
+export * from './cohoActionSyncResultStatus';
 export * from './cohoCalendarEntry';
 export * from './cohoCalendarEntrySource';
 export * from './cohoCalendarPage';
@@ -28,8 +37,12 @@ export * from './cohoStatus';
 export * from './cohoViewingCreated';
 export * from './cohoViewingInput';
 export * from './healthStatus';
+export * from './listCohoActionsParams';
+export * from './listCohoActionsStatus';
 export * from './listCohoCalendarParams';
 export * from './listCohoMaintenanceParams';
 export * from './listCohoPropertiesParams';
 export * from './signupEmailCheckRequest';
 export * from './signupEmailCheckResult';
+export * from './syncCohoActionsParams';
+export * from './syncCohoActionsTrigger';

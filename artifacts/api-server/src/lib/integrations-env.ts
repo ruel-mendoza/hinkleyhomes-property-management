@@ -11,6 +11,13 @@ export function cohoApiKey(): string | undefined {
   return read("COHO_API_KEY");
 }
 
+// Shared secret for scheduled n8n calls into the API (e.g. the COHO actions
+// sync). Too-short values are ignored so a weak key can't be used.
+export function pmsSyncKey(): string | undefined {
+  const key = read("PMS_SYNC_KEY");
+  return key && key.length >= 32 ? key : undefined;
+}
+
 // Xero via the n8n gateway workflow (n8n/xero-gateway.workflow.json), which
 // reuses n8n's existing Xero connection to all five organisations.
 export type XeroGatewayEnvResult =

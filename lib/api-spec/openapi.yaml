@@ -108,6 +108,81 @@ paths:
           description: COHO returned an error
         "503":
           description: COHO API key is not configured
+  /coho/actions:
+    get:
+      operationId: listCohoActions
+      tags: [coho]
+      summary: List COHO actions from the Supabase mirror
+      parameters:
+        - name: category
+          in: query
+          schema:
+            $ref: "#/components/schemas/CohoActionCategory"
+        - name: status
+          in: query
+          description: open = new, in progress or on hold (default); completed; all
+          schema:
+            type: string
+            enum: [open, completed, all]
+        - name: includeSnoozed
+          in: query
+          schema:
+            type: boolean
+        - name: propertyReference
+          in: query
+          schema:
+            type: string
+            maxLength: 200
+        - name: search
+          in: query
+          schema:
+            type: string
+            maxLength: 200
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Page of stored COHO actions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoActionList"
+        "400":
+          description: Invalid filters
+        "503":
+          description: Database is not configured
+  /coho/actions/sync:
+    post:
+      operationId: syncCohoActions
+      tags: [coho]
+      summary: Pull every COHO action and save new or changed ones to Supabase
+      parameters:
+        - name: trigger
+          in: query
+          description: Recorded on the sync run; page-open when the Actions page refreshes stale data
+          schema:
+            type: string
+            enum: [manual, page-open]
+      responses:
+        "200":
+          description: Sync finished (or skipped because one was already running)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohoActionSyncResult"
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO or the database is not configured
   /coho/viewings:
     post:
       operationId: createCohoViewing
@@ -558,6 +633,153 @@ components:
           minLength: 1
           maxLength: 2000
       required: [propertyReference, forename, surname, emailAddress, requestMessage]
+    CohoActionCategory:
+      type: string
+      enum: [property, tenancy, maintenance, onboarding, viewing, other]
+    CohoActionStatus:
+      type: string
+      enum: [not_set, new, in_progress, on_hold, completed]
+    CohoActionItem:
+      type: object
+      properties:
+        reference:
+          type: string
+        title:
+          type: ["string", "null"]
+        message:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        status:
+          $ref: "#/components/schemas/CohoActionStatus"
+        type:
+          type: string
+        typeName:
+          type: ["string", "null"]
+        category:
+          $ref: "#/components/schemas/CohoActionCategory"
+        dueDate:
+          type: ["string", "null"]
+          format: date-time
+        overdue:
+          type: boolean
+        snoozed:
+          type: boolean
+        snoozedUntil:
+          type: ["string", "null"]
+          format: date-time
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+        propertyReference:
+          type: ["string", "null"]
+        propertyName:
+          type: ["string", "null"]
+        roomReference:
+          type: ["string", "null"]
+        roomName:
+          type: ["string", "null"]
+        assignedToName:
+          type: ["string", "null"]
+        tags:
+          type: array
+          items:
+            type: string
+        progressionStepsCompleted:
+          type: integer
+        progressionStepsCount:
+          type: integer
+        firstSeenAt:
+          description: When the sync first saved this action
+          type: string
+          format: date-time
+        lastChangedAt:
+          type: string
+          format: date-time
+        removedFromCoho:
+          type: boolean
+      required: [reference, title, message, notes, status, type, typeName, category, dueDate, overdue, snoozed, snoozedUntil, completedAt, propertyReference, propertyName, roomReference, roomName, assignedToName, tags, progressionStepsCompleted, progressionStepsCount, firstSeenAt, lastChangedAt, removedFromCoho]
+    CohoActionCategoryCounts:
+      type: object
+      properties:
+        property:
+          type: integer
+        tenancy:
+          type: integer
+        maintenance:
+          type: integer
+        onboarding:
+          type: integer
+        viewing:
+          type: integer
+        other:
+          type: integer
+      required: [property, tenancy, maintenance, onboarding, viewing, other]
+    CohoActionLastSync:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [running, succeeded, failed]
+        trigger:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: ["string", "null"]
+          format: date-time
+        error:
+          type: ["string", "null"]
+      required: [status, trigger, startedAt, finishedAt, error]
+    CohoActionList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CohoActionItem"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+        hasNextPage:
+          type: boolean
+        categoryCounts:
+          description: Matching actions per tab, ignoring the category filter
+          allOf:
+            - $ref: "#/components/schemas/CohoActionCategoryCounts"
+        lastSync:
+          description: Most recent successful sync, or null if none has run
+          oneOf:
+            - $ref: "#/components/schemas/CohoActionLastSync"
+            - type: "null"
+      required: [items, page, pageSize, totalCount, hasNextPage, categoryCounts, lastSync]
+    CohoActionSyncResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [succeeded, failed, skipped]
+        fetched:
+          type: integer
+        created:
+          type: integer
+        updated:
+          type: integer
+        removed:
+          type: integer
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        error:
+          type: ["string", "null"]
+      required: [status, fetched, created, updated, removed, startedAt, finishedAt, error]
     CohoViewingCreated:
       type: object
       properties:
