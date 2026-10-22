@@ -44,6 +44,24 @@ const BUCKETS: { key: Bucket; label: string; test: (days: number) => boolean }[]
   { key: "61_90", label: "61–90 days", test: (days) => days >= 61 && days <= 90 },
   { key: "90_plus", label: "Over 90 days", test: (days) => days > 90 },
 ];
+// One fixed colour per company (validated on the dark panel), always shown with its name.
+const COMPANY_COLOURS: Record<string, string> = {
+  "47f65b32-d0d7-4417-bb5c-89ff2d93651e": "#3987e5", // Lettings
+  "3ae8a283-c7e0-4287-9bcd-4c2561295890": "#d95926", // Holdings
+  "9d1fee42-4203-47d8-87aa-6fa8e8ac0fef": "#199e70", // Hinkley Homes Ltd
+  "0a290129-b001-4bfb-903d-d27a8ac55738": "#c98500", // Management
+  "4c807578-e0a7-49ad-9644-8e705aec0c2a": "#d55181", // Stays
+};
+// "Hinkley Homes Lettings" -> "Lettings"; "Hinkley Homes Ltd" keeps its full name.
+export const companyShortName = (name: string) => (name === "Hinkley Homes Ltd" ? name : name.replace(/^Hinkley Homes /, ""));
+export function CompanyTag({ tenantId, name }: { tenantId: string; name: string }) {
+  return (
+    <span className="hh-co-tag" style={{ "--co": COMPANY_COLOURS[tenantId] ?? "#6f7f96" } as React.CSSProperties} title={name}>
+      <i aria-hidden="true" />{companyShortName(name)}
+    </span>
+  );
+}
+
 const bucketTone = (key: Bucket) => (key === "not_due" ? "info" : key === "1_30" ? "neutral" : key === "31_60" ? "warn" : "bad");
 const dueText = (days: number) => (days > 0 ? `${days} ${days === 1 ? "day" : "days"} overdue` : days === 0 ? "due today" : `due in ${-days} ${days === -1 ? "day" : "days"}`);
 
@@ -137,7 +155,7 @@ export default function InvoicesPage() {
               const count = tab === "receivables" ? item.overdueCount : item.billsOverdueCount;
               return (
                 <button key={item.tenantId} type="button" className={`hh-inv-company ${company === item.tenantId ? "active" : ""} ${amount ? "has" : ""}`} aria-pressed={company === item.tenantId} onClick={() => setParams({ company: company === item.tenantId ? "" : item.tenantId })}>
-                  <span>{item.name.replace("Hinkley Homes ", "")}</span>
+                  <span className="hh-co-chip-name"><i style={{ background: COMPANY_COLOURS[item.tenantId] ?? "#6f7f96" }} aria-hidden="true" />{companyShortName(item.name)}</span>
                   <strong>{pounds.format(amount)}</strong>
                   <small>{count} overdue{!item.holdsPropertyMoney ? " · no property money" : ""}</small>
                 </button>
@@ -190,9 +208,9 @@ export default function InvoicesPage() {
                       return (
                         <tr key={row.invoiceId} data-testid={`row-invoice-${row.invoiceId}`}>
                           <td>
-                            <strong className="hh-nowrap">{row.number ?? "—"}</strong>
+                            <span className="hh-inv-head"><strong className="hh-nowrap">{row.number ?? "—"}</strong><CompanyTag tenantId={row.tenantId} name={row.company} /></span>
                             <span className="hh-inv-contact">{row.contactName}</span>
-                            <small className="hh-fin-sub">{row.company.replace("Hinkley Homes ", "")}{row.sent ? " · sent" : " · not sent"}</small>
+                            <small className="hh-fin-sub">{row.sent ? "Sent to customer" : "Not sent to customer"}</small>
                           </td>
                           <td>
                             <span className="hh-inv-for" title={row.reference ?? row.description ?? undefined}>{row.reference ?? row.description ?? "—"}</span>
@@ -229,9 +247,8 @@ export default function InvoicesPage() {
                     {(visible as PayableBill[]).map((row) => (
                       <tr key={row.billId}>
                         <td>
-                          <strong className="hh-nowrap">{row.number ?? "—"}</strong>
+                          <span className="hh-inv-head"><strong className="hh-nowrap">{row.number ?? "—"}</strong><CompanyTag tenantId={row.tenantId} name={row.company} /></span>
                           <span className="hh-inv-contact">{row.contactName}</span>
-                          <small className="hh-fin-sub">{row.company.replace("Hinkley Homes ", "")}</small>
                         </td>
                         <td><span className="hh-inv-for" title={row.description ?? undefined}>{row.description ?? "—"}</span>{row.property && <small className="hh-fin-sub">{row.property}</small>}</td>
                         <td className="hh-nowrap">{row.dueDate ? formatDate(row.dueDate) : "—"}<small className={`hh-fin-sub ${row.daysOverdue > 30 ? "bad" : row.daysOverdue > 0 ? "warn" : ""}`}>{dueText(row.daysOverdue)}</small></td>
