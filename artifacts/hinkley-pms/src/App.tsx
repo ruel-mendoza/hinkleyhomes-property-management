@@ -29,7 +29,7 @@ import PropertiesPage from '@/pages/properties/PropertiesPage';
 import PropertyDetailPage from '@/pages/properties/PropertyDetailPage';
 import OccupancyPage from '@/pages/occupancy/OccupancyPage';
 import ListingsWidget from '@/pages/listings-widget';
-import { MoneyPanels, formatPounds } from '@/components/overview/MoneyPanels';
+import { AccountsNotices, MoneyPanels, formatPounds } from '@/components/overview/MoneyPanels';
 import {
   AccessRestrictedPage,
   AuthLandingPage,
@@ -149,6 +149,7 @@ function Overview({ profileName, configured, statusLoading, properties, properti
   const show = (value: number) => pending ? '…' : configured ? value.toString() : '—';
   return <>
     <div className="dashboard-hero"><PageHeader title="Operations overview" subtitle={`${propertyName} · ${now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`} eyebrow={`${greeting(now)}, ${profileName.split(' ')[0]}`} /></div>
+    <AccountsNotices data={moneyQuery.data} />
     <div className="metric-row2" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }}>
       <SmallMetric label="COHO connection" value={statusLoading ? '…' : configured ? 'Connected' : 'Not set up'} foot={configured ? 'Public API 1.1' : 'Add the COHO API key'} icon={<PlugZap size={14} />} />
       <SmallMetric label="Properties" value={show(properties.length)} foot="In COHO" icon={<Building2 size={14} />} />

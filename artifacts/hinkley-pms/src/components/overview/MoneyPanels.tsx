@@ -1,6 +1,6 @@
 import { AlertTriangle, Landmark, PoundSterling } from "lucide-react";
 import { Link } from "wouter";
-import type { MoneyCompany, MoneyOverview } from "@workspace/api-client-react";
+import type { MoneyBankAccount, MoneyCompany, MoneyOverview } from "@workspace/api-client-react";
 import { formatDate } from "@/services/properties";
 import "./money.css";
 
@@ -14,6 +14,28 @@ export const formatPounds = (value: number) => pounds.format(value);
 const FREQUENCY: Record<string, string> = { monthly: "pm", weekly: "pw", annually: "pa", quarterly: "per quarter", fortnightly: "per fortnight", "four weekly": "per 4 weeks" };
 const daysSince = (date: string | null) => (date ? Math.floor((Date.now() - Date.parse(`${date}T12:00:00Z`)) / 86_400_000) : 0);
 const propertyLink = (reference: string) => `/properties/${encodeURIComponent(reference)}`;
+
+const KIND_LABEL: Record<MoneyBankAccount["kind"], string> = { bank: "Bank", card: "Card", payments: "Payment platform" };
+const KIND_ORDER: MoneyBankAccount["kind"][] = ["bank", "payments", "card"];
+
+// Checks for the accounts team (e.g. a bank summary that mixes cards and
+// Stripe with real bank accounts), shown at the top of the overview.
+export function AccountsNotices({ data }: { data?: MoneyOverview }) {
+  const companies = (data?.xero.companies ?? []).filter((company) => company.notices.length);
+  if (!companies.length) return null;
+  return (
+    <section className="hh-accounts-notice" role="alert" aria-labelledby="accounts-notice-title" data-testid="accounts-notices">
+      <AlertTriangle size={18} />
+      <div>
+        <h2 id="accounts-notice-title">For the accounts team: please check Xero</h2>
+        <ul>
+          {companies.flatMap((company) => company.notices.map((notice) => <li key={`${company.tenantId}-${notice}`}>{notice}</li>))}
+        </ul>
+        <a href="#banking" className="hh-accounts-link">See bank accounts by company</a>
+      </div>
+    </section>
+  );
+}
 
 export function MoneyPanels({ data, loading, failed, propertyReference }: { data?: MoneyOverview; loading: boolean; failed: boolean; propertyReference?: string }) {
   return (
@@ -92,7 +114,7 @@ function Banking({ data, loading, failed }: { data?: MoneyOverview; loading: boo
   const xero = data?.xero;
   const balancesError = xero?.companies.find((company) => company.balancesError)?.balancesError;
   return (
-    <section className="panel">
+    <section className="panel" id="banking">
       <div className="panel-head">
         <div><div className="panel-title">Banking · Xero</div><div className="panel-caption">Unreconciled transactions and bank balances for every company</div></div>
         <Landmark size={16} className="hh-money-icon" />
@@ -114,7 +136,8 @@ function Banking({ data, loading, failed }: { data?: MoneyOverview; loading: boo
 function CompanyRow({ company }: { company: MoneyCompany }) {
   const age = daysSince(company.oldestUnreconciled);
   const tone = company.unreconciledCount === 0 ? "completed" : age > 30 ? "overdue" : "pending";
-  const balance = company.bankAccounts.reduce<number | null>((sum, account) => (account.balance === null ? sum : (sum ?? 0) + account.balance), null);
+  const accounts = [...company.bankAccounts].sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || a.name.localeCompare(b.name));
+  const others = accounts.filter((account) => account.kind !== "bank").length;
   return (
     <li className={company.holdsPropertyMoney ? "" : "no-property-money"}>
       <div className="hh-bank-head">
@@ -123,6 +146,7 @@ function CompanyRow({ company }: { company: MoneyCompany }) {
           : <span className={`status ${tone}`}>{company.unreconciledCount ? `${company.unreconciledCount} unreconciled` : "All reconciled"}</span>}
       </div>
       {company.note && <p className="hh-bank-note">{company.note}</p>}
+      {company.notices.map((notice) => <p key={notice} className="hh-bank-notice"><AlertTriangle size={12} /> {notice}</p>)}
       {company.error ? <p className="hh-bank-meta">{company.error}</p> : (
         <>
           {company.unreconciledCount > 0 && (
@@ -130,21 +154,28 @@ function CompanyRow({ company }: { company: MoneyCompany }) {
               {pence.format(company.unreconciledIn)} in · {pence.format(company.unreconciledOut)} out · oldest {formatDate(company.oldestUnreconciled)}{age > 30 ? ` (${age} days)` : ""}
             </p>
           )}
-          {company.bankAccounts.length > 0 && (
-            <details className="hh-bank-accounts">
-              <summary>{company.bankAccounts.length} bank {company.bankAccounts.length === 1 ? "account" : "accounts"}{balance !== null ? ` · ${pence.format(balance)} total` : ""}</summary>
+          {accounts.length > 0 && (
+            <details className="hh-bank-accounts" open={company.notices.length > 0}>
+              <summary>
+                {company.bankTotal !== null ? `${pence.format(company.bankTotal)} in the bank` : "Bank accounts"}
+                {others ? ` · plus ${others} card or payment platform ${others === 1 ? "account" : "accounts"}` : ""}
+              </summary>
               <table>
-                <thead><tr><th>Account</th><th>In this month</th><th>Out this month</th><th>Balance</th></tr></thead>
+                <thead><tr><th>Account</th><th>Type</th><th>In this month</th><th>Out this month</th><th>Balance</th></tr></thead>
                 <tbody>
-                  {company.bankAccounts.map((account) => (
-                    <tr key={account.name}>
+                  {accounts.map((account) => (
+                    <tr key={account.name} className={account.kind === "bank" ? "" : "not-bank"}>
                       <td>{account.name}</td>
+                      <td><span className={`hh-kind ${account.kind}`}>{KIND_LABEL[account.kind]}</span></td>
                       <td>{account.moneyIn === null ? "—" : pence.format(account.moneyIn)}</td>
                       <td>{account.moneyOut === null ? "—" : pence.format(account.moneyOut)}</td>
                       <td className={account.balance !== null && account.balance < 0 ? "negative" : ""}>{account.balance === null ? "—" : pence.format(account.balance)}</td>
                     </tr>
                   ))}
                 </tbody>
+                {company.bankTotal !== null && (
+                  <tfoot><tr><td colSpan={4}>Bank total (real bank accounts only)</td><td>{pence.format(company.bankTotal)}</td></tr></tfoot>
+                )}
               </table>
             </details>
           )}

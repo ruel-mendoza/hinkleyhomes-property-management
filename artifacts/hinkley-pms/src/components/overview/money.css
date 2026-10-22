@@ -34,4 +34,21 @@
 .hh-bank-accounts td:not(:first-child),.hh-bank-accounts th:not(:first-child){text-align:right}
 .hh-bank-accounts td.negative{color:#f08f91}
 
+.hh-bank-notice{display:flex;gap:6px;align-items:flex-start;margin:6px 0 0;padding:6px 9px;border-radius:6px;background:#3a2e1c;border:1px solid #5a4626;color:#f0d29b;font-size:12px;line-height:1.45}
+.hh-bank-notice svg{flex:none;margin-top:2px}
+.hh-bank-accounts tr.not-bank td{color:#9fb0c6}
+.hh-bank-accounts tfoot td{font-weight:700;color:#e2e9f1;border-top:1px solid #3a4a62}
+.hh-kind{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;background:#173d35;color:#79d0a9}
+.hh-kind.card{background:#45272c;color:#f0a5a7}
+.hh-kind.payments{background:#1f3550;color:#a9c9ef}
+.hh-bank-accounts td:nth-child(2),.hh-bank-accounts th:nth-child(2){text-align:left!important}
+
+/* Accounts team notice at the top of the overview */
+.hh-accounts-notice{display:flex;gap:12px;align-items:flex-start;margin:0 0 14px;padding:14px 16px;border-radius:10px;background:#3d2a12;border:1px solid #c9892e;border-left:5px solid #f0a53a;color:#f7dcb0;box-shadow:0 4px 14px #05091240}
+.hh-accounts-notice>svg{flex:none;color:#f0a53a;margin-top:1px}
+.hh-accounts-notice h2{margin:0 0 6px;font-size:15px;font-weight:800;color:#ffe3b8}
+.hh-accounts-notice ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:13px;line-height:1.5}
+.hh-accounts-link{display:inline-block;margin-top:8px;font-size:12px;font-weight:700;color:#ffd08a}
+.hh-accounts-link:hover,.hh-accounts-link:focus-visible{color:#fff}
+
 @media(max-width:1000px){.hh-money-grid{grid-template-columns:1fr}}

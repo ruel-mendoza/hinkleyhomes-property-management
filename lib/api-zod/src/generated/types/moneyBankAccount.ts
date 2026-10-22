@@ -5,9 +5,12 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { MoneyBankAccountKind } from './moneyBankAccountKind';
 
 export interface MoneyBankAccount {
   name: string;
+  /** bank = real bank or cash account; card = credit/charge card; payments = payment platform clearing account (Stripe, PayPal, GoCardless, Telleroo) */
+  kind: MoneyBankAccountKind;
   /**
      * Closing balance today from Xero's Bank Summary; null when the report is unavailable
      * @nullable

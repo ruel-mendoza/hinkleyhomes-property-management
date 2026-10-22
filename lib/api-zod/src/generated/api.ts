@@ -950,11 +950,14 @@ export const GetMoneyOverviewResponse = zod.object({
   "oldestUnreconciled": zod.string().nullable(),
   "bankAccounts": zod.array(zod.object({
   "name": zod.string(),
+  "kind": zod.enum(['bank', 'card', 'payments']).describe('bank = real bank or cash account; card = credit/charge card; payments = payment platform clearing account (Stripe, PayPal, GoCardless, Telleroo)'),
   "balance": zod.number().nullable().describe('Closing balance today from Xero\'s Bank Summary; null when the report is unavailable'),
   "moneyIn": zod.number().nullable().describe('Received this month'),
   "moneyOut": zod.number().nullable().describe('Spent this month')
 })),
-  "balancesError": zod.string().nullable().describe('Why balances are missing (e.g. the Xero reports permission is not granted in n8n)')
+  "balancesError": zod.string().nullable().describe('Why balances are missing (e.g. the Xero reports permission is not granted in n8n)'),
+  "bankTotal": zod.number().nullable().describe('Sum of closing balances of real bank accounts only (cards and payment platforms excluded); null when balances are unavailable'),
+  "notices": zod.array(zod.string()).describe('Things the accounts team should check, shown prominently on the overview')
 }))
 })
 })

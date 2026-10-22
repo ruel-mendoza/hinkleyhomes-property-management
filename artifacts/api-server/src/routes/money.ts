@@ -145,8 +145,44 @@ export function parseBankSummary(data: unknown) {
     .map((row) => {
       const cells = list(row.Cells);
       const value = (index: number) => (index >= 0 ? amount(cells[index]?.Value) : null);
-      return { name: str(cells[0]?.Value) ?? "Bank account", balance: value(closing), moneyIn: value(received), moneyOut: value(spent) };
+      const accountId = str(list(cells[0]?.Attributes).find((attribute) => attribute.Id === "accountID")?.Value);
+      return { accountId, name: str(cells[0]?.Value) ?? "Bank account", balance: value(closing), moneyIn: value(received), moneyOut: value(spent) };
     });
+}
+
+// Xero marks payment platforms (Stripe, PayPal…) as ordinary BANK accounts, so
+// they are told apart by name; cards come from Xero's BankAccountType.
+type AccountKind = "bank" | "card" | "payments";
+const PAYMENT_PLATFORM = /stripe|paypal|gocardless|telleroo|square|sumup|worldpay/i;
+const accountKind = (name: string, bankAccountType: string | null): AccountKind =>
+  bankAccountType === "CREDITCARD" ? "card" : PAYMENT_PLATFORM.test(name) ? "payments" : "bank";
+// A payment platform should pay out to the bank regularly; above this it is worth a look.
+const PAYMENTS_BALANCE_ALERT = 10_000;
+const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
+const joinNames = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0] ?? "");
+
+function bankingNotices(name: string, accounts: { name: string; kind: AccountKind; balance: number | null }[], bankTotal: number | null): string[] {
+  const notices: string[] = [];
+  // Cards and platforms sitting at £0 don't distort anything, so they aren't mentioned.
+  const nonZero = (kind: AccountKind) => accounts.filter((account) => account.kind === kind && (account.balance ?? 0) !== 0);
+  const cards = nonZero("card");
+  const platforms = nonZero("payments");
+  if (cards.length || platforms.length) {
+    const parts = [
+      cards.length ? `${cards.length === 1 ? "a credit card" : `${cards.length} credit cards`} (${joinNames(cards.map((account) => account.name))})` : "",
+      platforms.length ? `${platforms.length === 1 ? "a payment platform account" : "payment platform accounts"} (${joinNames(platforms.map((account) => account.name))})` : "",
+    ].filter(Boolean);
+    notices.push(
+      `Xero's bank summary for ${name} mixes real bank accounts with ${parts.join(" and ")}. ` +
+        `The bank total here (${bankTotal === null ? "—" : gbp.format(bankTotal)}) counts real bank accounts only; cards and payment platforms are listed separately.`,
+    );
+  }
+  for (const account of platforms) {
+    if (account.balance !== null && Math.abs(account.balance) >= PAYMENTS_BALANCE_ALERT) {
+      notices.push(`${account.name} (${name}) shows ${gbp.format(account.balance)}. A payment platform balance this high usually means payouts aren't being matched to the bank in Xero. Please check.`);
+    }
+  }
+  return notices;
 }
 
 async function companyBanking(company: (typeof COMPANIES)[number]) {
@@ -160,11 +196,13 @@ async function companyBanking(company: (typeof COMPANIES)[number]) {
     unreconciledIn: 0,
     unreconciledOut: 0,
     oldestUnreconciled: null as string | null,
-    bankAccounts: [] as { name: string; balance: number | null; moneyIn: number | null; moneyOut: number | null }[],
+    bankAccounts: [] as { name: string; kind: AccountKind; balance: number | null; moneyIn: number | null; moneyOut: number | null }[],
     balancesError: null as string | null,
+    bankTotal: null as number | null,
+    notices: [] as string[],
   };
   const today = ukDate.format(new Date());
-  const [transactions, summary] = await Promise.all([
+  const [transactions, summary, accounts] = await Promise.all([
     (async () => {
       const items: RecordValue[] = [];
       for (let page = 1; page <= 10; page++) {
@@ -183,6 +221,10 @@ async function companyBanking(company: (typeof COMPANIES)[number]) {
     xeroGatewayRequest({ tenantId: company.tenantId, resource: "bankSummary", query: { fromDate: `${today.slice(0, 8)}01`, toDate: today } }).catch(
       (error: unknown) => error as Error,
     ),
+    // Only needed to spot credit cards; without it every account counts as a bank account.
+    xeroGatewayRequest({ tenantId: company.tenantId, resource: "accounts", query: { where: 'Type=="BANK"' } })
+      .then((response) => new Map(list(asRecord(response.data).Accounts).map((account) => [str(account.AccountID), str(account.BankAccountType)])))
+      .catch(() => new Map<string | null, string | null>()),
   ]);
 
   if (transactions instanceof Error) {
@@ -211,7 +253,13 @@ async function companyBanking(company: (typeof COMPANIES)[number]) {
           ? "Bank balances need Xero's reports permission on the n8n \"Xero reports\" credential."
           : `Xero returned HTTP ${summary.status} for the bank summary.`;
   } else {
-    base.bankAccounts = parseBankSummary(summary.data);
+    base.bankAccounts = parseBankSummary(summary.data).map(({ accountId, ...account }) => ({
+      ...account,
+      kind: accountKind(account.name, accounts.get(accountId) ?? null),
+    }));
+    const bankBalances = base.bankAccounts.filter((account) => account.kind === "bank" && account.balance !== null);
+    base.bankTotal = Math.round(bankBalances.reduce((sum, account) => sum + (account.balance ?? 0), 0) * 100) / 100;
+    base.notices = bankingNotices(company.name, base.bankAccounts, base.bankTotal);
   }
   return base;
 }

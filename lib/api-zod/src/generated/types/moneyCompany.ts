@@ -26,4 +26,11 @@ export interface MoneyCompany {
      * @nullable
      */
   balancesError: string | null;
+  /**
+     * Sum of closing balances of real bank accounts only (cards and payment platforms excluded); null when balances are unavailable
+     * @nullable
+     */
+  bankTotal: number | null;
+  /** Things the accounts team should check, shown prominently on the overview */
+  notices: string[];
 }

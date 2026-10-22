@@ -61,6 +61,7 @@ export * from './listCohoMaintenanceParams';
 export * from './listCohoPropertiesParams';
 export * from './moneyArrear';
 export * from './moneyBankAccount';
+export * from './moneyBankAccountKind';
 export * from './moneyCoho';
 export * from './moneyCompany';
 export * from './moneyOverview';

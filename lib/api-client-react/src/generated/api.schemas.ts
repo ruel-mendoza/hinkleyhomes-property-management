@@ -123,8 +123,22 @@ export interface MoneyCoho {
   rentReviews: MoneyRentReview[];
 }
 
+/**
+ * bank = real bank or cash account; card = credit/charge card; payments = payment platform clearing account (Stripe, PayPal, GoCardless, Telleroo)
+ */
+export type MoneyBankAccountKind = typeof MoneyBankAccountKind[keyof typeof MoneyBankAccountKind];
+
+
+export const MoneyBankAccountKind = {
+  bank: 'bank',
+  card: 'card',
+  payments: 'payments',
+} as const;
+
 export interface MoneyBankAccount {
   name: string;
+  /** bank = real bank or cash account; card = credit/charge card; payments = payment platform clearing account (Stripe, PayPal, GoCardless, Telleroo) */
+  kind: MoneyBankAccountKind;
   /**
      * Closing balance today from Xero's Bank Summary; null when the report is unavailable
      * @nullable
@@ -161,6 +175,13 @@ export interface MoneyCompany {
      * @nullable
      */
   balancesError: string | null;
+  /**
+     * Sum of closing balances of real bank accounts only (cards and payment platforms excluded); null when balances are unavailable
+     * @nullable
+     */
+  bankTotal: number | null;
+  /** Things the accounts team should check, shown prominently on the overview */
+  notices: string[];
 }
 
 export interface MoneyXero {
