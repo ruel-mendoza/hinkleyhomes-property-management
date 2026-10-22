@@ -107,6 +107,11 @@ export default function OccupancyPage({ selectedPropertyReference }: { selectedP
         })}
       </div>
 
+      <ul className="hh-occ-legend" aria-label="Tenant bullet colours">
+        <li><i className="joined" aria-hidden="true" /> Using the COHO tenant app</li>
+        <li><i aria-hidden="true" /> Not using the app yet (invited or not invited)</li>
+      </ul>
+
       <section className="panel table-panel">
         <div className="table-wrap">
           <table className="hh-occ-table">
