@@ -5,6 +5,19 @@ import { cohoApiKey, pmsSyncKey } from "../lib/integrations-env";
 import { syncCohoActions } from "../lib/coho-actions-sync";
 import { recordUnitSnapshot, ukToday } from "../lib/performance";
 import { performanceData } from "./performance";
+import { readXeroGatewayEnv } from "../lib/integrations-env";
+import { AUTOMATIC_AUTHOR, getReminderSettings, isWeekend, logReminder } from "../lib/xero-reminders";
+import {
+  ALL_TENANT_IDS,
+  activityFor,
+  addDays,
+  loadFollowUps,
+  receivablesSnapshot,
+  recordFollowUp,
+  reminderDecisions,
+  reminderItem,
+  type ReminderResult,
+} from "./receivables";
 
 // Machine-to-machine endpoints (n8n schedules). Mounted before the staff
 // sign-in check, so each request must carry the shared PMS_SYNC_KEY instead.
@@ -51,6 +64,129 @@ router.post("/integrations/coho/unit-snapshot", requireSyncKey, async (req, res)
     req.log.error({ err: error }, "Scheduled unit snapshot failed");
     res.status(502).json({ error: "The unit snapshot could not be recorded." });
   }
+});
+
+// --- Payment reminders (n8n "Xero overdue reminders" workflow) -----------------------
+// The workflow asks for today's plan each morning, sends each reminder, then
+// reports every result back here. Automatic reminders stay off until switched on
+// in the app, and test mode sends everything to the internal address.
+const MAX_PER_RUN = 25;
+
+router.get("/integrations/xero/reminders/plan", requireSyncKey, async (req, res): Promise<void> => {
+  if (!isDatabaseConfigured() || readXeroGatewayEnv().status !== "configured") {
+    res.status(503).json({ error: "The database or the Xero gateway is not configured." });
+    return;
+  }
+  const settings = await getReminderSettings(ALL_TENANT_IDS);
+  const base = { enabled: settings.autoEnabled, mode: settings.mode, items: [] as unknown[] };
+  if (!settings.autoEnabled) {
+    res.json({ ...base, reason: "Automatic reminders are switched off in the app." });
+    return;
+  }
+  if (settings.weekdaysOnly && isWeekend()) {
+    res.json({ ...base, reason: "Weekend: reminders only go out Monday to Friday." });
+    return;
+  }
+  const snapshot = await receivablesSnapshot(true, req.log);
+  const followUps = (await loadFollowUps(snapshot.invoices.map((invoice) => invoice.invoiceId))) ?? new Map();
+  const activity = await activityFor(snapshot.invoices);
+  const decisions = await reminderDecisions(snapshot, settings, followUps, activity);
+  const due = snapshot.invoices.filter((invoice) => decisions.get(`${invoice.tenantId}|${invoice.invoiceId}`)?.eligible).slice(0, MAX_PER_RUN);
+  const items = [];
+  for (const invoice of due) {
+    const decision = decisions.get(`${invoice.tenantId}|${invoice.invoiceId}`)!;
+    items.push(await reminderItem(invoice, settings, decision.nextStage!, "auto_reminder", null));
+  }
+  res.json({ ...base, reason: items.length ? `${items.length} reminder(s) due.` : "No reminders due today.", items });
+});
+
+// What the workflow posts back for each item (checked by hand; n8n sends plain JSON).
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function parseResult(body: unknown): ReminderResult | null {
+  const value = (body ?? {}) as Record<string, unknown>;
+  const text = (field: string, max: number) => {
+    const raw = value[field];
+    if (raw === undefined || raw === null || raw === "") return null;
+    return typeof raw === "string" || typeof raw === "number" ? String(raw).slice(0, max) : null;
+  };
+  const action = value.action, kind = value.kind, status = value.status;
+  if (!["reminder", "xero_resend", "xero_note"].includes(String(action))) return null;
+  if (!["auto_reminder", "manual_reminder", "xero_resend", "xero_note"].includes(String(kind))) return null;
+  if (!["sent", "failed", "skipped"].includes(String(status))) return null;
+  const tenantId = text("tenantId", 64)?.toLowerCase();
+  const invoiceId = text("invoiceId", 64)?.toLowerCase();
+  if (!tenantId || !ALL_TENANT_IDS.includes(tenantId) || !invoiceId || !UUID.test(invoiceId)) return null;
+  const stage = Number(value.stage);
+  return {
+    action: action as ReminderResult["action"],
+    kind: kind as ReminderResult["kind"],
+    tenantId,
+    invoiceId,
+    invoiceNumber: text("invoiceNumber", 100),
+    customer: text("customer", 300),
+    stage: Number.isInteger(stage) && stage >= 0 && stage <= 20 ? stage : null,
+    testMode: value.testMode === true || value.testMode === "true",
+    sentTo: text("sentTo", 300),
+    subject: text("subject", 500),
+    status: status as ReminderResult["status"],
+    detail: text("detail", 2000),
+    requestedBy: text("requestedBy", 300),
+  };
+}
+
+router.post("/integrations/xero/reminders/result", requireSyncKey, async (req, res): Promise<void> => {
+  if (!isDatabaseConfigured()) {
+    res.status(503).json({ error: "The database is not configured." });
+    return;
+  }
+  const result = parseResult(req.body);
+  if (!result) {
+    res.status(400).json({ error: "Invalid reminder result." });
+    return;
+  }
+  const detail = result.detail ?? (result.subject ? `Subject: ${result.subject}` : null);
+  await logReminder({
+    xeroTenantId: result.tenantId,
+    xeroInvoiceId: result.invoiceId,
+    invoiceNumber: result.invoiceNumber ?? null,
+    contactName: result.customer ?? null,
+    kind: result.kind,
+    stage: result.stage ?? null,
+    testMode: result.testMode,
+    sentTo: result.sentTo ?? null,
+    status: result.status,
+    detail,
+    requestedBy: result.requestedBy ?? null,
+  });
+
+  // Live sends also show in the invoice's follow-up history; test sends are only logged.
+  if (result.status === "sent" && !result.testMode && result.action !== "xero_note") {
+    const settings = await getReminderSettings(ALL_TENANT_IDS);
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
+    const current = (await loadFollowUps([result.invoiceId]))?.get(`${result.tenantId}|${result.invoiceId}`);
+    const keepOutcome = current && ["promised", "disputed", "paid_elsewhere", "write_off_review"].includes(current.outcome);
+    await recordFollowUp({
+      tenantId: result.tenantId,
+      invoiceId: result.invoiceId,
+      invoiceNumber: result.invoiceNumber ?? null,
+      contactName: result.customer ?? null,
+      outcome: keepOutcome ? current!.outcome : "chased",
+      nextChaseDate: addDays(today, settings.minDaysBetween),
+      note: result.action === "reminder"
+        ? `${result.kind === "auto_reminder" ? "Automatic" : "Manual"} reminder (stage ${result.stage ?? "?"}) emailed to ${result.sentTo ?? "the customer"}.`
+        : "Invoice re-sent to the customer from Xero.",
+      author: result.requestedBy ?? AUTOMATIC_AUTHOR,
+      forceNote: true,
+    });
+  }
+  res.json({
+    status: result.status,
+    detail: result.status === "sent"
+      ? result.action === "reminder" ? `${result.testMode ? "Test " : ""}reminder (stage ${result.stage ?? "?"}) sent to ${result.sentTo ?? "the customer"}.` : result.action === "xero_resend" ? "Invoice re-sent from Xero." : "Note added to the invoice in Xero."
+      : detail ?? "Not sent.",
+    sentTo: result.sentTo ?? null,
+    testMode: result.testMode,
+  });
 });
 
 export default router;

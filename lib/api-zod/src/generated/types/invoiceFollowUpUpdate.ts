@@ -34,4 +34,5 @@ export interface InvoiceFollowUpUpdate {
      * @nullable
      */
   contactName?: string | null;
+  remindersPaused?: boolean;
 }

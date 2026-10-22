@@ -7,6 +7,8 @@
  */
 import type { InvoiceFollowUp } from './invoiceFollowUp';
 import type { MoneyPropertyRef } from './moneyPropertyRef';
+import type { ReminderInfo } from './reminderInfo';
+import type { XeroInvoiceActivity } from './xeroInvoiceActivity';
 
 export interface ReceivableInvoice {
   tenantId: string;
@@ -36,4 +38,8 @@ export interface ReceivableInvoice {
   /** A COHO property this invoice looks like rent for, so the same rent may be tracked in both systems */
   cohoProperty: MoneyPropertyRef | null;
   followUp: InvoiceFollowUp | null;
+  /** Payment reminder status; null when reminders aren't set up (no database tables) */
+  reminder: ReminderInfo | null;
+  /** Sends and reminders from the invoice's History in Xero; null if it couldn't be read */
+  xeroActivity: XeroInvoiceActivity | null;
 }

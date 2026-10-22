@@ -522,6 +522,7 @@ export interface InvoiceFollowUp {
   /** @nullable */
   updatedBy: string | null;
   updatedAt: string;
+  remindersPaused: boolean;
   /** Most recent first (up to 10) */
   notes: InvoiceFollowUpNote[];
 }
@@ -553,10 +554,40 @@ export interface InvoiceFollowUpUpdate {
      * @nullable
      */
   contactName?: string | null;
+  remindersPaused?: boolean;
 }
 
 export interface InvoicePaymentLink {
   url: string;
+}
+
+export interface ReminderInfo {
+  lastStage: number;
+  /** @nullable */
+  lastSentAt: string | null;
+  /** @nullable */
+  lastTestMode: boolean | null;
+  sentCount: number;
+  totalStages: number;
+  /** @nullable */
+  nextStage: number | null;
+  /** True when the next automatic run would send a reminder */
+  eligible: boolean;
+  reason: string;
+}
+
+export interface XeroHistoryEntry {
+  date: string;
+  change: string;
+  /** @nullable */
+  details: string | null;
+}
+
+export interface XeroInvoiceActivity {
+  /** @nullable */
+  sentOn: string | null;
+  reminderDates: string[];
+  recent: XeroHistoryEntry[];
 }
 
 export interface ReceivableInvoice {
@@ -587,6 +618,10 @@ export interface ReceivableInvoice {
   /** A COHO property this invoice looks like rent for, so the same rent may be tracked in both systems */
   cohoProperty: MoneyPropertyRef | null;
   followUp: InvoiceFollowUp | null;
+  /** Payment reminder status; null when reminders aren't set up (no database tables) */
+  reminder: ReminderInfo | null;
+  /** Sends and reminders from the invoice's History in Xero; null if it couldn't be read */
+  xeroActivity: XeroInvoiceActivity | null;
 }
 
 export interface PayableBill {
@@ -621,6 +656,21 @@ export interface ReceivablesCompany {
   error: string | null;
 }
 
+export type ReminderMode = typeof ReminderMode[keyof typeof ReminderMode];
+
+
+export const ReminderMode = {
+  test: 'test',
+  live: 'live',
+} as const;
+
+export interface ReminderStatus {
+  autoEnabled: boolean;
+  mode: ReminderMode;
+  internalEmail: string;
+  webhookConfigured: boolean;
+}
+
 export interface Receivables {
   asOf: string;
   /** @nullable */
@@ -630,6 +680,110 @@ export interface Receivables {
   bills: PayableBill[];
   /** False when the database is not configured or the follow-up tables are missing */
   followUpsAvailable: boolean;
+  reminders: ReminderStatus | null;
+}
+
+export interface ReminderCompany {
+  tenantId: string;
+  name: string;
+  holdsPropertyMoney: boolean;
+  enabled: boolean;
+  /**
+     * Whether Xero's own automatic reminders are on for this company (null if unknown)
+     * @nullable
+     */
+  xeroRemindersOn: boolean | null;
+}
+
+export interface ReminderSettings {
+  autoEnabled: boolean;
+  mode: ReminderMode;
+  internalEmail: string;
+  stageDays: number[];
+  maxOverdueDays: number;
+  minDaysBetween: number;
+  manualChaseCooldownDays: number;
+  xeroReminderCooldownDays: number;
+  weekdaysOnly: boolean;
+  xeroHistoryNotes: boolean;
+  companies: ReminderCompany[];
+  webhookConfigured: boolean;
+  /** @nullable */
+  updatedBy: string | null;
+  updatedAt: string;
+}
+
+export interface ReminderSettingsUpdate {
+  autoEnabled?: boolean;
+  mode?: ReminderMode;
+  /** @maxLength 200 */
+  internalEmail?: string;
+  /**
+     * @minItems 1
+     * @maxItems 6
+     * @items.minimum 1
+     * @items.maximum 365
+     */
+  stageDays?: number[];
+  /**
+     * @minimum 1
+     * @maximum 3650
+     */
+  maxOverdueDays?: number;
+  /**
+     * @minimum 1
+     * @maximum 60
+     */
+  minDaysBetween?: number;
+  /**
+     * @minimum 0
+     * @maximum 60
+     */
+  manualChaseCooldownDays?: number;
+  /**
+     * @minimum 0
+     * @maximum 60
+     */
+  xeroReminderCooldownDays?: number;
+  weekdaysOnly?: boolean;
+  xeroHistoryNotes?: boolean;
+  /** Xero tenant ids whose customers may receive automatic reminders */
+  companies?: string[];
+}
+
+export type InvoiceActionKind = typeof InvoiceActionKind[keyof typeof InvoiceActionKind];
+
+
+export const InvoiceActionKind = {
+  reminder: 'reminder',
+  xero_resend: 'xero_resend',
+  xero_note: 'xero_note',
+} as const;
+
+export interface InvoiceActionRequest {
+  action: InvoiceActionKind;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  note?: string | null;
+}
+
+export type InvoiceActionResultStatus = typeof InvoiceActionResultStatus[keyof typeof InvoiceActionResultStatus];
+
+
+export const InvoiceActionResultStatus = {
+  sent: 'sent',
+  failed: 'failed',
+  skipped: 'skipped',
+} as const;
+
+export interface InvoiceActionResult {
+  status: InvoiceActionResultStatus;
+  detail: string;
+  /** @nullable */
+  sentTo: string | null;
+  testMode: boolean;
 }
 
 export type PropertyRentalType = typeof PropertyRentalType[keyof typeof PropertyRentalType];

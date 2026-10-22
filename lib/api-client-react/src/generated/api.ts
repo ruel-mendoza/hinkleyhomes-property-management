@@ -50,6 +50,8 @@ import type {
   GetComplianceParams,
   GetPerformanceParams,
   HealthStatus,
+  InvoiceActionRequest,
+  InvoiceActionResult,
   InvoiceFollowUp,
   InvoiceFollowUpUpdate,
   InvoicePaymentLink,
@@ -66,6 +68,8 @@ import type {
   PropertySummary,
   PublicListingList,
   Receivables,
+  ReminderSettings,
+  ReminderSettingsUpdate,
   SignupEmailCheckRequest,
   SignupEmailCheckResult,
   SyncCohoActionsParams
@@ -2915,6 +2919,262 @@ export const useUpdateInvoiceFollowUp = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUpdateInvoiceFollowUpMutationOptions(options));
+    }
+
+export const getGetReminderSettingsUrl = () => {
+
+
+
+
+  return `/api/reminders/settings`
+}
+
+/**
+ * @summary Payment reminder settings (automatic reminders on/off, test or live, stages and safeguards)
+ */
+export const getReminderSettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<ReminderSettings> => {
+
+  return customFetch<ReminderSettings>(getGetReminderSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetReminderSettingsQueryKey = () => {
+    return [
+    `/api/reminders/settings`
+    ] as const;
+    }
+
+
+export const getGetReminderSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getReminderSettings>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReminderSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetReminderSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getReminderSettings>>> = ({ signal }) => getReminderSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getReminderSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetReminderSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getReminderSettings>>>
+export type GetReminderSettingsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Payment reminder settings (automatic reminders on/off, test or live, stages and safeguards)
+ */
+
+export function useGetReminderSettings<TData = Awaited<ReturnType<typeof getReminderSettings>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReminderSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetReminderSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateReminderSettingsUrl = () => {
+
+
+
+
+  return `/api/reminders/settings`
+}
+
+/**
+ * @summary Change payment reminder settings (audit-logged)
+ */
+export const updateReminderSettings = async (reminderSettingsUpdate: ReminderSettingsUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ReminderSettings> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ReminderSettings>(getUpdateReminderSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(reminderSettingsUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateReminderSettingsMutationKey = () => ['updateReminderSettings'] as const;
+
+export const getUpdateReminderSettingsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateReminderSettings>>, TError,UpdateReminderSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateReminderSettings>>, TError,UpdateReminderSettingsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateReminderSettingsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateReminderSettings>>, UpdateReminderSettingsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateReminderSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateReminderSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateReminderSettings>>>
+    export type UpdateReminderSettingsMutationBody = BodyType<ReminderSettingsUpdate>
+    export type UpdateReminderSettingsMutationError = ErrorType<void>
+    export type UpdateReminderSettingsMutationVariables = {data: BodyType<ReminderSettingsUpdate>}
+
+    /**
+ * @summary Change payment reminder settings (audit-logged)
+ */
+export const useUpdateReminderSettings = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateReminderSettings>>, TError,UpdateReminderSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateReminderSettings>>,
+        TError,
+        UpdateReminderSettingsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateReminderSettingsMutationOptions(options));
+    }
+
+export const getRunInvoiceActionUrl = (tenantId: string,
+    invoiceId: string,) => {
+
+
+
+
+  return `/api/receivables/${tenantId}/${invoiceId}/actions`
+}
+
+/**
+ * @summary Send a reminder now, re-send the invoice from Xero, or add a note to the invoice in Xero (through the n8n reminders workflow)
+ */
+export const runInvoiceAction = async (tenantId: string,
+    invoiceId: string,
+    invoiceActionRequest: InvoiceActionRequest, options?: Parameters<typeof customFetch>[1]): Promise<InvoiceActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<InvoiceActionResult>(getRunInvoiceActionUrl(tenantId,invoiceId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(invoiceActionRequest)
+  }
+);}
+
+
+
+
+
+export const getRunInvoiceActionMutationKey = () => ['runInvoiceAction'] as const;
+
+export const getRunInvoiceActionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runInvoiceAction>>, TError,RunInvoiceActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runInvoiceAction>>, TError,RunInvoiceActionMutationVariables, TContext> => {
+
+const mutationKey = getRunInvoiceActionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runInvoiceAction>>, RunInvoiceActionMutationVariables> = (props) => {
+          const {tenantId,invoiceId,data} = props ?? {};
+
+          return  runInvoiceAction(tenantId,invoiceId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunInvoiceActionMutationResult = NonNullable<Awaited<ReturnType<typeof runInvoiceAction>>>
+    export type RunInvoiceActionMutationBody = BodyType<InvoiceActionRequest>
+    export type RunInvoiceActionMutationError = ErrorType<void>
+    export type RunInvoiceActionMutationVariables = {tenantId: string;invoiceId: string;data: BodyType<InvoiceActionRequest>}
+
+    /**
+ * @summary Send a reminder now, re-send the invoice from Xero, or add a note to the invoice in Xero (through the n8n reminders workflow)
+ */
+export const useRunInvoiceAction = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runInvoiceAction>>, TError,RunInvoiceActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runInvoiceAction>>,
+        TError,
+        RunInvoiceActionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRunInvoiceActionMutationOptions(options));
     }
 
 export const getListPublicListingsUrl = () => {

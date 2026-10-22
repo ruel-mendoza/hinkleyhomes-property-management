@@ -17,6 +17,7 @@ export interface InvoiceFollowUp {
   /** @nullable */
   updatedBy: string | null;
   updatedAt: string;
+  remindersPaused: boolean;
   /** Most recent first (up to 10) */
   notes: InvoiceFollowUpNote[];
 }

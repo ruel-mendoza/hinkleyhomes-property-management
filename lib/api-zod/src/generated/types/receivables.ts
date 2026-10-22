@@ -8,6 +8,7 @@
 import type { PayableBill } from './payableBill';
 import type { ReceivableInvoice } from './receivableInvoice';
 import type { ReceivablesCompany } from './receivablesCompany';
+import type { ReminderStatus } from './reminderStatus';
 
 export interface Receivables {
   asOf: string;
@@ -18,4 +19,5 @@ export interface Receivables {
   bills: PayableBill[];
   /** False when the database is not configured or the follow-up tables are missing */
   followUpsAvailable: boolean;
+  reminders: ReminderStatus | null;
 }

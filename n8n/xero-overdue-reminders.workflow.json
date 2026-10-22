@@ -1,0 +1,1982 @@
+{
+  "name": "Xero overdue alerts & payment reminders (v4, PMS-controlled)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "a8d12803-b541-47d8-b037-9a249ac9fa87",
+      "name": "Daily 8 AM Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        17584,
+        6352
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "organizationId": "0a290129-b001-4bfb-903d-d27a8ac55738",
+        "returnAll": true,
+        "options": {
+          "statuses": [
+            "AUTHORISED"
+          ]
+        }
+      },
+      "id": "7837fffc-6629-457f-b3a7-a56ca4cd8a9c",
+      "name": "Hinkley Homes Management",
+      "type": "n8n-nodes-base.xero",
+      "typeVersion": 1,
+      "position": [
+        17920,
+        6352
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "organizationId": "47f65b32-d0d7-4417-bb5c-89ff2d93651e",
+        "returnAll": true,
+        "options": {
+          "statuses": [
+            "AUTHORISED"
+          ]
+        }
+      },
+      "id": "150efe0b-a93b-4751-a284-2f8cbf06bc9d",
+      "name": "Lettings",
+      "type": "n8n-nodes-base.xero",
+      "typeVersion": 1,
+      "position": [
+        18112,
+        6352
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "organizationId": "4c807578-e0a7-49ad-9644-8e705aec0c2a",
+        "returnAll": true,
+        "options": {
+          "statuses": [
+            "AUTHORISED"
+          ]
+        }
+      },
+      "id": "04286ea5-1782-4723-bd2b-0914d97ea6b8",
+      "name": "Hinkley Homes Stays Ltd",
+      "type": "n8n-nodes-base.xero",
+      "typeVersion": 1,
+      "position": [
+        18288,
+        6352
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "organizationId": "9d1fee42-4203-47d8-87aa-6fa8e8ac0fef",
+        "returnAll": true,
+        "options": {
+          "statuses": [
+            "AUTHORISED"
+          ]
+        }
+      },
+      "id": "3ebf53f1-3a0c-45f0-a502-f5bc65c317de",
+      "name": "Hinkley Homes Ltd",
+      "type": "n8n-nodes-base.xero",
+      "typeVersion": 1,
+      "position": [
+        18464,
+        6352
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "organizationId": "3ae8a283-c7e0-4287-9bcd-4c2561295890",
+        "returnAll": true,
+        "options": {
+          "statuses": [
+            "AUTHORISED"
+          ]
+        }
+      },
+      "id": "e723a5ab-3c1f-47e2-821e-c26a8ede155f",
+      "name": "Hinkley Homes Holdings",
+      "type": "n8n-nodes-base.xero",
+      "typeVersion": 1,
+      "position": [
+        18640,
+        6352
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine unpaid bills from all 5 Xero organisations that are already overdue\nconst ORG_SOURCES = [\n  { node: 'Hinkley Homes Management', label: 'Hinkley Homes Management' },\n  { node: 'Lettings', label: 'Lettings' },\n  { node: 'Hinkley Homes Stays Ltd', label: 'Hinkley Homes Stays Ltd' },\n  { node: 'Hinkley Homes Ltd', label: 'Hinkley Homes Ltd' },\n  { node: 'Hinkley Homes Holdings', label: 'Hinkley Homes Holdings' }\n];\n\nconst today = new Date(); \ntoday.setUTCHours(0, 0, 0, 0);\nconst out = [];\n\nfor (const src of ORG_SOURCES) {\n  for (const it of $(src.node).all()) {\n    const bill = it.json || {};\n    if (Object.keys(bill).length === 0) continue;\n    if (bill.Type !== 'ACCPAY' && bill.Type !== 'ACCREC') continue;\n    const isReceivable = bill.Type === 'ACCREC';\n    const invoiceType = isReceivable ? 'Accounts Receivable' : 'Accounts Payable';\n    \n    const amountDue = parseFloat(bill.AmountDue != null ? bill.AmountDue : (bill.Total || 0));\n    if (!(amountDue > 0)) continue;\n\n    const dueRaw = bill.DueDateString || bill.DueDate || '';\n    const msMatch = String(dueRaw).match(/Date\\((\\d+)/);\n    const dueDate = msMatch ? new Date(parseInt(msMatch[1], 10)) : new Date(dueRaw);\n    if (isNaN(dueDate.getTime())) continue;\n    \n    const daysToDue = Math.floor((Date.UTC(dueDate.getUTCFullYear(), dueDate.getUTCMonth(), dueDate.getUTCDate()) - today.getTime()) / 86400000);\n    if (daysToDue >= 0) continue; // overdue only\n\n    const overdueDays = Math.abs(daysToDue);\n    const dueDateText = dueDate.toISOString().slice(0, 10);\n    const supplier = bill.Contact && bill.Contact.Name ? bill.Contact.Name : 'Unknown Contact';\n    const invoiceNumber = bill.InvoiceNumber || bill.Reference || bill.InvoiceID || 'N/A';\n    const currency = bill.CurrencyCode || 'GBP';\n    const link = isReceivable\n      ? 'https://go.xero.com/AccountsReceivable/View.aspx?InvoiceID=' + bill.InvoiceID\n      : 'https://go.xero.com/AccountsPayable/View.aspx?invoiceID=' + bill.InvoiceID;\n\n    // Formatting currency symbol\n    const currencySymbol = currency === 'GBP' ? '£' : currency + ' ';\n    const formattedAmount = currencySymbol + amountDue.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\n\n    out.push({\n      json: {\n        company: src.label,\n        invoiceId: bill.InvoiceID,\n        invoiceType,\n        invoiceTypeCode: bill.Type,\n        supplier,\n        invoiceNumber,\n        dueDate: dueDateText,\n        daysToDue,\n        overdueDays,\n        amountDueRaw: amountDue,\n        amountDue: formattedAmount,\n        amountPaid: parseFloat(bill.AmountPaid || 0) || 0,\n        contactId: bill.Contact && bill.Contact.ContactID ? bill.Contact.ContactID : supplier,\n        currency,\n        xeroInvoiceUrl: link\n      }\n    });\n  }\n}\n\n// Sort most overdue first\nout.sort((x, y) => x.json.daysToDue - y.json.daysToDue);\nreturn out;"
+      },
+      "id": "2695f9f5-c010-4e7d-a428-70a9b2157786",
+      "name": "Build Overdue Bill Alerts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        19088,
+        6864
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Categorises every overdue item by VALUE, AGE and RISK, assigns a priority,\n// and builds one HTML email (tables) that puts the greatest financial impact first.\n// Only items NOT reported before (or that became more urgent since) are emailed. Nothing new = no email.\n// ---- Tweak these thresholds to suit the business ----\nconst VALUE_HIGH = 2500;   // GBP and above = High value\nconst VALUE_MEDIUM = 500;  // GBP and above = Medium value, below = Low\nconst EXPOSURE_HIGH = 10000; // total owed by one contact\nconst EXPOSURE_MEDIUM = 2500;\n// Age buckets with an indicative chance the money is never collected\nconst AGE_BUCKETS = [\n  { max: 30, label: '1-30 days', points: 0, lossRate: 0.05 },\n  { max: 60, label: '31-60 days', points: 1, lossRate: 0.10 },\n  { max: 90, label: '61-90 days', points: 2, lossRate: 0.25 },\n  { max: 180, label: '91-180 days', points: 3, lossRate: 0.50 },\n  { max: 365, label: '181-365 days', points: 4, lossRate: 0.75 },\n  { max: Infinity, label: 'Over 1 year', points: 5, lossRate: 0.90 }\n];\n// 0 = never send the full list; 1 = Monday ... 7 = Sunday: also send everything once a week\nconst FULL_DIGEST_WEEKDAY = 0;\n// Re-notify about invoices that are STILL overdue and unsettled every N days (0 = never repeat). Uses the saved record, no re-analysis.\nconst REPEAT_EVERY_DAYS = 7;\nconst NL = String.fromCharCode(10);\nconst gbp = n => '£' + Number(n || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\n\nconst items = $input.all().map(i => i.json).filter(j => j && Object.keys(j).length > 0 && j.amountDueRaw > 0);\n\n// Exposure per contact (same company + ledger + contact)\nconst byContact = {};\nfor (const j of items) {\n  const k = j.company + '|' + j.invoiceTypeCode + '|' + j.contactId;\n  if (!byContact[k]) byContact[k] = { count: 0, total: 0, company: j.company, contact: j.supplier, type: j.invoiceTypeCode };\n  byContact[k].count += 1;\n  byContact[k].total += j.amountDueRaw;\n}\n\nconst ranked = items.map(j => {\n  const c = byContact[j.company + '|' + j.invoiceTypeCode + '|' + j.contactId];\n  const age = AGE_BUCKETS.find(b => j.overdueDays <= b.max);\n  const value = j.amountDueRaw >= VALUE_HIGH ? 'High' : j.amountDueRaw >= VALUE_MEDIUM ? 'Medium' : 'Low';\n  let score = age.points;\n  const reasons = [];\n  if (age.points >= 2) reasons.push(age.label + ' overdue');\n  if (c.count >= 3) { score += 2; reasons.push(c.count + ' overdue items for this contact'); }\n  else if (c.count === 2) { score += 1; reasons.push('2 overdue items for this contact'); }\n  if (c.total >= EXPOSURE_HIGH) { score += 2; reasons.push(gbp(c.total) + ' total outstanding with contact'); }\n  else if (c.total >= EXPOSURE_MEDIUM) { score += 1; reasons.push(gbp(c.total) + ' total outstanding with contact'); }\n  if (j.amountPaid > 0) { score -= 1; reasons.push('part-paid (engaging)'); }\n  const risk = score >= 5 ? 'High' : score >= 2 ? 'Medium' : 'Low';\n  let priority = 3;\n  if ((value === 'High' && risk !== 'Low') || (value === 'Medium' && risk === 'High')) priority = 1;\n  else if ((value === 'High') || (value === 'Medium' && risk === 'Medium') || (value === 'Low' && risk === 'High')) priority = 2;\n  const valueAtRisk = Math.round(j.amountDueRaw * age.lossRate * 100) / 100;\n  return Object.assign({}, j, { valueBand: value, ageBucket: age.label, riskScore: score, riskProfile: risk, riskReasons: reasons, priority, valueAtRisk, contactExposure: c.total, contactOverdueCount: c.count });\n});\n\nranked.sort((a, b) => a.priority - b.priority || b.valueAtRisk - a.valueAtRisk || b.amountDueRaw - a.amountDueRaw);\n\n\n// ---- what has already been reported (data table \"Overdue Reported\") ----\nconst reported = {};\nconst lastSeen = {}, firstSeen = {};\ntry {\n  for (const r of $('Get reported overdue').all()) {\n    const j = r.json || {};\n    if (!j.invoice_key) continue;\n    const p = Number(j.priority) || 3;\n    reported[j.invoice_key] = reported[j.invoice_key] === undefined ? p : Math.min(reported[j.invoice_key], p);\n    const t = Date.parse(j.reported_at) || 0;\n    if (!(lastSeen[j.invoice_key] >= t)) lastSeen[j.invoice_key] = t;\n    if (t && !(firstSeen[j.invoice_key] <= t)) firstSeen[j.invoice_key] = t;\n  }\n} catch (e) { /* no history available: everything counts as new */ }\nfor (const r of ranked) {\n  const key = r.company + '|' + (r.invoiceId || r.invoiceNumber);\n  r.invoiceKey = key;\n  if (firstSeen[key]) r.firstReported = new Date(firstSeen[key]).toISOString().slice(0, 10);\n  if (reported[key] === undefined) r.change = 'new';\n  else if (r.priority < reported[key]) r.change = 'escalated';\n  else if (REPEAT_EVERY_DAYS > 0 && lastSeen[key] && (Date.now() - lastSeen[key]) >= REPEAT_EVERY_DAYS * 86400000 - 3600000) r.change = 'reminder';\n  else r.change = '';\n}\nconst fullDay = FULL_DIGEST_WEEKDAY > 0 && $now.setZone('Europe/London').weekday === FULL_DIGEST_WEEKDAY;\nconst all = ranked;\nconst fresh = ranked.filter(r => r.change);\nif (!fresh.length && !fullDay) return [];\nconst shown = fullDay ? all : fresh;\nconst rec = all.filter(r => r.invoiceTypeCode === 'ACCREC');\nconst pay = all.filter(r => r.invoiceTypeCode === 'ACCPAY');\nconst sum = (arr, f) => arr.reduce((t, r) => t + (r[f] || 0), 0);\nconst esc = v => String(v === null || v === undefined ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\n\n// ---------- HTML email (inline styles so it renders in Gmail and Outlook) ----------\nconst F = 'font-family:Arial,Helvetica,sans-serif;';\nconst TABLE = 'border-collapse:collapse;width:100%;' + F + 'font-size:13px;';\nconst TH = 'background:#f2f4f7;color:#344054;text-align:left;padding:8px 10px;border:1px solid #d0d5dd;white-space:nowrap;';\nconst TD = 'padding:8px 10px;border:1px solid #e4e7ec;vertical-align:top;color:#101828;';\nconst TDR = TD + 'text-align:right;white-space:nowrap;';\nconst H2 = F + 'font-size:15px;color:#101828;margin:24px 0 8px;';\nconst pill = (txt, bg, fg) => '<span style=\"display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;background:' + bg + ';color:' + fg + ';\">' + esc(txt) + '</span>';\nconst RISK = { High: ['#fee4e2', '#b42318'], Medium: ['#fef0c7', '#b54708'], Low: ['#dcfae6', '#067647'] };\nconst riskPill = r => pill(r, RISK[r][0], RISK[r][1]);\nconst TIER = {\n  1: { name: 'Priority 1 - act now', bg: '#b42318' },\n  2: { name: 'Priority 2 - chase this week', bg: '#b54708' },\n  3: { name: 'Priority 3 - monitor', bg: '#475467' }\n};\n\nlet h = '<div style=\"' + F + 'max-width:1000px;color:#101828;\">';\nh += '<h1 style=\"' + F + 'font-size:20px;margin:0 0 4px;\">' + (fullDay ? 'Overdue invoices and bills: full list' : 'New overdue invoices and bills') + '</h1>';\nh += '<div style=\"' + F + 'font-size:13px;color:#475467;margin:0 0 16px;\">' + esc($now.setZone('Europe/London').toFormat('cccc dd LLLL yyyy')) + ' | all five Xero organisations</div>';\n\n// Overview\nconst card = (label, big, small, color) => '<td style=\"width:33%;padding:12px 14px;border:1px solid #e4e7ec;background:#fcfcfd;vertical-align:top;\"><div style=\"font-size:12px;color:#475467;\">' + esc(label) + '</div><div style=\"font-size:22px;font-weight:bold;color:' + color + ';margin:4px 0;\">' + esc(big) + '</div><div style=\"font-size:12px;color:#475467;\">' + esc(small) + '</div></td>';\nh += '<table style=\"' + TABLE + '\"><tr>' +\n  card('Owed to us (customer invoices)', gbp(sum(rec, 'amountDueRaw')), rec.length + ' overdue | est. value at risk ' + gbp(sum(rec, 'valueAtRisk')), '#067647') +\n  card('We owe (supplier bills)', gbp(sum(pay, 'amountDueRaw')), pay.length + ' overdue', '#b42318') +\n  card(fullDay ? 'Needs action now' : 'New or worse since last report', String(shown.length) + ' item(s)', fresh.filter(r => r.change === 'new').length + ' new, ' + fresh.filter(r => r.change === 'escalated').length + ' more urgent, ' + fresh.filter(r => r.change === 'reminder').length + ' still unpaid | ' + all.length + ' overdue in total', '#101828') +\n  '</tr></table>';\n\nif (fullDay) {\n// Matrix\nh += '<h2 style=\"' + H2 + '\">Value x risk matrix - customer invoices (count / amount)</h2>';\nh += '<table style=\"' + TABLE + '\"><tr><th style=\"' + TH + '\">Value \\\\ Risk</th><th style=\"' + TH + '\">High risk</th><th style=\"' + TH + '\">Medium risk</th><th style=\"' + TH + '\">Low risk</th></tr>';\nfor (const v of ['High', 'Medium', 'Low']) {\n  h += '<tr><td style=\"' + TD + 'font-weight:bold;\">' + v + ' value</td>';\n  for (const rk of ['High', 'Medium', 'Low']) {\n    const s = rec.filter(r => r.valueBand === v && r.riskProfile === rk);\n    h += '<td style=\"' + TD + (s.length ? 'background:' + RISK[rk][0] + ';' : 'color:#98a2b3;') + '\">' + s.length + ' / ' + esc(gbp(sum(s, 'amountDueRaw'))) + '</td>';\n  }\n  h += '</tr>';\n}\nh += '</table>';\n\n// Ageing + top customers\nconst ageRows = AGE_BUCKETS.map(b => ({ b, s: rec.filter(r => r.ageBucket === b.label) })).filter(x => x.s.length);\nif (ageRows.length) {\n  h += '<h2 style=\"' + H2 + '\">Ageing - customer invoices</h2><table style=\"' + TABLE + '\"><tr><th style=\"' + TH + '\">Age</th><th style=\"' + TH + '\">Items</th><th style=\"' + TH + 'text-align:right;\">Amount</th></tr>';\n  for (const x of ageRows) h += '<tr><td style=\"' + TD + '\">' + esc(x.b.label) + '</td><td style=\"' + TD + '\">' + x.s.length + '</td><td style=\"' + TDR + '\">' + esc(gbp(sum(x.s, 'amountDueRaw'))) + '</td></tr>';\n  h += '</table>';\n}\nconst topCustomers = Object.values(byContact).filter(c => c.type === 'ACCREC').sort((a, b) => b.total - a.total).slice(0, 5);\nif (topCustomers.length) {\n  h += '<h2 style=\"' + H2 + '\">Top customers by amount owed</h2><table style=\"' + TABLE + '\"><tr><th style=\"' + TH + '\">#</th><th style=\"' + TH + '\">Customer</th><th style=\"' + TH + '\">Company</th><th style=\"' + TH + '\">Invoices</th><th style=\"' + TH + 'text-align:right;\">Total owed</th></tr>';\n  topCustomers.forEach((c, n) => { h += '<tr><td style=\"' + TD + '\">' + (n + 1) + '</td><td style=\"' + TD + '\">' + esc(c.contact) + '</td><td style=\"' + TD + '\">' + esc(c.company) + '</td><td style=\"' + TD + '\">' + c.count + '</td><td style=\"' + TDR + '\">' + esc(gbp(c.total)) + '</td></tr>'; });\n  h += '</table>';\n}\n\n}\n// Priority tiers\nfor (const t of [1, 2, 3]) {\n  const s = shown.filter(r => r.priority === t);\n  if (!s.length && !fullDay) continue;\n  h += '<div style=\"' + F + 'background:' + TIER[t].bg + ';color:#ffffff;padding:8px 12px;margin:28px 0 0;font-size:14px;font-weight:bold;\">' + esc(TIER[t].name) + ' <span style=\"font-weight:normal;\">| ' + s.length + ' item(s) | ' + esc(gbp(sum(s, 'amountDueRaw'))) + '</span></div>';\n  if (!s.length) { h += '<div style=\"' + F + 'font-size:13px;color:#475467;padding:10px 12px;border:1px solid #e4e7ec;\">Nothing in this tier.</div>'; continue; }\n  h += '<table style=\"' + TABLE + '\"><tr>' + ['#', 'Type', 'Company', 'Contact', 'Invoice', 'Amount due', 'Due date', 'Days overdue', 'Value', 'Risk', 'Why / notes'].map((x, i) => '<th style=\"' + TH + (i === 5 || i === 7 ? 'text-align:right;' : '') + '\">' + x + '</th>').join('') + '</tr>';\n  s.forEach((r, n) => {\n    const owed = r.invoiceTypeCode === 'ACCREC';\n    const notes = r.riskReasons.slice();\n    if (r.change === 'new') notes.unshift('NEW'); else if (r.change === 'escalated') notes.unshift('MORE URGENT than last report'); else if (r.change === 'reminder') notes.unshift('STILL UNPAID - first reported ' + (r.firstReported || 'earlier'));\n    if (owed) notes.push('Est. value at risk ' + gbp(r.valueAtRisk));\n    h += '<tr>' +\n      '<td style=\"' + TD + '\">' + (n + 1) + '</td>' +\n      '<td style=\"' + TD + '\">' + (owed ? pill('Owed to us', '#dcfae6', '#067647') : pill('We owe', '#fee4e2', '#b42318')) + '</td>' +\n      '<td style=\"' + TD + '\">' + esc(r.company) + '</td>' +\n      '<td style=\"' + TD + '\">' + esc(r.supplier) + '</td>' +\n      '<td style=\"' + TD + 'white-space:nowrap;\"><a href=\"' + esc(r.xeroInvoiceUrl) + '\" style=\"color:#175cd3;text-decoration:none;\">' + esc(r.invoiceNumber) + '</a></td>' +\n      '<td style=\"' + TDR + 'font-weight:bold;\">' + esc(r.amountDue) + '</td>' +\n      '<td style=\"' + TD + 'white-space:nowrap;\">' + esc(r.dueDate) + '</td>' +\n      '<td style=\"' + TDR + '\">' + r.overdueDays + '</td>' +\n      '<td style=\"' + TD + '\">' + esc(r.valueBand) + '</td>' +\n      '<td style=\"' + TD + '\">' + riskPill(r.riskProfile) + '</td>' +\n      '<td style=\"' + TD + 'font-size:12px;color:#475467;\">' + (notes.length ? esc(notes.join('; ')) : '-') + '</td></tr>';\n  });\n  h += '</table>';\n}\n\n// How it is categorised\nh += '<h2 style=\"' + H2 + '\">How items are categorised</h2>';\nh += '<table style=\"' + TABLE + '\">' + [\n  ['Value', 'High ' + gbp(VALUE_HIGH) + ' and over | Medium ' + gbp(VALUE_MEDIUM) + ' to ' + gbp(VALUE_HIGH - 0.01) + ' | Low below ' + gbp(VALUE_MEDIUM)],\n  ['Risk', 'Based on age, how many items the contact has overdue, their total outstanding, and whether they have part-paid.'],\n  ['Priority 1', 'High value with Medium or High risk, or Medium value with High risk.'],\n  ['Priority 2', 'Other High value, Medium value with Medium risk, or Low value with High risk.'],\n  ['Priority 3', 'Everything else.'],\n  ['Value at risk', 'A rough guide (amount x typical loss rate for that age), not an accounting provision.']\n].map(r => '<tr><td style=\"' + TD + 'font-weight:bold;width:140px;\">' + esc(r[0]) + '</td><td style=\"' + TD + '\">' + esc(r[1]) + '</td></tr>').join('') + '</table>';\nh += '</div>';\n\nconst p1 = shown.filter(r => r.priority === 1).length;\nconst nNew = fresh.filter(r => r.change === 'new').length, nEsc = fresh.filter(r => r.change === 'escalated').length, nRem = fresh.filter(r => r.change === 'reminder').length;\nconst subject = (fullDay ? 'Overdue full list - ' + all.length + ' item(s)' : 'New overdue - ' + nNew + ' new' + (nEsc ? ', ' + nEsc + ' more urgent' : '') + (nRem ? ', ' + nRem + ' still unpaid' : '')) + ', ' + p1 + ' priority 1 - ' + gbp(sum(shown, 'amountDueRaw')) + ' - ' + $now.setZone('Europe/London').toFormat('dd LLL yyyy');\nconst body = shown.length + ' item(s) shown, ' + all.length + ' overdue in total: ' + rec.length + ' owed to us (' + gbp(sum(rec, 'amountDueRaw')) + '), ' + pay.length + ' we owe (' + gbp(sum(pay, 'amountDueRaw')) + '). ' + p1 + ' priority 1.';\n\nconst to_record = fresh.map(r => ({ invoice_key: r.invoiceKey, invoice_id: r.invoiceId || '', company: r.company, ledger: r.invoiceType, contact: r.supplier, invoice_number: r.invoiceNumber, amount_due: r.amountDueRaw, priority: r.priority, overdue_days: r.overdueDays, reason: r.change, reported_at: new Date().toISOString() }));\nreturn [{ json: { subject, html: h, body, to_record, totalItems: all.length, priority1Count: p1, receivableTotal: sum(rec, 'amountDueRaw'), receivableValueAtRisk: sum(rec, 'valueAtRisk'), payableTotal: sum(pay, 'amountDueRaw'), items: shown } }];\n"
+      },
+      "id": "39b3d303-ed92-4896-8d9d-daee402d828b",
+      "name": "Rank by Impact and Risk",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        19376,
+        6880
+      ]
+    },
+    {
+      "parameters": {
+        "toRecipients": "={{ $('Report Settings').first().json.reportRecipients }}",
+        "subject": "={{ $json.subject }}",
+        "bodyContent": "={{ $json.html }}",
+        "additionalFields": {
+          "bodyContentType": "html"
+        }
+      },
+      "id": "53593021-c8a4-43ee-bdd5-2ebcc90fd186",
+      "name": "Send a message",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        19680,
+        6864
+      ],
+      "executeOnce": true,
+      "webhookId": "3977ffa3-6b48-4343-a491-8ed407078af4",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "xVu5DTOSVHg6Rm77",
+          "name": "Microsoft Outlook account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "rs-report-recipients",
+              "name": "reportRecipients",
+              "value": "ruel@hinkleyhomes.co.uk, accounts@hinkleyhomes.co.uk",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cf8941b5-b4bb-4b9d-b1a0-29820c2c5ab8",
+      "name": "Report Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        19088,
+        6240
+      ],
+      "executeOnce": true,
+      "notes": "Who receives the daily overdue digest and cost-increase alerts. Payment reminder settings (on/off, test/live, stages) are in the PMS app: Invoices → Reminder settings."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Writes a human-sounding reminder whose tone escalates with the stage.\n// Every item comes from the PMS app (daily plan or \"send now\"), which has already\n// decided the stage, the recipient (internal address in test mode) and any CC.\n// Several wordings per stage so customers don't receive identical robotic emails.\nconst NL = String.fromCharCode(10);\n\nfunction pick(list, seed) {\n  let h = 0;\n  for (const ch of String(seed)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;\n  return list[h % list.length];\n}\n\nconst out = [];\nfor (const item of $input.all()) {\n  const inv = item.json || {};\n  const hello = inv.firstName ? 'Hi ' + inv.firstName + ',' : 'Hello,';\n  const ref = 'invoice ' + inv.invoiceNumber + ' for ' + inv.amountDue;\n  const due = new Date(inv.dueDate + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });\n\n  const scripts = {\n    1: [\n      { subject: 'Quick reminder: invoice ' + inv.invoiceNumber, body: [hello, '', 'Just a gentle nudge - our records show ' + ref + ' was due on ' + due + ' and is still open.', '', \"It's very possible this has already been sorted or simply slipped through the net, in which case please ignore this note.\", '', 'Thanks so much,'] },\n      { subject: 'Invoice ' + inv.invoiceNumber + ' - friendly reminder', body: [hello, '', 'Hope all is well. I noticed ' + ref + ' passed its due date on ' + due + '.', '', \"If payment is already on its way, thank you! If not, could you pop it through when you get a moment?\", '', 'Kind regards,'] }\n    ],\n    2: [\n      { subject: 'Following up on invoice ' + inv.invoiceNumber, body: [hello, '', 'I wanted to follow up on ' + ref + ', which is now ' + inv.overdueDays + ' days overdue (due ' + due + ').', '', 'If there is anything holding it up - a query on the invoice, a missing PO, or anything else - just reply and let me know and I will happily help.', '', 'Many thanks,'] },\n      { subject: 'Invoice ' + inv.invoiceNumber + ' is still outstanding', body: [hello, '', 'Checking in on ' + ref + '. It was due on ' + due + ' and we have not yet received payment.', '', 'Could you let me know when we can expect it? If something is not right with the invoice, I would rather hear about it so we can fix it.', '', 'Thanks,'] }\n    ],\n    3: [\n      { subject: 'Action needed: invoice ' + inv.invoiceNumber + ' (' + inv.overdueDays + ' days overdue)', body: [hello, '', 'I am getting in touch again about ' + ref + ', now ' + inv.overdueDays + ' days past its due date of ' + due + '.', '', 'Could you please arrange payment this week, or reply with a date we can expect it? If it would help to talk it through or set up a payment plan, I am very happy to arrange a quick call.', '', 'Best regards,'] },\n      { subject: 'Invoice ' + inv.invoiceNumber + ' - please confirm a payment date', body: [hello, '', 'We still have ' + ref + ' showing as unpaid, two weeks past the due date (' + due + ').', '', 'I would really appreciate it if you could confirm when payment will be made. If there is a problem on your side, let me know and we will work something out together.', '', 'Kind regards,'] }\n    ],\n    4: [\n      { subject: 'Final reminder: invoice ' + inv.invoiceNumber + ' is ' + inv.overdueDays + ' days overdue', body: [hello, '', 'Despite our earlier reminders, ' + ref + ' (due ' + due + ') remains unpaid and is now ' + inv.overdueDays + ' days overdue.', '', 'Please arrange payment within the next 7 days. If we do not hear from you, we will need to escalate this internally and review next steps on the account.', '', 'If you are experiencing difficulties, please reply today - we would much rather agree a plan with you than take further action.', '', 'Regards,'] }\n    ]\n  };\n\n\n  const script = pick(scripts[inv.wordingStage] || scripts[1], inv.invoiceId);\n  const body = script.body.concat([inv.signOffName || 'The Accounts Team', inv.company]).join(NL);\n  let subject = script.subject;\n  if (inv.testMode) subject = '[TEST - would go to ' + (inv.customerEmail || 'NO EMAIL ON FILE') + '] ' + subject;\n  else if (!inv.customerEmail) subject = '[No customer email on file: ' + inv.customer + '] ' + subject;\n\n  out.push({ json: Object.assign({}, inv, { subject, body }) });\n}\nreturn out;"
+      },
+      "id": "e2a3efb6-0b42-4f1e-86cf-7e2ff5e3baf7",
+      "name": "Write Reminder Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        18640,
+        6080
+      ],
+      "notes": "Wording is unchanged from v3. Stage 4 wording is the final notice; the PMS uses it for the last stage only."
+    },
+    {
+      "parameters": {
+        "toRecipients": "={{ $json.sendTo }}",
+        "subject": "={{ $json.subject }}",
+        "bodyContent": "={{ $json.body }}",
+        "additionalFields": {
+          "ccRecipients": "={{ $json.cc }}",
+          "bodyContentType": "text"
+        }
+      },
+      "id": "1c58b3d9-6edf-406b-b0c2-f355edd424c0",
+      "name": "Send Reminder Email",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        19120,
+        5980
+      ],
+      "webhookId": "a4910bb8-ccca-454d-97ec-441f98dd86c3",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "xVu5DTOSVHg6Rm77",
+          "name": "Microsoft Outlook account 2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://api.xero.com/api.xro/2.0/Invoices",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xeroOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "where",
+              "value": "={{ \"Type==\\\"ACCPAY\\\" AND (Status==\\\"AUTHORISED\\\" OR Status==\\\"PAID\\\") AND Date>=DateTime(\" + $now.setZone(\"Europe/London\").minus({ months: 12 }).startOf(\"month\").toFormat(\"yyyy,MM,dd\") + \")\" }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xero-tenant-id",
+              "value": "0a290129-b001-4bfb-903d-d27a8ac55738"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "page",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ ($response.body.Invoices || []).length < 100 }}",
+              "limitPagesFetched": true,
+              "maxRequests": 50,
+              "requestInterval": 500
+            }
+          }
+        }
+      },
+      "id": "c9e645de-e0f1-4fa1-8c36-ca118990f1f3",
+      "name": "Management Bill History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        19088,
+        7280
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.xero.com/api.xro/2.0/Invoices",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xeroOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "where",
+              "value": "={{ \"Type==\\\"ACCPAY\\\" AND (Status==\\\"AUTHORISED\\\" OR Status==\\\"PAID\\\") AND Date>=DateTime(\" + $now.setZone(\"Europe/London\").minus({ months: 12 }).startOf(\"month\").toFormat(\"yyyy,MM,dd\") + \")\" }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xero-tenant-id",
+              "value": "47f65b32-d0d7-4417-bb5c-89ff2d93651e"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "page",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ ($response.body.Invoices || []).length < 100 }}",
+              "limitPagesFetched": true,
+              "maxRequests": 50,
+              "requestInterval": 500
+            }
+          }
+        }
+      },
+      "id": "34dfceaf-9468-4d04-9b05-1190f4aafe7b",
+      "name": "Lettings Bill History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        19312,
+        7280
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.xero.com/api.xro/2.0/Invoices",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xeroOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "where",
+              "value": "={{ \"Type==\\\"ACCPAY\\\" AND (Status==\\\"AUTHORISED\\\" OR Status==\\\"PAID\\\") AND Date>=DateTime(\" + $now.setZone(\"Europe/London\").minus({ months: 12 }).startOf(\"month\").toFormat(\"yyyy,MM,dd\") + \")\" }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xero-tenant-id",
+              "value": "4c807578-e0a7-49ad-9644-8e705aec0c2a"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "page",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ ($response.body.Invoices || []).length < 100 }}",
+              "limitPagesFetched": true,
+              "maxRequests": 50,
+              "requestInterval": 500
+            }
+          }
+        }
+      },
+      "id": "721b3db0-4a4a-4e5d-8696-36e6c9afa447",
+      "name": "Stays Bill History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        19536,
+        7280
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.xero.com/api.xro/2.0/Invoices",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xeroOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "where",
+              "value": "={{ \"Type==\\\"ACCPAY\\\" AND (Status==\\\"AUTHORISED\\\" OR Status==\\\"PAID\\\") AND Date>=DateTime(\" + $now.setZone(\"Europe/London\").minus({ months: 12 }).startOf(\"month\").toFormat(\"yyyy,MM,dd\") + \")\" }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xero-tenant-id",
+              "value": "9d1fee42-4203-47d8-87aa-6fa8e8ac0fef"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "page",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ ($response.body.Invoices || []).length < 100 }}",
+              "limitPagesFetched": true,
+              "maxRequests": 50,
+              "requestInterval": 500
+            }
+          }
+        }
+      },
+      "id": "adcf85e5-99a9-4388-b96d-a587b3b54d10",
+      "name": "Hinkley Homes Ltd Bill History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        19760,
+        7280
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.xero.com/api.xro/2.0/Invoices",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xeroOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "where",
+              "value": "={{ \"Type==\\\"ACCPAY\\\" AND (Status==\\\"AUTHORISED\\\" OR Status==\\\"PAID\\\") AND Date>=DateTime(\" + $now.setZone(\"Europe/London\").minus({ months: 12 }).startOf(\"month\").toFormat(\"yyyy,MM,dd\") + \")\" }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xero-tenant-id",
+              "value": "3ae8a283-c7e0-4287-9bcd-4c2561295890"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "page",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ ($response.body.Invoices || []).length < 100 }}",
+              "limitPagesFetched": true,
+              "maxRequests": 50,
+              "requestInterval": 500
+            }
+          }
+        }
+      },
+      "id": "6f89361a-7fca-4b96-92a3-1f388380e3c8",
+      "name": "Holdings Bill History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        19984,
+        7280
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compares last month's supplier and expense-category spend with the previous 6 months,\n// and each new recurring bill with that supplier's usual bill amount.\n// ---- Tweak these thresholds to suit the business ----\nconst BASELINE_MONTHS = 6;        // months of history used as \"normal\"\nconst MIN_ACTIVE_MONTHS = 4;      // must be billed in at least this many of those months to count as recurring\nconst SPEND_RISE_PCT = 25;        // flag monthly spend this % above normal...\nconst SPEND_RISE_MIN = 100;       // ...and at least this many GBP above normal\nconst PRICE_RISE_PCT = 15;        // flag a recurring bill this % above the supplier's usual amount...\nconst PRICE_RISE_MIN = 25;        // ...and at least this many GBP above it\nconst PRICE_MAX_VARIATION = 0.15; // usual bills must be fairly steady (within ~15%) to count as a fixed recurring charge\nconst PRICE_LOOKBACK_DAYS = 45;   // check bills dated in the last N days\nconst HIGH_PCT = 50;              // severity High at this % and...\nconst HIGH_ABS = 500;             // ...this many GBP above normal\n\nconst ORGS = [\n  { node: 'Management Bill History', label: 'Hinkley Homes Management' },\n  { node: 'Lettings Bill History', label: 'Lettings' },\n  { node: 'Stays Bill History', label: 'Hinkley Homes Stays Ltd' },\n  { node: 'Hinkley Homes Ltd Bill History', label: 'Hinkley Homes Ltd' },\n  { node: 'Holdings Bill History', label: 'Hinkley Homes Holdings' }\n];\n\nconst now = $now.setZone('Europe/London');\nconst recentMonth = now.minus({ months: 1 }).toFormat('yyyy-MM');\nconst baselineMonths = [];\nfor (let i = 2; i <= BASELINE_MONTHS + 1; i++) baselineMonths.push(now.minus({ months: i }).toFormat('yyyy-MM'));\nconst priceCutoff = now.minus({ days: PRICE_LOOKBACK_DAYS }).toFormat('yyyy-MM-dd');\nconst round2 = n => Math.round(n * 100) / 100;\n\nfunction billDate(b) {\n  const s = String(b.DateString || '');\n  if (s.length >= 10) return s.slice(0, 10);\n  const m = String(b.Date || '').match(/Date\\((\\d+)/);\n  return m ? new Date(parseInt(m[1], 10)).toISOString().slice(0, 10) : '';\n}\n\nconst suppliers = {};\nconst categories = {};\nfunction add(map, key, base, ym, amount) {\n  if (!map[key]) map[key] = Object.assign({ months: {} }, base);\n  map[key].months[ym] = (map[key].months[ym] || 0) + amount;\n  return map[key];\n}\n\nlet billsSeen = 0;\nfor (const o of ORGS) {\n  const bills = [];\n  for (const it of $(o.node).all()) {\n    const j = it.json || {};\n    if (Array.isArray(j.Invoices)) bills.push(...j.Invoices); else if (j.Type) bills.push(j);\n  }\n  for (const b of bills) {\n    if (b.Type !== 'ACCPAY') continue;\n    if (b.Status !== 'AUTHORISED' && b.Status !== 'PAID') continue;\n    const d = billDate(b);\n    if (!d) continue;\n    billsSeen++;\n    const ym = d.slice(0, 7);\n    const name = b.Contact && b.Contact.Name ? b.Contact.Name : 'Unknown supplier';\n    const amount = parseFloat(b.SubTotal != null ? b.SubTotal : (b.Total || 0)) || 0;\n    const sup = add(suppliers, o.label + '|' + name, { company: o.label, name, bills: [] }, ym, amount);\n    sup.bills.push({ id: b.InvoiceID, number: b.InvoiceNumber || b.Reference || '', date: d, amount });\n    for (const li of (Array.isArray(b.LineItems) ? b.LineItems : [])) {\n      const code = li.AccountCode || 'Uncoded';\n      const lineAmt = parseFloat(li.LineAmount != null ? li.LineAmount : ((li.Quantity || 0) * (li.UnitAmount || 0))) || 0;\n      const cat = add(categories, o.label + '|' + code, { company: o.label, name: 'Account ' + code, descriptions: {} }, ym, lineAmt);\n      const desc = String(li.Description || '').split(String.fromCharCode(10))[0].slice(0, 40);\n      if (desc) cat.descriptions[desc] = (cat.descriptions[desc] || 0) + 1;\n    }\n  }\n}\n\nconst flags = [];\nfunction severity(pct, inc) { return pct >= HIGH_PCT && inc >= HIGH_ABS ? 'High' : 'Medium'; }\n\nfunction checkSpend(map, flagType) {\n  for (const e of Object.values(map)) {\n    const vals = baselineMonths.map(m => e.months[m] || 0);\n    const active = vals.filter(v => v > 0).length;\n    if (active < MIN_ACTIVE_MONTHS) continue; // not a recurring cost\n    const baseline = vals.reduce((t, v) => t + v, 0) / BASELINE_MONTHS;\n    const recent = e.months[recentMonth] || 0;\n    const inc = recent - baseline;\n    if (baseline <= 0) continue;\n    const pct = inc / baseline * 100;\n    if (pct < SPEND_RISE_PCT || inc < SPEND_RISE_MIN) continue;\n    let label = e.name;\n    if (e.descriptions) {\n      const top = Object.entries(e.descriptions).sort((a, b) => b[1] - a[1])[0];\n      if (top) label += ' (e.g. \"' + top[0] + '\")';\n    }\n    flags.push({\n      flagKey: recentMonth + '|' + e.company + '|' + flagType + '|' + e.name,\n      period: recentMonth, company: e.company, flagType, subjectName: label,\n      recentAmount: round2(recent), baselineAmount: round2(baseline), increaseAmount: round2(inc), increasePct: Math.round(pct),\n      severity: severity(pct, inc),\n      detail: recentMonth + ' spend vs average of ' + baselineMonths[baselineMonths.length - 1] + ' to ' + baselineMonths[0] + ' (billed in ' + active + ' of ' + BASELINE_MONTHS + ' months)',\n      link: ''\n    });\n  }\n}\ncheckSpend(suppliers, 'Supplier spend');\ncheckSpend(categories, 'Expense category');\n\n// Recurring bill price rises: a new bill noticeably above a supplier's steady usual amount\nfor (const e of Object.values(suppliers)) {\n  const bills = e.bills.filter(x => x.amount > 0).sort((a, b) => a.date < b.date ? -1 : 1);\n  for (let i = 0; i < bills.length; i++) {\n    const latest = bills[i];\n    if (latest.date < priceCutoff) continue;\n    const prior = bills.slice(0, i).slice(-6);\n    if (prior.length < 3) continue;\n    const sorted = prior.map(x => x.amount).sort((a, b) => a - b);\n    const median = sorted[Math.floor(sorted.length / 2)];\n    if (!(median > 0)) continue;\n    if ((sorted[sorted.length - 1] - sorted[0]) / median > PRICE_MAX_VARIATION) continue; // not a steady charge\n    const inc = latest.amount - median;\n    const pct = inc / median * 100;\n    if (pct < PRICE_RISE_PCT || inc < PRICE_RISE_MIN) continue;\n    flags.push({\n      flagKey: 'price|' + latest.id,\n      period: latest.date.slice(0, 7), company: e.company, flagType: 'Recurring bill price', subjectName: e.name + (latest.number ? ' - ' + latest.number : ''),\n      recentAmount: round2(latest.amount), baselineAmount: round2(median), increaseAmount: round2(inc), increasePct: Math.round(pct),\n      severity: severity(pct, inc),\n      detail: 'Bill dated ' + latest.date + ' vs usual amount over the previous ' + prior.length + ' bills',\n      link: 'https://go.xero.com/AccountsPayable/View.aspx?invoiceID=' + latest.id\n    });\n  }\n}\n\nflags.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'High' ? -1 : 1) || b.increaseAmount - a.increaseAmount);\nreturn flags.map(f => ({ json: Object.assign(f, { billsAnalysed: billsSeen }) }));"
+      },
+      "id": "fc95305f-b2a3-4cd6-af5f-aa9666871396",
+      "name": "Detect Unusual Cost Increases",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        19808,
+        7152
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "HbWpzlh3Rgcd0VAF",
+          "cachedResultName": "Cost Increase Alerts"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "flag_key",
+              "keyValue": "={{ $json.flagKey }}"
+            }
+          ]
+        }
+      },
+      "id": "4275cf99-fe87-40a4-a5b2-e34860553af2",
+      "name": "Skip Increases Already Flagged",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        20000,
+        7152
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One email listing every newly detected cost increase, biggest first\nconst NL = String.fromCharCode(10);\nconst gbp = n => '£' + Number(n || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\nconst flags = $input.all().map(i => i.json).filter(j => j && j.flagKey);\nconst total = flags.reduce((t, f) => t + (f.increaseAmount || 0), 0);\nconst sections = [['Supplier spend', 'SUPPLIERS SPENDING MORE THAN USUAL (last month vs 6-month average)'], ['Expense category', 'EXPENSE CATEGORIES ABOVE NORMAL (by account code)'], ['Recurring bill price', 'RECURRING BILLS PRICED ABOVE THE USUAL AMOUNT']];\nconst out = [];\nout.push(flags.length + ' new unusual cost increase(s) detected across your Xero organisations, together ' + gbp(total) + ' above normal.');\nout.push('');\nfor (const [type, title] of sections) {\n  const s = flags.filter(f => f.flagType === type);\n  if (!s.length) continue;\n  out.push('==== ' + title + ' ====');\n  s.forEach((f, n) => {\n    out.push((n + 1) + '. [' + f.severity + '] ' + f.company + ' | ' + f.subjectName);\n    out.push('   ' + gbp(f.recentAmount) + ' vs normal ' + gbp(f.baselineAmount) + ' -> +' + gbp(f.increaseAmount) + ' (+' + f.increasePct + '%)');\n    out.push('   ' + f.detail + (f.link ? NL + '   ' + f.link : ''));\n  });\n  out.push('');\n}\nout.push('How this works: only recurring costs are checked (billed in most of the last 6 months, or a steady repeating bill). Amounts are net of VAT where Xero provides it. Each increase is reported once.');\nconst subject = 'Cost increase alert - ' + flags.length + ' unusual rise(s), ' + gbp(total) + ' above normal - ' + $now.setZone('Europe/London').toFormat('dd LLL yyyy');\nreturn [{ json: { subject, body: out.join(NL), flags } }];"
+      },
+      "id": "2ee36f0d-4338-4fee-97be-bc87ef550c08",
+      "name": "Build Cost Increase Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20208,
+        7152
+      ]
+    },
+    {
+      "parameters": {
+        "toRecipients": "={{ $('Report Settings').first().json.reportRecipients }}",
+        "subject": "={{ $json.subject }}",
+        "bodyContent": "={{ $json.body }}",
+        "additionalFields": {
+          "bodyContentType": "text"
+        }
+      },
+      "id": "2f2ee057-db58-4c5e-bb18-7a3eaf0e35ce",
+      "name": "Email Cost Increase Alert",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        20400,
+        7152
+      ],
+      "executeOnce": true,
+      "webhookId": "97737ba1-3da0-4002-a01d-58da4b67fdd8",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "xVu5DTOSVHg6Rm77",
+          "name": "Microsoft Outlook account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return ($('Build Cost Increase Email').first().json.flags || []).map(f => ({ json: f }));"
+      },
+      "id": "b7f05b4a-7495-4590-8d8c-bdbc683aaa07",
+      "name": "List Increases to Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20624,
+        7152
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "HbWpzlh3Rgcd0VAF",
+          "cachedResultName": "Cost Increase Alerts"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "flag_key": "={{ $json.flagKey }}",
+            "period": "={{ $json.period }}",
+            "company": "={{ $json.company }}",
+            "flag_type": "={{ $json.flagType }}",
+            "subject_name": "={{ $json.subjectName }}",
+            "recent_amount": "={{ $json.recentAmount }}",
+            "baseline_amount": "={{ $json.baselineAmount }}",
+            "increase_pct": "={{ $json.increasePct }}",
+            "severity": "={{ $json.severity }}",
+            "flagged_at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "flag_key",
+              "displayName": "flag_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "period",
+              "displayName": "period",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "flag_type",
+              "displayName": "flag_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "subject_name",
+              "displayName": "subject_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "recent_amount",
+              "displayName": "recent_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "baseline_amount",
+              "displayName": "baseline_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "increase_pct",
+              "displayName": "increase_pct",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "severity",
+              "displayName": "severity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "flagged_at",
+              "displayName": "flagged_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "002a5d79-5998-45ab-b799-b21e9139aaef",
+      "name": "Record Flagged Increase",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        20848,
+        7152
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "eyt1FfqZQBvlaVo9",
+          "mode": "list",
+          "cachedResultName": "overdue reported",
+          "cachedResultUrl": "/projects/tAXZQRiCgzUw7sNp/datatables/eyt1FfqZQBvlaVo9"
+        },
+        "filters": {
+          "conditions": []
+        },
+        "returnAll": true
+      },
+      "id": "33d1f850-d6b8-4126-9b40-3b482936cd28",
+      "name": "Get reported overdue",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        19088,
+        6576
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "return ($('Rank by Impact and Risk').first().json.to_record || []).map(r => ({ json: r }));"
+      },
+      "id": "0c8fda9e-017b-4f2a-84dd-c5483761ca0b",
+      "name": "List overdue to record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        19920,
+        6624
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "eyt1FfqZQBvlaVo9",
+          "mode": "list",
+          "cachedResultName": "overdue reported",
+          "cachedResultUrl": "/projects/tAXZQRiCgzUw7sNp/datatables/eyt1FfqZQBvlaVo9"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "invoice_key": "={{ $json.invoice_key }}",
+            "invoice_id": "={{ $json.invoice_id }}",
+            "company": "={{ $json.company }}",
+            "ledger": "={{ $json.ledger }}",
+            "contact": "={{ $json.contact }}",
+            "invoice_number": "={{ $json.invoice_number }}",
+            "amount_due": "={{ $json.amount_due }}",
+            "priority": "={{ $json.priority }}",
+            "overdue_days": "={{ $json.overdue_days }}",
+            "reason": "={{ $json.reason }}",
+            "reported_at": "={{ $json.reported_at }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "ae124d1b-8e6d-41ad-9d2b-9f30ac6483da",
+      "name": "Record reported overdue",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        20160,
+        6624
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Housekeeping: forget invoices that are no longer overdue (paid, credited, voided, deleted)\n// so the \"Overdue Reported\" table stays small. If one ever goes overdue again it is reported as new.\nconst MAX_PRUNE_SHARE = 0.5; // safety: if more than this share of the table would be removed (and more than 5 rows), do nothing - probably a failed Xero call\nconst current = new Set();\nlet fetched = 0;\nfor (const i of $input.all()) {\n  const j = i.json || {};\n  if (!j.company || !(j.amountDueRaw > 0)) continue;\n  fetched++;\n  current.add(j.company + '|' + (j.invoiceId || j.invoiceNumber));\n}\nlet rows = [];\ntry { rows = $('Get reported overdue').all().map(r => r.json || {}).filter(j => j.invoice_key); } catch (e) { return []; }\nconst keys = [...new Set(rows.map(j => j.invoice_key))];\nconst stale = keys.filter(k => !current.has(k));\nif (!stale.length) return [];\nif (stale.length > 5 && stale.length / keys.length > MAX_PRUNE_SHARE) return []; // looks like a failed fetch\nreturn stale.map(k => ({ json: { invoice_key: k } }));"
+      },
+      "id": "740f342e-5a6d-4f66-8ef8-1930f2fc1668",
+      "name": "Find cleared overdue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        19376,
+        6640
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "deleteRows",
+        "dataTableId": {
+          "__rl": true,
+          "value": "eyt1FfqZQBvlaVo9",
+          "mode": "list",
+          "cachedResultName": "overdue reported",
+          "cachedResultUrl": "/projects/tAXZQRiCgzUw7sNp/datatables/eyt1FfqZQBvlaVo9"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "invoice_key",
+              "keyValue": "={{ $json.invoice_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "10f9236c-0715-4695-9dd4-6f035cb978a4",
+      "name": "Remove cleared overdue",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        20096,
+        6400
+      ]
+    },
+    {
+      "parameters": {
+        "toRecipients": "={{ $json.sendTo }}",
+        "subject": "={{ $json.subject }}",
+        "bodyContent": "={{ $json.body }}",
+        "additionalFields": {
+          "bodyContentType": "text"
+        }
+      },
+      "id": "e6da8c63-82ab-43d7-9e3d-d70194301b73",
+      "name": "Send Reminder Email (no CC)",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        19120,
+        6180
+      ],
+      "webhookId": "06478c4d-0f34-45f1-a935-5a0989f39805",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "xVu5DTOSVHg6Rm77",
+          "name": "Microsoft Outlook account 2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "67da6816-eef3-4a34-bf21-fd13874a13c8",
+              "leftValue": "={{ $json.cc }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "73828768-4ece-4e84-a96b-2d68ce6134f3",
+      "name": "Has CC?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        18880,
+        6080
+      ]
+    },
+    {
+      "id": "ea91d4b5-6f71-46e0-9498-e4237cdd2c50",
+      "name": "Get reminder plan (PMS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        17920,
+        6080
+      ],
+      "notes": "Asks the PMS app which overdue invoices should get a reminder today. Returns nothing when automatic reminders are switched off, at weekends (if set) or when nothing is due. Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret (same as the COHO actions sync).",
+      "parameters": {
+        "url": "https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/xero/reminders/plan",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "credentials": {}
+    },
+    {
+      "id": "5de02a2d-64e7-4f5e-bf5c-cc5aabc2c7ef",
+      "name": "Plan items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        18160,
+        6080
+      ],
+      "parameters": {
+        "jsCode": "// One item per reminder the PMS says is due today (none when switched off).\nconst plan = $input.first().json || {};\nreturn (Array.isArray(plan.items) ? plan.items : []).map(item => ({ json: item }));"
+      }
+    },
+    {
+      "id": "1e47b694-c22c-4e09-a5d6-e8cf9e86567a",
+      "name": "PMS: run action",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        17920,
+        5880
+      ],
+      "webhookId": "10923011-284c-4759-9bbb-efad211f31c6",
+      "notes": "Called by the PMS app for \"Send reminder now\", \"Re-send Xero invoice\" and \"Add note in Xero\". Header Auth credential: the same one as the Xero gateway webhook (X-Hinkley-Gateway-Key). The production URL of this node goes in the PMS secret N8N_REMINDER_WEBHOOK_URL.",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hinkley-xero-reminders",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "responseData": "allEntries",
+        "options": {}
+      }
+    },
+    {
+      "id": "f58fbba7-d1aa-4774-9a8c-d5d3a60077bd",
+      "name": "Request items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        18160,
+        5880
+      ],
+      "parameters": {
+        "jsCode": "// Items sent by the PMS app ({ items: [...] }).\nconst body = $input.first().json.body || {};\nreturn (Array.isArray(body.items) ? body.items : []).map(item => ({ json: item }));"
+      }
+    },
+    {
+      "id": "83850b57-07f9-435f-9c34-3ab868de3a8d",
+      "name": "Is reminder?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        18400,
+        5980
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "46684710-8ab1-418a-a4a6-a8fea3c6ccbe",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "reminder",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "1934a471-5fd9-4270-bca3-ebb4fc428ca6",
+      "name": "Is Xero re-send?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        18640,
+        5760
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9b1fc66a-1acd-47f9-be59-1ab8f482ed4c",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "xero_resend",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "3b6365fe-1b8c-4f36-bf36-c885fab03b27",
+      "name": "Xero: email invoice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        18880,
+        5680
+      ],
+      "notes": "Re-sends the invoice to the customer using Xero's own email template. Live mode only (the PMS refuses it in test mode).",
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.xero.com/api.xro/2.0/Invoices/{{ $json.invoiceId }}/Email",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xeroOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xero-tenant-id",
+              "value": "={{ $json.tenantId }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      }
+    },
+    {
+      "id": "ed8c3328-6d56-4bc3-9eb5-2452bf5c5518",
+      "name": "Xero: add history note",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        18880,
+        5840
+      ],
+      "notes": "Adds a note to the invoice's History & notes in Xero. Live mode only.",
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.xero.com/api.xro/2.0/Invoices/{{ $json.invoiceId }}/History",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xeroOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xero-tenant-id",
+              "value": "={{ $json.tenantId }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ HistoryRecords: [{ Details: String($json.note || '').slice(0, 1000) }] }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      }
+    },
+    {
+      "id": "e342bc7f-05f2-45da-a13a-c6562d56b5e9",
+      "name": "Re-send result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        19120,
+        5680
+      ],
+      "parameters": {
+        "jsCode": "// Result for the PMS (logged against the invoice).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const response = items[i].json || {};\n  const src = $('Request items').itemMatching(i).json;\n  const code = Number(response.statusCode || 0);\n  const ok = code >= 200 && code < 300;\n  out.push({ json: {\n    action: src.action, kind: 'xero_resend', tenantId: src.tenantId, invoiceId: src.invoiceId,\n    invoiceNumber: src.invoiceNumber, customer: src.customer, stage: null, testMode: false,\n    sentTo: null, subject: null, status: ok ? 'sent' : 'failed',\n    detail: ok ? null : ('Xero returned HTTP ' + (code || '?') + ': ' + JSON.stringify(response.body || response.error || '').slice(0, 300)), requestedBy: src.requestedBy || null\n  } });\n}\nreturn out;"
+      }
+    },
+    {
+      "id": "ea4cef5e-2081-4a35-9d40-a1a7069b167e",
+      "name": "Note result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        19120,
+        5840
+      ],
+      "parameters": {
+        "jsCode": "// Result for the PMS (logged against the invoice).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const response = items[i].json || {};\n  const src = $('Request items').itemMatching(i).json;\n  const code = Number(response.statusCode || 0);\n  const ok = code >= 200 && code < 300;\n  out.push({ json: {\n    action: src.action, kind: 'xero_note', tenantId: src.tenantId, invoiceId: src.invoiceId,\n    invoiceNumber: src.invoiceNumber, customer: src.customer, stage: null, testMode: false,\n    sentTo: null, subject: null, status: ok ? 'sent' : 'failed',\n    detail: ok ? null : ('Xero returned HTTP ' + (code || '?') + ': ' + JSON.stringify(response.body || response.error || '').slice(0, 300)), requestedBy: src.requestedBy || null\n  } });\n}\nreturn out;"
+      }
+    },
+    {
+      "id": "2774243e-4bf1-4d26-9ebf-e8acde16b1d7",
+      "name": "Reminder result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        21120,
+        6080
+      ],
+      "parameters": {
+        "jsCode": "// Result for the PMS after each reminder email (sent, or failed with the reason).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const sent = items[i].json || {};\n  const w = $('Write Reminder Email').itemMatching(i).json;\n  const failed = Boolean(sent.error);\n  out.push({ json: {\n    action: 'reminder', kind: w.kind, tenantId: w.tenantId, invoiceId: w.invoiceId,\n    invoiceNumber: w.invoiceNumber, customer: w.customer, stage: w.stage, testMode: w.testMode === true,\n    sentTo: w.sendTo, subject: w.subject, status: failed ? 'failed' : 'sent',\n    detail: failed ? String(sent.error && sent.error.message ? sent.error.message : sent.error).slice(0, 500) : null,\n    requestedBy: w.requestedBy || null,\n    xeroHistoryNotes: w.xeroHistoryNotes === true,\n    note: 'Payment reminder (stage ' + w.stage + ') emailed to ' + w.sendTo + ' by Hinkley Homes PMS' + (w.requestedBy ? ' (sent by ' + w.requestedBy + ').' : ' (automatic).')\n  } });\n}\nreturn out;"
+      }
+    },
+    {
+      "id": "0cc4ed70-d3f5-4ef2-a713-276e30afa600",
+      "name": "Add Xero note?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        21360,
+        6080
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "95a5b57a-0340-4ce9-b786-4addc2433281",
+              "leftValue": "={{ $json.xeroHistoryNotes }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "9a74c25e-97c6-4d43-8bd3-d0a56cb0a289",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "sent",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "f7301e6f-8cf9-4f8c-af87-04775bf23cbe",
+      "name": "Xero: note the reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        21600,
+        6000
+      ],
+      "notes": "Live reminders only, when \"Note reminders in Xero\" is ticked in the PMS settings.",
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.xero.com/api.xro/2.0/Invoices/{{ $json.invoiceId }}/History",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xeroOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xero-tenant-id",
+              "value": "={{ $json.tenantId }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ HistoryRecords: [{ Details: String($json.note || '').slice(0, 1000) }] }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      }
+    },
+    {
+      "id": "1599c2c0-896d-46e4-880d-753d43595b49",
+      "name": "Keep reminder result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        21840,
+        6000
+      ],
+      "parameters": {
+        "jsCode": "// Pass the reminder result on (the Xero note's own response isn't needed).\nreturn $input.all().map((_, i) => ({ json: $('Reminder result').itemMatching(i).json }));"
+      }
+    },
+    {
+      "id": "a887af48-3fcd-43b0-b20d-9905b9d56116",
+      "name": "Report result to PMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        22080,
+        5900
+      ],
+      "notes": "Logs each result against the invoice in the PMS (reminder log and follow-up history). Same Header Auth credential as \"Get reminder plan (PMS)\".",
+      "parameters": {
+        "method": "POST",
+        "url": "https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/xero/reminders/result",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "credentials": {}
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily 8 AM Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Hinkley Homes Management",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get reminder plan (PMS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hinkley Homes Management": {
+      "main": [
+        [
+          {
+            "node": "Lettings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lettings": {
+      "main": [
+        [
+          {
+            "node": "Hinkley Homes Stays Ltd",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hinkley Homes Stays Ltd": {
+      "main": [
+        [
+          {
+            "node": "Hinkley Homes Ltd",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hinkley Homes Ltd": {
+      "main": [
+        [
+          {
+            "node": "Hinkley Homes Holdings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hinkley Homes Holdings": {
+      "main": [
+        [
+          {
+            "node": "Get reported overdue",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Overdue Bill Alerts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Report Settings",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Management Bill History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Overdue Bill Alerts": {
+      "main": [
+        [
+          {
+            "node": "Rank by Impact and Risk",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Find cleared overdue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rank by Impact and Risk": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Reminder Email": {
+      "main": [
+        [
+          {
+            "node": "Has CC?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder Email": {
+      "main": [
+        [
+          {
+            "node": "Reminder result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Management Bill History": {
+      "main": [
+        [
+          {
+            "node": "Lettings Bill History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lettings Bill History": {
+      "main": [
+        [
+          {
+            "node": "Stays Bill History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stays Bill History": {
+      "main": [
+        [
+          {
+            "node": "Hinkley Homes Ltd Bill History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hinkley Homes Ltd Bill History": {
+      "main": [
+        [
+          {
+            "node": "Holdings Bill History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Holdings Bill History": {
+      "main": [
+        [
+          {
+            "node": "Detect Unusual Cost Increases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Unusual Cost Increases": {
+      "main": [
+        [
+          {
+            "node": "Skip Increases Already Flagged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip Increases Already Flagged": {
+      "main": [
+        [
+          {
+            "node": "Build Cost Increase Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Cost Increase Email": {
+      "main": [
+        [
+          {
+            "node": "Email Cost Increase Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Cost Increase Alert": {
+      "main": [
+        [
+          {
+            "node": "List Increases to Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Increases to Record": {
+      "main": [
+        [
+          {
+            "node": "Record Flagged Increase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "List overdue to record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List overdue to record": {
+      "main": [
+        [
+          {
+            "node": "Record reported overdue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find cleared overdue": {
+      "main": [
+        [
+          {
+            "node": "Remove cleared overdue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has CC?": {
+      "main": [
+        [
+          {
+            "node": "Send Reminder Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Reminder Email (no CC)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder Email (no CC)": {
+      "main": [
+        [
+          {
+            "node": "Reminder result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report Settings": {
+      "main": [
+        []
+      ]
+    },
+    "Get reminder plan (PMS)": {
+      "main": [
+        [
+          {
+            "node": "Plan items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan items": {
+      "main": [
+        [
+          {
+            "node": "Is reminder?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PMS: run action": {
+      "main": [
+        [
+          {
+            "node": "Request items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request items": {
+      "main": [
+        [
+          {
+            "node": "Is reminder?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is reminder?": {
+      "main": [
+        [
+          {
+            "node": "Write Reminder Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Xero re-send?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Xero re-send?": {
+      "main": [
+        [
+          {
+            "node": "Xero: email invoice",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Xero: add history note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Xero: email invoice": {
+      "main": [
+        [
+          {
+            "node": "Re-send result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Xero: add history note": {
+      "main": [
+        [
+          {
+            "node": "Note result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Re-send result": {
+      "main": [
+        [
+          {
+            "node": "Report result to PMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Note result": {
+      "main": [
+        [
+          {
+            "node": "Report result to PMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reminder result": {
+      "main": [
+        [
+          {
+            "node": "Add Xero note?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Xero note?": {
+      "main": [
+        [
+          {
+            "node": "Xero: note the reminder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report result to PMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Xero: note the reminder": {
+      "main": [
+        [
+          {
+            "node": "Keep reminder result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep reminder result": {
+      "main": [
+        [
+          {
+            "node": "Report result to PMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "nodeGroups": [
+    {
+      "id": "dab0c43b-b0cc-4a06-99c2-19435d76f681",
+      "name": "Group 1",
+      "nodeIds": [
+        "7837fffc-6629-457f-b3a7-a56ca4cd8a9c",
+        "150efe0b-a93b-4751-a284-2f8cbf06bc9d",
+        "04286ea5-1782-4723-bd2b-0914d97ea6b8",
+        "3ebf53f1-3a0c-45f0-a502-f5bc65c317de",
+        "e723a5ab-3c1f-47e2-821e-c26a8ede155f"
+      ]
+    },
+    {
+      "id": "66517fd9-8b4b-454c-b9b1-68c3d4a75d00",
+      "name": "Pull 12-month bill history",
+      "nodeIds": [
+        "c9e645de-e0f1-4fa1-8c36-ca118990f1f3",
+        "34dfceaf-9468-4d04-9b05-1190f4aafe7b",
+        "721b3db0-4a4a-4e5d-8696-36e6c9afa447",
+        "adcf85e5-99a9-4388-b96d-a587b3b54d10",
+        "6f89361a-7fca-4b96-92a3-1f388380e3c8"
+      ],
+      "description": "Paid and unpaid supplier bills from the last 12 months across all five organisations, used as the spending baseline"
+    },
+    {
+      "id": "433d6a57-de88-41b6-9b9d-b00b722be074",
+      "name": "Alert on unusual cost rises",
+      "nodeIds": [
+        "fc95305f-b2a3-4cd6-af5f-aa9666871396",
+        "4275cf99-fe87-40a4-a5b2-e34860553af2",
+        "2ee36f0d-4338-4fee-97be-bc87ef550c08",
+        "2f2ee057-db58-4c5e-bb18-7a3eaf0e35ce",
+        "b7f05b4a-7495-4590-8d8c-bdbc683aaa07",
+        "002a5d79-5998-45ab-b799-b21e9139aaef"
+      ],
+      "description": "Compares last month and new recurring bills with normal spend, emails you each new rise once and records it"
+    },
+    {
+      "id": "a8388138-881a-49d8-bf18-f97b4ae5ef0b",
+      "name": "Payment reminders (controlled by the PMS app)",
+      "nodeIds": [
+        "ea91d4b5-6f71-46e0-9498-e4237cdd2c50",
+        "5de02a2d-64e7-4f5e-bf5c-cc5aabc2c7ef",
+        "1e47b694-c22c-4e09-a5d6-e8cf9e86567a",
+        "f58fbba7-d1aa-4774-9a8c-d5d3a60077bd",
+        "83850b57-07f9-435f-9c34-3ab868de3a8d",
+        "e2a3efb6-0b42-4f1e-86cf-7e2ff5e3baf7",
+        "73828768-4ece-4e84-a96b-2d68ce6134f3",
+        "1c58b3d9-6edf-406b-b0c2-f355edd424c0",
+        "e6da8c63-82ab-43d7-9e3d-d70194301b73",
+        "2774243e-4bf1-4d26-9ebf-e8acde16b1d7",
+        "0cc4ed70-d3f5-4ef2-a713-276e30afa600",
+        "f7301e6f-8cf9-4f8c-af87-04775bf23cbe",
+        "1599c2c0-896d-46e4-880d-753d43595b49",
+        "a887af48-3fcd-43b0-b20d-9905b9d56116"
+      ],
+      "description": "The PMS app decides who gets a reminder (on/off, test or live, one stage at a time, skips paused, disputed, promised, recently chased and Xero-reminded invoices). This branch writes and sends the email and reports back."
+    },
+    {
+      "id": "e967bcbe-006e-480a-98f8-3fcc7d496fba",
+      "name": "Xero actions on request",
+      "nodeIds": [
+        "1934a471-5fd9-4270-bca3-ebb4fc428ca6",
+        "3b6365fe-1b8c-4f36-bf36-c885fab03b27",
+        "ed8c3328-6d56-4bc3-9eb5-2452bf5c5518",
+        "e342bc7f-05f2-45da-a13a-c6562d56b5e9",
+        "ea4cef5e-2081-4a35-9d40-a1a7069b167e"
+      ],
+      "description": "Re-send an invoice from Xero, or add a note to its History, when a person asks from the PMS Invoices page (live mode only)."
+    }
+  ],
+  "tags": []
+}

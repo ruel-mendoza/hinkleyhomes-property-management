@@ -10,6 +10,8 @@ export type XeroResource =
   | "contacts"
   | "invoices"
   | "onlineInvoice"
+  | "invoiceHistory"
+  | "invoiceReminderSettings"
   | "creditNotes"
   | "payments"
   | "bankTransactions"

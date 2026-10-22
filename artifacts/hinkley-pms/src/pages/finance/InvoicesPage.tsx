@@ -1,19 +1,22 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Copy, Download, MessageSquarePlus, Search, X } from "lucide-react";
+import { AlertTriangle, Copy, Download, MessageSquarePlus, Search, Send, X } from "lucide-react";
 import {
   getGetReceivablesQueryKey,
   getInvoicePaymentLink,
   useGetReceivables,
+  useRunInvoiceAction,
   useUpdateInvoiceFollowUp,
   type InvoiceFollowUpOutcome,
+  type ReminderStatus,
   type PayableBill,
   type ReceivableInvoice,
 } from "@workspace/api-client-react";
 import { errorText } from "@/components/action-modals";
 import { ModalShell } from "@/components/properties/ModalShell";
 import { downloadText, formatDate } from "@/services/properties";
+import { ReminderBanner, ReminderCell, ReminderSettingsModal, SendReminderModal } from "./ReminderControls";
 import "./finance.css";
 
 // Invoices (Xero, Phase 1): what each company is owed and owes, with our own
@@ -63,6 +66,8 @@ export default function InvoicesPage() {
   const query = useGetReceivables(receivablesQueryOptions);
   const data = query.data;
   const [editing, setEditing] = useState<ReceivableInvoice | null>(null);
+  const [sending, setSending] = useState<ReceivableInvoice | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState("");
   const flash = (message: string) => { setToast(message); setTimeout(() => setToast(""), 3200); };
 
@@ -119,6 +124,8 @@ export default function InvoicesPage() {
 
       {data && (
         <>
+          {tab === "receivables" && data.followUpsAvailable && <ReminderBanner status={data.reminders} onSettings={() => setSettingsOpen(true)} />}
+
           <div className="hh-inv-companies" role="group" aria-label="Filter by company">
             <button type="button" className={`hh-inv-company ${!company ? "active" : ""}`} aria-pressed={!company} onClick={() => setParams({ company: "" })}>
               <span>All companies</span>
@@ -175,7 +182,7 @@ export default function InvoicesPage() {
             <div className="table-wrap">
               {tab === "receivables" ? (
                 <table className="hh-fin-table">
-                  <thead><tr><th>Invoice</th><th>Contact</th><th>For</th><th>Due</th><th className="num">Amount due</th><th>Follow-up</th><th aria-label="Actions" /></tr></thead>
+                  <thead><tr><th>Invoice</th><th>Contact</th><th>For</th><th>Due</th><th className="num">Amount due</th><th>Follow-up</th><th>Reminders</th><th aria-label="Actions" /></tr></thead>
                   <tbody>
                     {(visible as ReceivableInvoice[]).map((row) => {
                       const outcome = row.followUp ? OUTCOMES[row.followUp.outcome] : null;
@@ -194,15 +201,20 @@ export default function InvoicesPage() {
                             {outcome ? <span className={`status ${outcome[1]}`}>{outcome[0]}</span> : <span className="secondary-text" style={{ margin: 0 }}>—</span>}
                             {row.followUp?.nextChaseDate && <small className={`hh-fin-sub ${row.followUp.nextChaseDate <= data.asOf ? "warn" : ""}`}>Chase {formatDate(row.followUp.nextChaseDate)}</small>}
                             {row.followUp?.promisedDate && <small className="hh-fin-sub">Promised {formatDate(row.followUp.promisedDate)}</small>}
+                            {row.followUp?.remindersPaused && <small className="hh-fin-sub warn">Reminders paused</small>}
                           </td>
+                          <td><ReminderCell invoice={row} /></td>
                           <td className="hh-inv-actions">
                             <button type="button" className="button" onClick={() => setEditing(row)} disabled={!data.followUpsAvailable} title={data.followUpsAvailable ? "Record a follow-up" : "Follow-up tables not created yet"}><MessageSquarePlus size={13} /> Follow up</button>
+                            {data.reminders && row.daysOverdue > 0 && (
+                              <button type="button" className="button" onClick={() => setSending(row)} title="Send a reminder now"><Send size={13} /> Chase</button>
+                            )}
                             <button type="button" className="icon-btn" onClick={() => copyLink(row)} title="Copy Xero's view-and-pay link" aria-label={`Copy payment link for ${row.number ?? "invoice"}`}><Copy size={14} /></button>
                           </td>
                         </tr>
                       );
                     })}
-                    {!visible.length && <tr><td colSpan={7}><div className="empty-state"><h3>Nothing owed here</h3><p>No open invoices match these filters.</p></div></td></tr>}
+                    {!visible.length && <tr><td colSpan={8}><div className="empty-state"><h3>Nothing owed here</h3><p>No open invoices match these filters.</p></div></td></tr>}
                   </tbody>
                 </table>
               ) : (
@@ -229,24 +241,39 @@ export default function InvoicesPage() {
         </>
       )}
 
-      {editing && <FollowUpModal invoice={editing} onClose={() => setEditing(null)} onSaved={(message) => { setEditing(null); flash(message); }} />}
+      {editing && <FollowUpModal invoice={editing} reminders={data?.reminders ?? null} onClose={() => setEditing(null)} onSaved={(message) => { setEditing(null); flash(message); }} />}
+      {sending && data?.reminders && <SendReminderModal invoice={sending} status={data.reminders} onClose={() => setSending(null)} onDone={(message) => { setSending(null); flash(message); }} />}
+      {settingsOpen && <ReminderSettingsModal onClose={() => setSettingsOpen(false)} onSaved={(message) => { setSettingsOpen(false); flash(message); }} />}
       {toast && <div className="toast-msg" role="status">{toast}</div>}
     </>
   );
 }
 
-function FollowUpModal({ invoice, onClose, onSaved }: { invoice: ReceivableInvoice; onClose: () => void; onSaved: (message: string) => void }) {
+function FollowUpModal({ invoice, reminders, onClose, onSaved }: { invoice: ReceivableInvoice; reminders: ReminderStatus | null; onClose: () => void; onSaved: (message: string) => void }) {
   const queryClient = useQueryClient();
   const current = invoice.followUp;
   const [outcome, setOutcome] = useState<InvoiceFollowUpOutcome>(current?.outcome === "not_contacted" || !current ? "chased" : current.outcome);
   const [nextChaseDate, setNextChaseDate] = useState(current?.nextChaseDate ?? "");
   const [promisedDate, setPromisedDate] = useState(current?.promisedDate ?? "");
   const [note, setNote] = useState("");
+  const [paused, setPaused] = useState(current?.remindersPaused ?? false);
+  const [noteInXero, setNoteInXero] = useState(false);
+  const live = reminders?.mode === "live" && reminders.webhookConfigured;
+  const xeroNote = useRunInvoiceAction();
   const mutation = useUpdateInvoiceFollowUp({
     mutation: {
-      onSuccess: () => {
+      onSuccess: async () => {
+        let extra = "";
+        if (noteInXero && note.trim()) {
+          try {
+            const result = await xeroNote.mutateAsync({ tenantId: invoice.tenantId, invoiceId: invoice.invoiceId, data: { action: "xero_note", note: note.trim() } });
+            extra = result.status === "sent" ? " Note added in Xero." : ` Xero note not added: ${result.detail}`;
+          } catch (error) {
+            extra = ` Xero note not added: ${errorText(error)}`;
+          }
+        }
         void queryClient.invalidateQueries({ queryKey: getGetReceivablesQueryKey() });
-        onSaved(`Follow-up saved for ${invoice.number ?? "the invoice"}.`);
+        onSaved(`Follow-up saved for ${invoice.number ?? "the invoice"}.${extra}`);
       },
     },
   });
@@ -262,6 +289,7 @@ function FollowUpModal({ invoice, onClose, onSaved }: { invoice: ReceivableInvoi
         note: note.trim() || null,
         invoiceNumber: invoice.number,
         contactName: invoice.contactName,
+        remindersPaused: paused,
       },
     });
   };
@@ -274,7 +302,7 @@ function FollowUpModal({ invoice, onClose, onSaved }: { invoice: ReceivableInvoi
       testId="modal-invoice-follow-up"
       footer={<>
         <button type="button" className="button" onClick={onClose}>Cancel</button>
-        <button type="submit" className="button primary" disabled={mutation.isPending}>{mutation.isPending ? "Saving…" : "Save follow-up"}</button>
+        <button type="submit" className="button primary" disabled={mutation.isPending || xeroNote.isPending}>{mutation.isPending || xeroNote.isPending ? "Saving…" : "Save follow-up"}</button>
       </>}
     >
       <div className="form-grid">
@@ -299,6 +327,14 @@ function FollowUpModal({ invoice, onClose, onSaved }: { invoice: ReceivableInvoi
           <textarea rows={3} maxLength={2000} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Who you spoke to, what they said" />
         </label>
       </div>
+      {reminders && (
+        <div className="hh-rem-checks">
+          <label><input type="checkbox" checked={paused} onChange={(event) => setPaused(event.target.checked)} /> Pause automatic reminders for this invoice</label>
+          <label className={live ? "" : "disabled"} title={live ? "" : "Live mode and the n8n reminders workflow are needed"}>
+            <input type="checkbox" disabled={!live} checked={noteInXero} onChange={(event) => setNoteInXero(event.target.checked)} /> Also add this note to the invoice's History in Xero{live ? "" : " (live mode only)"}
+          </label>
+        </div>
+      )}
       {mutation.isError && <p className="hh-field-error" role="alert">{errorText(mutation.error)}</p>}
       {current && current.notes.length > 0 && (
         <div className="hh-inv-history">
@@ -314,7 +350,7 @@ function FollowUpModal({ invoice, onClose, onSaved }: { invoice: ReceivableInvoi
           </ol>
         </div>
       )}
-      <p className="hh-fin-foot">Saved in this app only. Nothing is sent to the customer or to Xero.</p>
+      <p className="hh-fin-foot">Saved in this app{noteInXero ? " and as a note in Xero" : ""}. Nothing is sent to the customer from here; use Chase to send a reminder.</p>
     </ModalShell>
   );
 }

@@ -123,3 +123,41 @@
 .hh-inv-history p{margin:4px 0 0;white-space:pre-wrap}
 @media(max-width:1100px){.hh-inv-companies,.hh-fin-tiles.six{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){.hh-inv-companies,.hh-fin-tiles.six{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Payment reminders (Phase 2) */
+.hh-rem-banner{display:flex;align-items:center;gap:12px;margin:0 0 14px;padding:12px 16px;border-radius:10px;border:1px solid #2a374d;border-left:5px solid #6f7f96;background:#192538;color:#c6d1de;font-size:13px}
+.hh-rem-banner>svg{flex:none}
+.hh-rem-banner div{flex:1;min-width:0}
+.hh-rem-banner strong{color:#e7edf4}
+.hh-rem-banner .button{display:inline-flex;align-items:center;gap:6px;flex:none}
+.hh-rem-banner.off>svg{color:#95a2b5}
+.hh-rem-banner.test{border-left-color:#e2a93b;background:#2d2618}.hh-rem-banner.test>svg{color:#edc16b}
+.hh-rem-banner.live{border-left-color:#3fb37f;background:#173d35}.hh-rem-banner.live>svg{color:#79d0a9}
+.hh-rem-cell{display:flex;flex-direction:column;gap:2px;font-size:12px;min-width:170px;white-space:normal}
+.hh-rem-last{color:#c6d1de}
+.hh-rem-test{margin-left:6px;padding:0 6px;border-radius:999px;background:#403421;color:#edc16b;font-style:normal;font-size:10px;font-weight:800;text-transform:uppercase}
+.hh-rem-next{color:#8f9db0}
+.hh-rem-next.due{color:#edc16b;font-weight:700}
+.hh-rem-xero{color:#a9c9ef;cursor:help}
+.hh-rem-choices{border:0;margin:0 0 12px;padding:0;display:flex;flex-direction:column;gap:8px}
+.hh-rem-choices.inline{flex-direction:row;flex-wrap:wrap}
+.hh-rem-choices label{display:flex;gap:9px;align-items:flex-start;flex:1;min-width:200px;padding:9px 11px;border:1px solid #2e3b4e;border-radius:8px;cursor:pointer;color:#d0d9e5;font-size:13px}
+.hh-rem-choices label:has(input:checked){border-color:#4f9c88;background:#173d3540}
+.hh-rem-choices label.disabled{opacity:.55;cursor:not-allowed}
+.hh-rem-choices input{width:auto;margin-top:3px}
+.hh-rem-choices small{display:block;color:#8f9db0;font-size:12px;margin-top:2px}
+.hh-rem-warning{display:flex;gap:6px;align-items:flex-start;margin:0 0 8px;padding:7px 9px;border-radius:6px;background:#3a2e1c;border:1px solid #5a4626;color:#f0d29b;font-size:12px}
+.hh-rem-warning svg{flex:none;margin-top:2px}
+.hh-rem-switch{margin:0 0 14px;padding:12px 14px;border-radius:8px;border:1px solid #2e3b4e;background:#141f30}
+.hh-rem-switch.on{border-color:#2a6553;background:#173d3560}
+.hh-rem-switch p{margin:6px 0 0;font-size:12px;color:#95a2b5}
+.hh-rem-switch strong{color:#e7edf4;font-size:14px}
+.hh-rem-hint{display:block;margin-top:3px;font-size:11px;color:#8f9db0;font-weight:500}
+.hh-rem-checks{display:flex;flex-direction:column;gap:7px;margin:12px 0}
+.hh-rem-checks label{display:flex;gap:8px;align-items:center;font-size:13px;color:#d0d9e5;cursor:pointer}
+.hh-rem-checks label.disabled{opacity:.55;cursor:not-allowed}
+.hh-rem-checks input{width:auto}
+.hh-rem-companies{border:0;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.hh-rem-companies label{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:#d0d9e5;cursor:pointer}
+.hh-rem-companies input{width:auto;margin-top:3px}
+.hh-rem-companies small{display:block;color:#8f9db0;font-size:11px}

@@ -1192,13 +1192,33 @@ export const GetReceivablesResponse = zod.object({
   "promisedDate": zod.string().nullable(),
   "updatedBy": zod.string().nullable(),
   "updatedAt": zod.string(),
+  "remindersPaused": zod.boolean(),
   "notes": zod.array(zod.object({
   "outcome": zod.enum(['not_contacted', 'chased', 'promised', 'disputed', 'paid_elsewhere', 'write_off_review']),
   "note": zod.string().nullable(),
   "authorEmail": zod.string().nullable(),
   "createdAt": zod.string()
 })).describe('Most recent first (up to 10)')
-}),zod.null()])
+}),zod.null()]),
+  "reminder": zod.union([zod.object({
+  "lastStage": zod.number().int(),
+  "lastSentAt": zod.string().nullable(),
+  "lastTestMode": zod.boolean().nullable(),
+  "sentCount": zod.number().int(),
+  "totalStages": zod.number().int(),
+  "nextStage": zod.number().int().nullable(),
+  "eligible": zod.boolean().describe('True when the next automatic run would send a reminder'),
+  "reason": zod.string()
+}),zod.null()]).describe('Payment reminder status; null when reminders aren\'t set up (no database tables)'),
+  "xeroActivity": zod.union([zod.object({
+  "sentOn": zod.string().nullable(),
+  "reminderDates": zod.array(zod.string()),
+  "recent": zod.array(zod.object({
+  "date": zod.string(),
+  "change": zod.string(),
+  "details": zod.string().nullable()
+}))
+}),zod.null()]).describe('Sends and reminders from the invoice\'s History in Xero; null if it couldn\'t be read')
 })),
   "bills": zod.array(zod.object({
   "tenantId": zod.string(),
@@ -1214,7 +1234,13 @@ export const GetReceivablesResponse = zod.object({
   "amountDue": zod.number(),
   "status": zod.string()
 })),
-  "followUpsAvailable": zod.boolean().describe('False when the database is not configured or the follow-up tables are missing')
+  "followUpsAvailable": zod.boolean().describe('False when the database is not configured or the follow-up tables are missing'),
+  "reminders": zod.union([zod.object({
+  "autoEnabled": zod.boolean(),
+  "mode": zod.enum(['test', 'live']),
+  "internalEmail": zod.string(),
+  "webhookConfigured": zod.boolean()
+}),zod.null()])
 })
 
 
@@ -1257,7 +1283,8 @@ export const UpdateInvoiceFollowUpBody = zod.object({
   "promisedDate": zod.string().max(updateInvoiceFollowUpBodyPromisedDateMax).nullish(),
   "note": zod.string().max(updateInvoiceFollowUpBodyNoteMax).nullish(),
   "invoiceNumber": zod.string().max(updateInvoiceFollowUpBodyInvoiceNumberMax).nullish(),
-  "contactName": zod.string().max(updateInvoiceFollowUpBodyContactNameMax).nullish()
+  "contactName": zod.string().max(updateInvoiceFollowUpBodyContactNameMax).nullish(),
+  "remindersPaused": zod.boolean().optional()
 })
 
 export const UpdateInvoiceFollowUpResponse = zod.object({
@@ -1266,12 +1293,124 @@ export const UpdateInvoiceFollowUpResponse = zod.object({
   "promisedDate": zod.string().nullable(),
   "updatedBy": zod.string().nullable(),
   "updatedAt": zod.string(),
+  "remindersPaused": zod.boolean(),
   "notes": zod.array(zod.object({
   "outcome": zod.enum(['not_contacted', 'chased', 'promised', 'disputed', 'paid_elsewhere', 'write_off_review']),
   "note": zod.string().nullable(),
   "authorEmail": zod.string().nullable(),
   "createdAt": zod.string()
 })).describe('Most recent first (up to 10)')
+})
+
+
+/**
+ * @summary Payment reminder settings (automatic reminders on/off, test or live, stages and safeguards)
+ */
+export const GetReminderSettingsResponse = zod.object({
+  "autoEnabled": zod.boolean(),
+  "mode": zod.enum(['test', 'live']),
+  "internalEmail": zod.string(),
+  "stageDays": zod.array(zod.number().int()),
+  "maxOverdueDays": zod.number().int(),
+  "minDaysBetween": zod.number().int(),
+  "manualChaseCooldownDays": zod.number().int(),
+  "xeroReminderCooldownDays": zod.number().int(),
+  "weekdaysOnly": zod.boolean(),
+  "xeroHistoryNotes": zod.boolean(),
+  "companies": zod.array(zod.object({
+  "tenantId": zod.string(),
+  "name": zod.string(),
+  "holdsPropertyMoney": zod.boolean(),
+  "enabled": zod.boolean(),
+  "xeroRemindersOn": zod.boolean().nullable().describe('Whether Xero\'s own automatic reminders are on for this company (null if unknown)')
+})),
+  "webhookConfigured": zod.boolean(),
+  "updatedBy": zod.string().nullable(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Change payment reminder settings (audit-logged)
+ */
+export const updateReminderSettingsBodyInternalEmailMax = 200;
+
+export const updateReminderSettingsBodyStageDaysItemMax = 365;
+
+export const updateReminderSettingsBodyStageDaysMax = 6;
+
+export const updateReminderSettingsBodyMaxOverdueDaysMax = 3650;
+
+export const updateReminderSettingsBodyMinDaysBetweenMax = 60;
+
+export const updateReminderSettingsBodyManualChaseCooldownDaysMin = 0;
+export const updateReminderSettingsBodyManualChaseCooldownDaysMax = 60;
+
+export const updateReminderSettingsBodyXeroReminderCooldownDaysMin = 0;
+export const updateReminderSettingsBodyXeroReminderCooldownDaysMax = 60;
+
+
+
+export const UpdateReminderSettingsBody = zod.object({
+  "autoEnabled": zod.boolean().optional(),
+  "mode": zod.enum(['test', 'live']).optional(),
+  "internalEmail": zod.string().max(updateReminderSettingsBodyInternalEmailMax).optional(),
+  "stageDays": zod.array(zod.number().int().min(1).max(updateReminderSettingsBodyStageDaysItemMax)).min(1).max(updateReminderSettingsBodyStageDaysMax).optional(),
+  "maxOverdueDays": zod.number().int().min(1).max(updateReminderSettingsBodyMaxOverdueDaysMax).optional(),
+  "minDaysBetween": zod.number().int().min(1).max(updateReminderSettingsBodyMinDaysBetweenMax).optional(),
+  "manualChaseCooldownDays": zod.number().int().min(updateReminderSettingsBodyManualChaseCooldownDaysMin).max(updateReminderSettingsBodyManualChaseCooldownDaysMax).optional(),
+  "xeroReminderCooldownDays": zod.number().int().min(updateReminderSettingsBodyXeroReminderCooldownDaysMin).max(updateReminderSettingsBodyXeroReminderCooldownDaysMax).optional(),
+  "weekdaysOnly": zod.boolean().optional(),
+  "xeroHistoryNotes": zod.boolean().optional(),
+  "companies": zod.array(zod.string()).optional().describe('Xero tenant ids whose customers may receive automatic reminders')
+})
+
+export const UpdateReminderSettingsResponse = zod.object({
+  "autoEnabled": zod.boolean(),
+  "mode": zod.enum(['test', 'live']),
+  "internalEmail": zod.string(),
+  "stageDays": zod.array(zod.number().int()),
+  "maxOverdueDays": zod.number().int(),
+  "minDaysBetween": zod.number().int(),
+  "manualChaseCooldownDays": zod.number().int(),
+  "xeroReminderCooldownDays": zod.number().int(),
+  "weekdaysOnly": zod.boolean(),
+  "xeroHistoryNotes": zod.boolean(),
+  "companies": zod.array(zod.object({
+  "tenantId": zod.string(),
+  "name": zod.string(),
+  "holdsPropertyMoney": zod.boolean(),
+  "enabled": zod.boolean(),
+  "xeroRemindersOn": zod.boolean().nullable().describe('Whether Xero\'s own automatic reminders are on for this company (null if unknown)')
+})),
+  "webhookConfigured": zod.boolean(),
+  "updatedBy": zod.string().nullable(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Send a reminder now, re-send the invoice from Xero, or add a note to the invoice in Xero (through the n8n reminders workflow)
+ */
+export const RunInvoiceActionParams = zod.object({
+  "tenantId": zod.coerce.string().uuid(),
+  "invoiceId": zod.coerce.string().uuid()
+})
+
+export const runInvoiceActionBodyNoteMax = 2000;
+
+
+
+export const RunInvoiceActionBody = zod.object({
+  "action": zod.enum(['reminder', 'xero_resend', 'xero_note']),
+  "note": zod.string().max(runInvoiceActionBodyNoteMax).nullish()
+})
+
+export const RunInvoiceActionResponse = zod.object({
+  "status": zod.enum(['sent', 'failed', 'skipped']),
+  "detail": zod.string(),
+  "sentTo": zod.string().nullable(),
+  "testMode": zod.boolean()
 })
 
 

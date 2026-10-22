@@ -797,6 +797,76 @@ paths:
           description: Invalid follow-up
         "503":
           description: Database is not configured
+  /reminders/settings:
+    get:
+      operationId: getReminderSettings
+      tags: [xero]
+      summary: Payment reminder settings (automatic reminders on/off, test or live, stages and safeguards)
+      responses:
+        "200":
+          description: Current settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderSettings"
+        "503":
+          description: Database is not configured
+    put:
+      operationId: updateReminderSettings
+      tags: [xero]
+      summary: Change payment reminder settings (audit-logged)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReminderSettingsUpdate"
+      responses:
+        "200":
+          description: Saved settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderSettings"
+        "400":
+          description: Invalid settings
+  /receivables/{tenantId}/{invoiceId}/actions:
+    post:
+      operationId: runInvoiceAction
+      tags: [xero]
+      summary: Send a reminder now, re-send the invoice from Xero, or add a note to the invoice in Xero (through the n8n reminders workflow)
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceActionRequest"
+      responses:
+        "200":
+          description: What happened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceActionResult"
+        "400":
+          description: Action not allowed (e.g. Xero actions in test mode)
+        "502":
+          description: The n8n workflow or Xero returned an error
+        "503":
+          description: The reminders workflow is not configured
   /public/listings:
     get:
       operationId: listPublicListings
@@ -1466,12 +1536,14 @@ components:
           type: ["string", "null"]
         updatedAt:
           type: string
+        remindersPaused:
+          type: boolean
         notes:
           description: Most recent first (up to 10)
           type: array
           items:
             $ref: "#/components/schemas/InvoiceFollowUpNote"
-      required: [outcome, nextChaseDate, promisedDate, updatedBy, updatedAt, notes]
+      required: [outcome, nextChaseDate, promisedDate, updatedBy, updatedAt, remindersPaused, notes]
     InvoiceFollowUpUpdate:
       type: object
       properties:
@@ -1492,6 +1564,8 @@ components:
         contactName:
           type: ["string", "null"]
           maxLength: 300
+        remindersPaused:
+          type: boolean
       required: [outcome]
     InvoicePaymentLink:
       type: object
@@ -1541,7 +1615,17 @@ components:
           oneOf:
             - $ref: "#/components/schemas/InvoiceFollowUp"
             - type: "null"
-      required: [tenantId, company, invoiceId, number, contactName, reference, description, property, date, dueDate, daysOverdue, total, amountDue, sent, cohoProperty, followUp]
+        reminder:
+          description: Payment reminder status; null when reminders aren't set up (no database tables)
+          oneOf:
+            - $ref: "#/components/schemas/ReminderInfo"
+            - type: "null"
+        xeroActivity:
+          description: Sends and reminders from the invoice's History in Xero; null if it couldn't be read
+          oneOf:
+            - $ref: "#/components/schemas/XeroInvoiceActivity"
+            - type: "null"
+      required: [tenantId, company, invoiceId, number, contactName, reference, description, property, date, dueDate, daysOverdue, total, amountDue, sent, cohoProperty, followUp, reminder, xeroActivity]
     PayableBill:
       type: object
       properties:
@@ -1614,7 +1698,190 @@ components:
         followUpsAvailable:
           description: False when the database is not configured or the follow-up tables are missing
           type: boolean
-      required: [asOf, error, companies, invoices, bills, followUpsAvailable]
+        reminders:
+          oneOf:
+            - $ref: "#/components/schemas/ReminderStatus"
+            - type: "null"
+      required: [asOf, error, companies, invoices, bills, followUpsAvailable, reminders]
+    ReminderInfo:
+      type: object
+      properties:
+        lastStage:
+          type: integer
+        lastSentAt:
+          type: ["string", "null"]
+        lastTestMode:
+          type: ["boolean", "null"]
+        sentCount:
+          type: integer
+        totalStages:
+          type: integer
+        nextStage:
+          type: ["integer", "null"]
+        eligible:
+          description: True when the next automatic run would send a reminder
+          type: boolean
+        reason:
+          type: string
+      required: [lastStage, lastSentAt, lastTestMode, sentCount, totalStages, nextStage, eligible, reason]
+    XeroHistoryEntry:
+      type: object
+      properties:
+        date:
+          type: string
+        change:
+          type: string
+        details:
+          type: ["string", "null"]
+      required: [date, change, details]
+    XeroInvoiceActivity:
+      type: object
+      properties:
+        sentOn:
+          type: ["string", "null"]
+        reminderDates:
+          type: array
+          items:
+            type: string
+        recent:
+          type: array
+          items:
+            $ref: "#/components/schemas/XeroHistoryEntry"
+      required: [sentOn, reminderDates, recent]
+    ReminderStatus:
+      type: object
+      properties:
+        autoEnabled:
+          type: boolean
+        mode:
+          $ref: "#/components/schemas/ReminderMode"
+        internalEmail:
+          type: string
+        webhookConfigured:
+          type: boolean
+      required: [autoEnabled, mode, internalEmail, webhookConfigured]
+    ReminderMode:
+      type: string
+      enum: [test, live]
+    ReminderCompany:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        name:
+          type: string
+        holdsPropertyMoney:
+          type: boolean
+        enabled:
+          type: boolean
+        xeroRemindersOn:
+          description: Whether Xero's own automatic reminders are on for this company (null if unknown)
+          type: ["boolean", "null"]
+      required: [tenantId, name, holdsPropertyMoney, enabled, xeroRemindersOn]
+    ReminderSettings:
+      type: object
+      properties:
+        autoEnabled:
+          type: boolean
+        mode:
+          $ref: "#/components/schemas/ReminderMode"
+        internalEmail:
+          type: string
+        stageDays:
+          type: array
+          items:
+            type: integer
+        maxOverdueDays:
+          type: integer
+        minDaysBetween:
+          type: integer
+        manualChaseCooldownDays:
+          type: integer
+        xeroReminderCooldownDays:
+          type: integer
+        weekdaysOnly:
+          type: boolean
+        xeroHistoryNotes:
+          type: boolean
+        companies:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReminderCompany"
+        webhookConfigured:
+          type: boolean
+        updatedBy:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+      required: [autoEnabled, mode, internalEmail, stageDays, maxOverdueDays, minDaysBetween, manualChaseCooldownDays, xeroReminderCooldownDays, weekdaysOnly, xeroHistoryNotes, companies, webhookConfigured, updatedBy, updatedAt]
+    ReminderSettingsUpdate:
+      type: object
+      properties:
+        autoEnabled:
+          type: boolean
+        mode:
+          $ref: "#/components/schemas/ReminderMode"
+        internalEmail:
+          type: string
+          maxLength: 200
+        stageDays:
+          type: array
+          minItems: 1
+          maxItems: 6
+          items:
+            type: integer
+            minimum: 1
+            maximum: 365
+        maxOverdueDays:
+          type: integer
+          minimum: 1
+          maximum: 3650
+        minDaysBetween:
+          type: integer
+          minimum: 1
+          maximum: 60
+        manualChaseCooldownDays:
+          type: integer
+          minimum: 0
+          maximum: 60
+        xeroReminderCooldownDays:
+          type: integer
+          minimum: 0
+          maximum: 60
+        weekdaysOnly:
+          type: boolean
+        xeroHistoryNotes:
+          type: boolean
+        companies:
+          description: Xero tenant ids whose customers may receive automatic reminders
+          type: array
+          items:
+            type: string
+    InvoiceActionKind:
+      type: string
+      enum: [reminder, xero_resend, xero_note]
+    InvoiceActionRequest:
+      type: object
+      properties:
+        action:
+          $ref: "#/components/schemas/InvoiceActionKind"
+        note:
+          type: ["string", "null"]
+          maxLength: 2000
+      required: [action]
+    InvoiceActionResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [sent, failed, skipped]
+        detail:
+          type: string
+        sentTo:
+          type: ["string", "null"]
+        testMode:
+          type: boolean
+      required: [status, detail, sentTo, testMode]
     PropertyRentalType:
       type: string
       enum: [room, whole_property]

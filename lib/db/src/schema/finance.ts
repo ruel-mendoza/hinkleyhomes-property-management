@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, date, index, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { id, money, timestamps } from "./columns";
@@ -145,6 +145,8 @@ export const xeroInvoiceFollowUpsTable = pgTable(
     outcome: invoiceFollowUpOutcomeEnum("outcome").notNull().default("not_contacted"),
     nextChaseDate: date("next_chase_date"),
     promisedDate: date("promised_date"),
+    // Stops automatic reminders for this invoice (set by staff on the Invoices page).
+    remindersPaused: boolean("reminders_paused").notNull().default(false),
     updatedBy: text("updated_by"),
     ...timestamps,
   },
@@ -171,3 +173,58 @@ export const xeroInvoiceFollowUpNotesTable = pgTable(
 
 export type XeroInvoiceFollowUp = typeof xeroInvoiceFollowUpsTable.$inferSelect;
 export type XeroInvoiceFollowUpNote = typeof xeroInvoiceFollowUpNotesTable.$inferSelect;
+
+// --- Payment reminders (Phase 2) -----------------------------------------------
+// The app decides who gets a reminder; the n8n workflow "Xero overdue reminders"
+// writes and sends it (Outlook) and reports back. One settings row, id "default".
+
+export const reminderModeEnum = pgEnum("reminder_mode", ["test", "live"]);
+
+export const xeroReminderSettingsTable = pgTable("xero_reminder_settings", {
+  id: text("id").primaryKey(),
+  // Master switch for the daily automatic reminders. Off by default.
+  autoEnabled: boolean("auto_enabled").notNull().default(false),
+  // Test: every reminder goes to internalEmail instead of the customer.
+  mode: reminderModeEnum("mode").notNull().default("test"),
+  internalEmail: text("internal_email").notNull().default("accounts@hinkleyhomes.co.uk"),
+  // Days overdue at which stages 1..n become due; a reminder moves up one stage at a time.
+  stageDays: integer("stage_days").array().notNull().default(sql`'{1,7,14,30}'::integer[]`),
+  // Older invoices are left for a phone call rather than emailed automatically.
+  maxOverdueDays: integer("max_overdue_days").notNull().default(60),
+  minDaysBetween: integer("min_days_between").notNull().default(5),
+  manualChaseCooldownDays: integer("manual_chase_cooldown_days").notNull().default(5),
+  xeroReminderCooldownDays: integer("xero_reminder_cooldown_days").notNull().default(7),
+  weekdaysOnly: boolean("weekdays_only").notNull().default(true),
+  // Add a note to the invoice's History in Xero after each live reminder.
+  xeroHistoryNotes: boolean("xero_history_notes").notNull().default(false),
+  // Xero tenant ids whose customers may receive automatic reminders.
+  companies: text("companies").array().notNull().default(sql`'{}'::text[]`),
+  updatedBy: text("updated_by"),
+  ...timestamps,
+}).enableRLS();
+
+export const reminderKindEnum = pgEnum("reminder_kind", ["auto_reminder", "manual_reminder", "xero_resend", "xero_note"]);
+export const reminderStatusEnum = pgEnum("reminder_status", ["sent", "failed", "skipped"]);
+
+export const xeroInvoiceRemindersTable = pgTable(
+  "xero_invoice_reminders",
+  {
+    id: id(),
+    xeroTenantId: text("xero_tenant_id").notNull(),
+    xeroInvoiceId: uuid("xero_invoice_id").notNull(),
+    invoiceNumber: text("invoice_number"),
+    contactName: text("contact_name"),
+    kind: reminderKindEnum("kind").notNull(),
+    stage: integer("stage"),
+    testMode: boolean("test_mode").notNull(),
+    sentTo: text("sent_to"),
+    status: reminderStatusEnum("status").notNull(),
+    detail: text("detail"),
+    requestedBy: text("requested_by"),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("xero_invoice_reminders_invoice_idx").on(t.xeroTenantId, t.xeroInvoiceId, t.sentAt)],
+).enableRLS();
+
+export type XeroReminderSettings = typeof xeroReminderSettingsTable.$inferSelect;
+export type XeroInvoiceReminder = typeof xeroInvoiceRemindersTable.$inferSelect;

@@ -45,6 +45,22 @@ export function readXeroGatewayEnv(): XeroGatewayEnvResult {
   return { status: "configured", url: url!, key: key! };
 }
 
+// The n8n "Xero overdue reminders" workflow's webhook, used to send a reminder,
+// re-send an invoice or add a Xero note on request. It shares the gateway's key.
+export type ReminderWebhookEnvResult = { status: "configured"; url: string; key: string } | { status: "unconfigured" };
+
+export function readReminderWebhookEnv(): ReminderWebhookEnvResult {
+  const url = read("N8N_REMINDER_WEBHOOK_URL");
+  const gateway = readXeroGatewayEnv();
+  if (!url || gateway.status !== "configured") return { status: "unconfigured" };
+  try {
+    if (new URL(url).protocol !== "https:") return { status: "unconfigured" };
+  } catch {
+    return { status: "unconfigured" };
+  }
+  return { status: "configured", url, key: gateway.key };
+}
+
 export type XeroConfig = {
   clientId: string;
   clientSecret: string;
