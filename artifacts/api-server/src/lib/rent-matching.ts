@@ -39,6 +39,7 @@ export type BankLine = {
 };
 export type OverdueTenancy = {
   tenancyGuid: string;
+  tenancyNumber: string | null;
   propertyReference: string;
   propertyName: string;
   tenantName: string | null;
@@ -77,17 +78,24 @@ export async function loadBankLines(from: string, to: string): Promise<BankLine[
   }));
 }
 
-export async function loadOverdueTenancies(): Promise<OverdueTenancy[]> {
+async function pages(path: string): Promise<RecordValue[]> {
   const items: RecordValue[] = [];
   for (let page = 1; page <= 20; page++) {
-    const payload = asRecord(await cohoGet(`/credit-control/tenancies?scope=overdue&page=${page}&pageSize=100`));
+    const payload = asRecord(await cohoGet(`${path}&page=${page}&pageSize=100`));
     items.push(...list(payload.items));
     if (payload.hasNextPage !== true) break;
   }
+  return items;
+}
+
+export async function loadOverdueTenancies(): Promise<OverdueTenancy[]> {
+  const [items, tenancies] = await Promise.all([pages("/credit-control/tenancies?scope=overdue"), pages("/tenancies?includeCurrent=true")]);
+  const numbers = new Map(tenancies.map((tenancy) => [String(tenancy.guid), str(tenancy.tenancyNumber)]));
   return items
     .filter((item) => item.exclude !== true && num(item.totalOutstanding) > 0)
     .map((item) => ({
       tenancyGuid: String(item.tenancyGuid),
+      tenancyNumber: numbers.get(String(item.tenancyGuid)) ?? null,
       propertyReference: str(item.propertyReference) ?? "",
       propertyName: str(item.propertyName) ?? "Unknown property",
       tenantName: str(item.tenantName),
@@ -113,6 +121,14 @@ export function suggestPayments(arrears: OverdueTenancy[], lines: BankLine[], to
     }
   }
   return result;
+}
+
+// Plain-English reason shown with each proposal.
+export function matchReason(arrear: OverdueTenancy, line: BankLine): string {
+  if (!arrear.earliestDue) return "Same amount as the overdue rent.";
+  const days = Math.round((Date.parse(`${line.date}T12:00:00Z`) - Date.parse(`${arrear.earliestDue}T12:00:00Z`)) / 86_400_000);
+  const when = days === 0 ? "on the day it was due" : days > 0 ? `${days} ${days === 1 ? "day" : "days"} after it was due` : `${-days} ${days === -1 ? "day" : "days"} before it was due`;
+  return `Same amount as the overdue rent, received ${when}.`;
 }
 
 // One cached read of the feed and arrears, shared by the bank feed page and the overview.

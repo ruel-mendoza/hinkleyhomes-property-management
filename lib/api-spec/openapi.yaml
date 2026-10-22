@@ -1289,11 +1289,18 @@ components:
           type: string
         tenantName:
           type: ["string", "null"]
+        tenancyNumber:
+          type: ["string", "null"]
         outstanding:
           type: number
         earliestDue:
           type: ["string", "null"]
-      required: [propertyReference, propertyName, tenantName, outstanding, earliestDue]
+        daysInArrears:
+          type: integer
+        reason:
+          description: Why this line was proposed, in plain English
+          type: string
+      required: [propertyReference, propertyName, tenantName, tenancyNumber, outstanding, earliestDue, daysInArrears, reason]
     PossiblePayment:
       type: object
       properties:

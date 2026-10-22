@@ -1140,8 +1140,11 @@ export const GetFinanceBankFeedResponse = zod.object({
   "propertyReference": zod.string(),
   "propertyName": zod.string(),
   "tenantName": zod.string().nullable(),
+  "tenancyNumber": zod.string().nullable(),
   "outstanding": zod.number(),
-  "earliestDue": zod.string().nullable()
+  "earliestDue": zod.string().nullable(),
+  "daysInArrears": zod.number().int(),
+  "reason": zod.string().describe('Why this line was proposed, in plain English')
 }),zod.null()]).describe('An overdue tenancy this unmatched line may pay (same amount, around the due date); matching is done in COHO')
 }))
 })

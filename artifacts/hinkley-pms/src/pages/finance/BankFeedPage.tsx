@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link, useLocation, useSearch } from "wouter";
-import { AlertTriangle, Download, Lightbulb, Search, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Download, ExternalLink, Lightbulb, Search, X } from "lucide-react";
 import { getGetFinanceBankFeedQueryKey, useGetFinanceBankFeed, type FinanceBankLine, type FinanceBankLineStatus } from "@workspace/api-client-react";
 import { errorText } from "@/components/action-modals";
 import { MonthlyBars, SERIES_COLOURS } from "@/components/charts/MonthlyBars";
@@ -28,6 +28,10 @@ const inFilter = (line: FinanceBankLine, filter: Filter) =>
     : filter === "unmatched" ? isOpen(line)
       : filter === "suggested" ? Boolean(line.possibleMatch)
         : line.status === filter;
+// COHO's Transactions page, where the Reconcile step happens. Set
+// VITE_COHO_TRANSACTIONS_URL to its exact address; COHO's API can't reconcile.
+const COHO_TRANSACTIONS_URL = (import.meta.env.VITE_COHO_TRANSACTIONS_URL as string | undefined) || "https://app.coho.life";
+
 export const daysSince = (date: string | null, today: string) => (date ? Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${date}T12:00:00Z`)) / 86_400_000) : 0);
 
 export default function BankFeedPage() {
@@ -98,22 +102,7 @@ export default function BankFeedPage() {
 
       {data && (
         <>
-          {suggested.length > 0 && (
-            <section className="hh-fin-suggest" aria-labelledby="possible-rent-title">
-              <Lightbulb size={17} />
-              <div>
-                <h2 id="possible-rent-title">{suggested.length} unmatched {suggested.length === 1 ? "payment looks" : "payments look"} like overdue rent</h2>
-                <ul>
-                  {suggested.map((line) => (
-                    <li key={line.id}>
-                      <strong>{pence.format(line.amount)}</strong> on {formatDate(line.date)}{line.payer ? ` from ${line.payer}` : ""} → <Link href={`/properties/${encodeURIComponent(line.possibleMatch!.propertyReference)}`}>{line.possibleMatch!.propertyName}</Link>, overdue {pence.format(line.possibleMatch!.outstanding)} since {formatDate(line.possibleMatch!.earliestDue)}
-                    </li>
-                  ))}
-                </ul>
-                <p>Same amount, received around the due date. If they are the rent, match them in COHO (Transactions → Reconcile) so the arrears clear.</p>
-              </div>
-            </section>
-          )}
+          <ReconcilePanel lines={suggested} unmatched={data.unmatchedCount} />
           {data.unmatchedCount > 0 && oldestDays > 30 && (
             <p className="hh-props-alert" role="alert">
               <AlertTriangle size={14} /> {data.unmatchedCount} bank {data.unmatchedCount === 1 ? "line is" : "lines are"} not matched to rent in COHO ({pence.format(data.unmatchedAmount)}), the oldest from {formatDate(data.oldestUnmatched)}. Rent may be being marked paid by hand; matching these in COHO keeps rent records reliable.
@@ -184,5 +173,59 @@ export default function BankFeedPage() {
         </>
       )}
     </>
+  );
+}
+
+// Reconcile proposals, laid out like COHO's Reconcile transactions panel:
+// the bank line on the left, the overdue rent it may pay on the right.
+function ReconcilePanel({ lines, unmatched }: { lines: FinanceBankLine[]; unmatched: number }) {
+  return (
+    <section className="panel hh-rec" aria-labelledby="reconcile-title">
+      <div className="panel-head">
+        <div>
+          <div className="panel-title" id="reconcile-title"><Lightbulb size={15} /> Reconcile transactions</div>
+          <div className="panel-caption">
+            {lines.length
+              ? `${lines.length} unmatched ${lines.length === 1 ? "payment looks" : "payments look"} like overdue rent. Check each one, then reconcile it in COHO so the arrears clear.`
+              : `No unmatched payment matches an overdue rent amount${unmatched ? `; the ${unmatched} unmatched ${unmatched === 1 ? "line needs" : "lines need"} reviewing in COHO` : ""}.`}
+          </div>
+        </div>
+        <a className="button" href={COHO_TRANSACTIONS_URL} target="_blank" rel="noopener noreferrer"><ExternalLink size={13} /> Open COHO</a>
+      </div>
+      {lines.length > 0 && (
+        <ol className="hh-rec-list">
+          {lines.map((line) => {
+            const match = line.possibleMatch!;
+            return (
+              <li key={line.id} className="hh-rec-item">
+                <dl className="hh-rec-card bank" aria-label="Bank transaction">
+                  <div><dt>Date</dt><dd>{formatDate(line.date)}</dd></div>
+                  <div><dt>Bank</dt><dd>{line.account ?? "—"}</dd></div>
+                  <div><dt>Reference</dt><dd>{line.reference ?? line.description ?? "—"}</dd></div>
+                  <div><dt>Name</dt><dd>{line.payer ?? "—"}</dd></div>
+                  <div><dt>Amount</dt><dd className="amount">{pence.format(line.amount)}</dd></div>
+                </dl>
+                <div className="hh-rec-arrow" aria-hidden="true"><ArrowRight size={18} /></div>
+                <div className="hh-rec-card proposal">
+                  <div className="hh-rec-tag">Proposed rent</div>
+                  <dl>
+                    <div><dt>Property</dt><dd><Link href={`/properties/${encodeURIComponent(match.propertyReference)}`}>{match.propertyName}</Link></dd></div>
+                    <div><dt>Tenant</dt><dd>{match.tenantName ?? "—"}{match.tenancyNumber ? <small> · {match.tenancyNumber}</small> : null}</dd></div>
+                    <div><dt>Rent due</dt><dd>{formatDate(match.earliestDue)} · {match.daysInArrears} {match.daysInArrears === 1 ? "day" : "days"} overdue</dd></div>
+                    <div><dt>Overdue</dt><dd className="amount">{pence.format(match.outstanding)}</dd></div>
+                  </dl>
+                  <p className="hh-rec-reason">{match.reason}</p>
+                  <div className="hh-rec-actions">
+                    <a className="button primary" href={COHO_TRANSACTIONS_URL} target="_blank" rel="noopener noreferrer"><ExternalLink size={13} /> Reconcile in COHO</a>
+                    <Link className="button" href={`/properties/${encodeURIComponent(match.propertyReference)}`}>View property</Link>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      <p className="hh-rec-foot">Proposals are worked out here (same amount as the overdue rent, received from a week before it was due). Linking the payment is done in COHO: Transactions → Reconcile transactions → OK.</p>
+    </section>
   );
 }

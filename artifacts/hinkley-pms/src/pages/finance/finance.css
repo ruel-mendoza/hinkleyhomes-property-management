@@ -68,10 +68,30 @@
 .hh-fin-count{margin:0;padding:9px 16px;font-size:12px;color:#8f9db0;border-top:1px solid #2a374d}
 .hh-fin-notes{margin:0;padding:12px 17px 14px 33px;display:flex;flex-direction:column;gap:8px;font-size:13px;color:#c6d1de;line-height:1.5}
 .hh-fin-notes strong{color:#e2e9f1}
-.hh-fin-suggest{display:flex;gap:12px;align-items:flex-start;margin:0 0 14px;padding:14px 16px;border-radius:10px;background:#16304d;border:1px solid #2c4a6e;border-left:5px solid #3987e5;color:#c4dbf5}
-.hh-fin-suggest>svg{flex:none;color:#7fb2f0;margin-top:1px}
-.hh-fin-suggest h2{margin:0 0 6px;font-size:15px;font-weight:800;color:#e3efff}
-.hh-fin-suggest ul{margin:0 0 6px;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:13px}
-.hh-fin-suggest a{color:#fff;font-weight:700}
-.hh-fin-suggest p{margin:0;font-size:12px;color:#a9c3e3}
 @media(max-width:1100px){.hh-fin-tiles.five{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Reconcile proposals (COHO-style: bank line -> proposed rent) */
+.hh-rec{margin-bottom:14px}
+.hh-rec .panel-title{display:flex;align-items:center;gap:7px}
+.hh-rec .panel-title svg{color:#7fb2f0}
+.hh-rec .panel-head .button{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.hh-rec-list{list-style:none;margin:0;padding:12px 16px 0;display:flex;flex-direction:column;gap:12px}
+.hh-rec-item{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1.2fr);gap:12px;align-items:center}
+.hh-rec-card{margin:0;border-radius:8px;padding:12px 14px;font-size:13px}
+.hh-rec-card dl{margin:0}
+.hh-rec-card dl,.hh-rec-card.bank{display:grid;grid-template-columns:auto 1fr;gap:5px 14px}
+.hh-rec-card dl>div,.hh-rec-card.bank>div{display:contents}
+.hh-rec-card dt{color:#8f9db0;font-size:12px;font-weight:700}
+.hh-rec-card dd{margin:0;color:#e2e9f1;overflow-wrap:anywhere}
+.hh-rec-card dd small{color:#8f9db0}
+.hh-rec-card dd.amount{font-weight:800;font-variant-numeric:tabular-nums}
+.hh-rec-card dd a{color:#e2e9f1;font-weight:700}
+.hh-rec-card.bank{background:#141f30;border:1px solid #2a374d}
+.hh-rec-card.proposal{background:#16304d;border:1px solid #2c4a6e;border-left:4px solid #3987e5}
+.hh-rec-tag{display:inline-block;margin-bottom:8px;padding:2px 8px;border-radius:999px;background:#1f3550;color:#a9c9ef;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.hh-rec-reason{margin:8px 0 0;font-size:12px;color:#a9c3e3}
+.hh-rec-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.hh-rec-actions .button{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.hh-rec-arrow{color:#7fb2f0}
+.hh-rec-foot{margin:0;padding:12px 16px 14px;font-size:12px;color:#8f9db0}
+@media(max-width:900px){.hh-rec-item{grid-template-columns:1fr}.hh-rec-arrow{transform:rotate(90deg);justify-self:center}}

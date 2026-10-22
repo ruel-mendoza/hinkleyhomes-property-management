@@ -437,9 +437,14 @@ export interface PossibleRentMatch {
   propertyName: string;
   /** @nullable */
   tenantName: string | null;
+  /** @nullable */
+  tenancyNumber: string | null;
   outstanding: number;
   /** @nullable */
   earliestDue: string | null;
+  daysInArrears: number;
+  /** Why this line was proposed, in plain English */
+  reason: string;
 }
 
 export interface FinanceBankLine {

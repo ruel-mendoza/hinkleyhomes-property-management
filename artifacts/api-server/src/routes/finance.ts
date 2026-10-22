@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { GetFinanceBankFeedResponse, GetFinanceIncomeResponse } from "@workspace/api-zod";
 import { cohoApiKey } from "../lib/integrations-env";
 import { cohoGet } from "../lib/coho-api";
-import { rentMatchingData, suggestPayments } from "../lib/rent-matching";
+import { matchReason, rentMatchingData, suggestPayments } from "../lib/rent-matching";
 
 // Finance section, read-only from COHO:
 //   GET /finance/financial-items  rent invoiced (client money) and management
@@ -190,7 +190,16 @@ async function buildBankFeed(refresh: boolean) {
         return {
           ...line,
           possibleMatch: match
-            ? { propertyReference: match.propertyReference, propertyName: match.propertyName, tenantName: match.tenantName, outstanding: match.outstanding, earliestDue: match.earliestDue }
+            ? {
+                propertyReference: match.propertyReference,
+                propertyName: match.propertyName,
+                tenantName: match.tenantName,
+                tenancyNumber: match.tenancyNumber,
+                outstanding: match.outstanding,
+                earliestDue: match.earliestDue,
+                daysInArrears: match.daysInArrears,
+                reason: matchReason(match, line),
+              }
             : null,
         };
       })
