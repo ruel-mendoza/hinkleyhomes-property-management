@@ -1050,6 +1050,74 @@ export const GetComplianceResponse = zod.object({
 
 
 /**
+ * @summary Rent invoiced and management fees by month, property and owner over the last 12 months (COHO financial items)
+ */
+export const GetFinanceIncomeResponse = zod.object({
+  "asOf": zod.string(),
+  "from": zod.string(),
+  "rentTotal": zod.number(),
+  "feesTotal": zod.number(),
+  "feeRatePercent": zod.number().nullable(),
+  "unpaidTotal": zod.number(),
+  "unpaidCount": zod.number().int(),
+  "otherTotal": zod.number().describe('Financial items that are neither rent nor management fees (expenses are normally recorded in Xero)'),
+  "months": zod.array(zod.object({
+  "month": zod.string().describe('YYYY-MM'),
+  "rent": zod.number(),
+  "fees": zod.number(),
+  "unpaid": zod.number()
+})),
+  "properties": zod.array(zod.object({
+  "propertyReference": zod.string(),
+  "propertyName": zod.string(),
+  "ownerName": zod.string().nullable(),
+  "rent": zod.number(),
+  "fees": zod.number(),
+  "unpaid": zod.number(),
+  "lastPaid": zod.string().nullable()
+})),
+  "owners": zod.array(zod.object({
+  "ownerReference": zod.string(),
+  "ownerName": zod.string(),
+  "properties": zod.number().int(),
+  "rent": zod.number(),
+  "fees": zod.number()
+}))
+})
+
+
+/**
+ * @summary COHO's rent bank feed (bank lines matched or not matched to rent) over the last 12 months
+ */
+export const GetFinanceBankFeedResponse = zod.object({
+  "asOf": zod.string(),
+  "from": zod.string(),
+  "accounts": zod.array(zod.string()).describe('Bank and last four digits of each account in the feed'),
+  "matchedCount": zod.number().int(),
+  "unmatchedCount": zod.number().int(),
+  "excludedCount": zod.number().int(),
+  "matchedAmount": zod.number(),
+  "unmatchedAmount": zod.number(),
+  "oldestUnmatched": zod.string().nullable(),
+  "months": zod.array(zod.object({
+  "month": zod.string(),
+  "matched": zod.number(),
+  "unmatched": zod.number()
+})),
+  "lines": zod.array(zod.object({
+  "id": zod.string(),
+  "date": zod.string(),
+  "amount": zod.number(),
+  "payer": zod.string().nullable(),
+  "reference": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "status": zod.enum(['matched', 'partly_matched', 'unmatched', 'excluded']),
+  "possibleDuplicate": zod.boolean()
+}))
+})
+
+
+/**
  * @summary Available rooms and properties for the website widget (no sign-in; no house numbers)
  */
 export const ListPublicListingsResponse = zod.object({

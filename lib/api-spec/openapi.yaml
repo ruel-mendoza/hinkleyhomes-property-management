@@ -683,6 +683,38 @@ paths:
           description: COHO returned an error
         "503":
           description: COHO API key is not configured
+  /finance/income:
+    get:
+      operationId: getFinanceIncome
+      tags: [coho]
+      summary: Rent invoiced and management fees by month, property and owner over the last 12 months (COHO financial items)
+      responses:
+        "200":
+          description: Rent and fee income
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinanceIncome"
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO API key is not configured
+  /finance/bank-feed:
+    get:
+      operationId: getFinanceBankFeed
+      tags: [coho]
+      summary: COHO's rent bank feed (bank lines matched or not matched to rent) over the last 12 months
+      responses:
+        "200":
+          description: Bank feed lines
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinanceBankFeed"
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO API key is not configured
   /public/listings:
     get:
       operationId: listPublicListings
@@ -1097,6 +1129,150 @@ components:
           items:
             type: string
       required: [status, asOf, categories, rows, datesUnavailable]
+    FinanceIncomeMonth:
+      type: object
+      properties:
+        month:
+          description: YYYY-MM
+          type: string
+        rent:
+          type: number
+        fees:
+          type: number
+        unpaid:
+          type: number
+      required: [month, rent, fees, unpaid]
+    FinanceIncomeProperty:
+      type: object
+      properties:
+        propertyReference:
+          type: string
+        propertyName:
+          type: string
+        ownerName:
+          type: ["string", "null"]
+        rent:
+          type: number
+        fees:
+          type: number
+        unpaid:
+          type: number
+        lastPaid:
+          type: ["string", "null"]
+      required: [propertyReference, propertyName, ownerName, rent, fees, unpaid, lastPaid]
+    FinanceIncomeOwner:
+      type: object
+      properties:
+        ownerReference:
+          type: string
+        ownerName:
+          type: string
+        properties:
+          type: integer
+        rent:
+          type: number
+        fees:
+          type: number
+      required: [ownerReference, ownerName, properties, rent, fees]
+    FinanceIncome:
+      type: object
+      properties:
+        asOf:
+          type: string
+        from:
+          type: string
+        rentTotal:
+          type: number
+        feesTotal:
+          type: number
+        feeRatePercent:
+          type: ["number", "null"]
+        unpaidTotal:
+          type: number
+        unpaidCount:
+          type: integer
+        otherTotal:
+          description: Financial items that are neither rent nor management fees (expenses are normally recorded in Xero)
+          type: number
+        months:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinanceIncomeMonth"
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinanceIncomeProperty"
+        owners:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinanceIncomeOwner"
+      required: [asOf, from, rentTotal, feesTotal, feeRatePercent, unpaidTotal, unpaidCount, otherTotal, months, properties, owners]
+    FinanceBankLineStatus:
+      type: string
+      enum: [matched, partly_matched, unmatched, excluded]
+    FinanceBankLine:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+        amount:
+          type: number
+        payer:
+          type: ["string", "null"]
+        reference:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        status:
+          $ref: "#/components/schemas/FinanceBankLineStatus"
+        possibleDuplicate:
+          type: boolean
+      required: [id, date, amount, payer, reference, description, status, possibleDuplicate]
+    FinanceBankFeedMonth:
+      type: object
+      properties:
+        month:
+          type: string
+        matched:
+          type: number
+        unmatched:
+          type: number
+      required: [month, matched, unmatched]
+    FinanceBankFeed:
+      type: object
+      properties:
+        asOf:
+          type: string
+        from:
+          type: string
+        accounts:
+          description: Bank and last four digits of each account in the feed
+          type: array
+          items:
+            type: string
+        matchedCount:
+          type: integer
+        unmatchedCount:
+          type: integer
+        excludedCount:
+          type: integer
+        matchedAmount:
+          type: number
+        unmatchedAmount:
+          type: number
+        oldestUnmatched:
+          type: ["string", "null"]
+        months:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinanceBankFeedMonth"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinanceBankLine"
+      required: [asOf, from, accounts, matchedCount, unmatchedCount, excludedCount, matchedAmount, unmatchedAmount, oldestUnmatched, months, lines]
     PropertyRentalType:
       type: string
       enum: [room, whole_property]

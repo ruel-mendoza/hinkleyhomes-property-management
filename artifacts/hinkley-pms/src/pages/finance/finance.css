@@ -1,0 +1,48 @@
+/* Finance pages (Rent & fees, Rent bank feed), in the app's dark panel style. */
+.hh-fin-note{padding:16px 17px;font-size:13px;color:#95a2b5}
+.hh-fin-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.hh-fin-tile{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:8px;background:#192538;border:1px solid #2a374d;color:#c6d1de;text-align:left;font:inherit}
+.hh-fin-tile span{font-size:12px;font-weight:700;color:#95a2b5}
+.hh-fin-tile strong{font-size:24px;font-weight:800;line-height:1.1;color:#e7edf4;font-variant-numeric:tabular-nums}
+.hh-fin-tile small{font-size:12px;color:#8f9db0}
+.hh-fin-tile small a{color:#79cdb0}
+.hh-fin-tile.bad{background:#5a1f3a;border-color:#7a2c4f}.hh-fin-tile.bad span,.hh-fin-tile.bad small,.hh-fin-tile.bad strong{color:#f6cfe0}
+.hh-fin-tile.good{background:#1d4a3c;border-color:#2a6553}.hh-fin-tile.good span,.hh-fin-tile.good small,.hh-fin-tile.good strong{color:#c9f0e0}
+.hh-fin-tile.info{background:#1f3550;border-color:#2c4a6e}.hh-fin-tile.info span,.hh-fin-tile.info small,.hh-fin-tile.info strong{color:#c4dbf5}
+.hh-fin-tile.neutral{background:#2e3c55}
+.hh-fin-tile.button-tile{cursor:pointer;border-width:2px;transition:transform .12s,border-color .12s}
+.hh-fin-tile.button-tile:hover{transform:translateY(-1px)}
+.hh-fin-tile.button-tile.active{border-color:#79cdb0;box-shadow:0 0 0 2px #79cdb040}
+.hh-fin-tile.button-tile:focus-visible{outline:2px solid #79cdb0;outline-offset:2px}
+.hh-fin-charts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:13px}
+.hh-fin-chart{padding:12px 16px 12px 8px}
+.hh-fin-section{margin-top:14px}
+.hh-fin-table td{vertical-align:middle}
+.hh-fin-table .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hh-fin-table .status.na{background:#25324a;color:#95a2b5}
+.hh-fin-link{color:#e2e9f1;font-weight:600;text-decoration:none}
+.hh-fin-link:hover,.hh-fin-link:focus-visible{color:#79cdb0;text-decoration:underline}
+.hh-fin-sub{display:block;font-size:11px;color:#8f9db0;margin-top:2px;white-space:normal}
+.hh-fin-sub.warn{color:#edc16b}
+.hh-fin-filter{display:flex;align-items:center;gap:7px;max-width:420px;min-height:38px;margin:14px 0 10px;padding:4px 10px;border:1px solid #314057;border-radius:7px;background:#182337;color:#8492a8}
+.hh-fin-filter input{flex:1;min-width:90px;border:0;outline:0;background:transparent;color:#e0e6ef;font:inherit;font-size:13px;padding:4px 0}
+.hh-fin-filter:focus-within{border-color:#4f9c88;box-shadow:0 0 0 2px #4f9c8840}
+.hh-fin-foot{margin:12px 0 0;font-size:12px;color:#8f9db0}
+
+/* Overview money-trend card */
+.hh-trend{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:13px;margin-top:13px}
+.hh-trend .panel-head a{font-size:12px;font-weight:700;color:#79cdb0;text-decoration:none}
+.hh-trend .panel-head a:hover{text-decoration:underline}
+.hh-meter{padding:16px 17px}
+.hh-meter-bar{display:flex;gap:2px;height:14px;border-radius:7px;overflow:hidden;background:#25324a;margin:10px 0 8px}
+.hh-meter-bar span{display:block;height:100%}
+.hh-meter-legend{display:flex;flex-direction:column;gap:5px;list-style:none;margin:0;padding:0;font-size:12px;color:#c6d1de}
+.hh-meter-legend li{display:flex;align-items:center;gap:7px}
+.hh-meter-legend i{width:10px;height:10px;border-radius:3px;flex:none}
+.hh-meter-legend b{margin-left:auto;color:#e7edf4;font-variant-numeric:tabular-nums}
+.hh-meter-headline{font-size:22px;font-weight:800;color:#e7edf4}
+.hh-meter-headline small{font-size:12px;font-weight:600;color:#95a2b5;margin-left:6px}
+.hh-meter-flag{display:flex;gap:6px;align-items:flex-start;margin-top:10px;padding:7px 9px;border-radius:6px;background:#45272c;border:1px solid #6a3440;color:#f3c2c4;font-size:12px}
+.hh-meter-flag svg{flex:none;margin-top:2px}
+
+@media(max-width:1100px){.hh-fin-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.hh-fin-charts,.hh-trend{grid-template-columns:1fr}}

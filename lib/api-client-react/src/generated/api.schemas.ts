@@ -337,6 +337,96 @@ export interface ComplianceList {
   datesUnavailable: string[];
 }
 
+export interface FinanceIncomeMonth {
+  /** YYYY-MM */
+  month: string;
+  rent: number;
+  fees: number;
+  unpaid: number;
+}
+
+export interface FinanceIncomeProperty {
+  propertyReference: string;
+  propertyName: string;
+  /** @nullable */
+  ownerName: string | null;
+  rent: number;
+  fees: number;
+  unpaid: number;
+  /** @nullable */
+  lastPaid: string | null;
+}
+
+export interface FinanceIncomeOwner {
+  ownerReference: string;
+  ownerName: string;
+  properties: number;
+  rent: number;
+  fees: number;
+}
+
+export interface FinanceIncome {
+  asOf: string;
+  from: string;
+  rentTotal: number;
+  feesTotal: number;
+  /** @nullable */
+  feeRatePercent: number | null;
+  unpaidTotal: number;
+  unpaidCount: number;
+  /** Financial items that are neither rent nor management fees (expenses are normally recorded in Xero) */
+  otherTotal: number;
+  months: FinanceIncomeMonth[];
+  properties: FinanceIncomeProperty[];
+  owners: FinanceIncomeOwner[];
+}
+
+export type FinanceBankLineStatus = typeof FinanceBankLineStatus[keyof typeof FinanceBankLineStatus];
+
+
+export const FinanceBankLineStatus = {
+  matched: 'matched',
+  partly_matched: 'partly_matched',
+  unmatched: 'unmatched',
+  excluded: 'excluded',
+} as const;
+
+export interface FinanceBankLine {
+  id: string;
+  date: string;
+  amount: number;
+  /** @nullable */
+  payer: string | null;
+  /** @nullable */
+  reference: string | null;
+  /** @nullable */
+  description: string | null;
+  status: FinanceBankLineStatus;
+  possibleDuplicate: boolean;
+}
+
+export interface FinanceBankFeedMonth {
+  month: string;
+  matched: number;
+  unmatched: number;
+}
+
+export interface FinanceBankFeed {
+  asOf: string;
+  from: string;
+  /** Bank and last four digits of each account in the feed */
+  accounts: string[];
+  matchedCount: number;
+  unmatchedCount: number;
+  excludedCount: number;
+  matchedAmount: number;
+  unmatchedAmount: number;
+  /** @nullable */
+  oldestUnmatched: string | null;
+  months: FinanceBankFeedMonth[];
+  lines: FinanceBankLine[];
+}
+
 export type PropertyRentalType = typeof PropertyRentalType[keyof typeof PropertyRentalType];
 
 

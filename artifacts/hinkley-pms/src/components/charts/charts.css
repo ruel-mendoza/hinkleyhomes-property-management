@@ -1,0 +1,16 @@
+/* Charts, in the app's dark panel style. Text stays in text tones; colour marks identity. */
+.hh-chart{margin:0}
+.hh-chart-legend{display:flex;flex-wrap:wrap;gap:4px 16px;list-style:none;margin:0 0 8px;padding:0;font-size:12px;color:#c6d1de}
+.hh-chart-legend li{display:flex;align-items:center;gap:6px}
+.hh-chart-legend i,.hh-chart-tip i{display:inline-block;width:10px;height:10px;border-radius:3px}
+.hh-chart-tip{min-width:170px;padding:9px 11px;border-radius:8px;background:#0f1828;border:1px solid #344159;box-shadow:0 10px 26px #04091266;font-size:12px;color:#c6d1de}
+.hh-chart-tip strong{display:block;margin-bottom:5px;color:#e7edf4;font-size:12px}
+.hh-chart-tip div{display:flex;align-items:center;gap:6px;padding:2px 0}
+.hh-chart-tip div span{margin-left:auto;padding-left:12px;color:#e7edf4;font-weight:700;font-variant-numeric:tabular-nums}
+.hh-chart-tip div.total{border-top:1px solid #2a374d;margin-top:4px;padding-top:5px}
+.hh-chart-table{margin-top:6px;font-size:12px;color:#95a2b5}
+.hh-chart-table summary{cursor:pointer;color:#79cdb0;font-size:12px}
+.hh-chart-table table{min-width:0;margin-top:6px}
+.hh-chart-table th,.hh-chart-table td{padding:5px 10px;font-size:12px;text-transform:none;letter-spacing:0}
+.hh-chart-table td:not(:first-child),.hh-chart-table th:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
+.recharts-wrapper:focus,.recharts-surface:focus{outline:none}

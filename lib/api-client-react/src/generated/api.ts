@@ -45,6 +45,8 @@ import type {
   CohoViewingInput,
   ComplianceList,
   EntityList,
+  FinanceBankFeed,
+  FinanceIncome,
   GetComplianceParams,
   GetPerformanceParams,
   HealthStatus,
@@ -2495,6 +2497,160 @@ export function useGetCompliance<TData = Awaited<ReturnType<typeof getCompliance
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetComplianceQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFinanceIncomeUrl = () => {
+
+
+
+
+  return `/api/finance/income`
+}
+
+/**
+ * @summary Rent invoiced and management fees by month, property and owner over the last 12 months (COHO financial items)
+ */
+export const getFinanceIncome = async ( options?: Parameters<typeof customFetch>[1]): Promise<FinanceIncome> => {
+
+  return customFetch<FinanceIncome>(getGetFinanceIncomeUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFinanceIncomeQueryKey = () => {
+    return [
+    `/api/finance/income`
+    ] as const;
+    }
+
+
+export const getGetFinanceIncomeQueryOptions = <TData = Awaited<ReturnType<typeof getFinanceIncome>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinanceIncome>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFinanceIncomeQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFinanceIncome>>> = ({ signal }) => getFinanceIncome({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFinanceIncome>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFinanceIncomeQueryResult = NonNullable<Awaited<ReturnType<typeof getFinanceIncome>>>
+export type GetFinanceIncomeQueryError = ErrorType<void>
+
+
+/**
+ * @summary Rent invoiced and management fees by month, property and owner over the last 12 months (COHO financial items)
+ */
+
+export function useGetFinanceIncome<TData = Awaited<ReturnType<typeof getFinanceIncome>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinanceIncome>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFinanceIncomeQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFinanceBankFeedUrl = () => {
+
+
+
+
+  return `/api/finance/bank-feed`
+}
+
+/**
+ * @summary COHO's rent bank feed (bank lines matched or not matched to rent) over the last 12 months
+ */
+export const getFinanceBankFeed = async ( options?: Parameters<typeof customFetch>[1]): Promise<FinanceBankFeed> => {
+
+  return customFetch<FinanceBankFeed>(getGetFinanceBankFeedUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFinanceBankFeedQueryKey = () => {
+    return [
+    `/api/finance/bank-feed`
+    ] as const;
+    }
+
+
+export const getGetFinanceBankFeedQueryOptions = <TData = Awaited<ReturnType<typeof getFinanceBankFeed>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinanceBankFeed>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFinanceBankFeedQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFinanceBankFeed>>> = ({ signal }) => getFinanceBankFeed({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFinanceBankFeed>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFinanceBankFeedQueryResult = NonNullable<Awaited<ReturnType<typeof getFinanceBankFeed>>>
+export type GetFinanceBankFeedQueryError = ErrorType<void>
+
+
+/**
+ * @summary COHO's rent bank feed (bank lines matched or not matched to rent) over the last 12 months
+ */
+
+export function useGetFinanceBankFeed<TData = Awaited<ReturnType<typeof getFinanceBankFeed>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinanceBankFeed>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFinanceBankFeedQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
