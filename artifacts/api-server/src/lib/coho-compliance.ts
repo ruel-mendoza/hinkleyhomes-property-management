@@ -31,29 +31,36 @@ export type PropertyCompliance = {
   issues: ComplianceIssue[];
 };
 
-// Leaf item counts for one property: reference -> { name, total }.
-type Leaves = Map<string, { name: string; total: number }>;
+// Leaf item counts for one property: reference -> { name, total, category }.
+// The category is the top-level type (e.g. "Fire Safety" for "Fire Alarm Test").
+export type ComplianceLeaf = { name: string; total: number; categoryKey: string; categoryName: string };
+type Leaves = Map<string, ComplianceLeaf>;
 const leavesOf = (summaries: unknown): Leaves => {
   const leaves: Leaves = new Map();
-  const walk = (items: RecordValue[]) => {
-    for (const item of items) {
-      const children = list(item.childCompliancyTypeSummaries);
-      if (children.length) walk(children);
-      else leaves.set(str(item.reference) ?? str(item.name) ?? "", { name: str(item.name) ?? "Compliance item", total: num(item.total) ?? 0 });
+  for (const top of list(summaries)) {
+    const categoryKey = str(top.reference) ?? str(top.name) ?? "";
+    const categoryName = str(top.name) ?? "Compliance";
+    const children = list(top.childCompliancyTypeSummaries);
+    for (const item of children.length ? children : [top]) {
+      leaves.set(str(item.reference) ?? str(item.name) ?? "", { name: str(item.name) ?? "Compliance item", total: num(item.total) ?? 0, categoryKey, categoryName });
     }
-  };
-  walk(list(summaries));
+  }
   return leaves;
 };
 
-async function fetchBucket(bucket: Bucket, propertyReference?: string): Promise<Map<string, Leaves>> {
-  const query = new URLSearchParams({ groupByProperty: "true", daysToExpiry: String(BUCKETS[bucket]) });
+// Per-property leaf counts for any daysToExpiry bucket (see the header comment),
+// plus the property names COHO reports with them.
+export async function fetchComplianceOverview(daysToExpiry: number, propertyReference?: string) {
+  const query = new URLSearchParams({ groupByProperty: "true", daysToExpiry: String(daysToExpiry) });
   if (propertyReference) query.set("propertyReferences", propertyReference);
   const payload = asRecord(await cohoGet(`/compliancy/overview?${query}`));
-  return new Map(
-    list(payload.propertySummaries).map((property) => [str(property.propertyReference) ?? "", leavesOf(property.compliancyTypeSummaries)]),
-  );
+  const properties = list(payload.propertySummaries);
+  return {
+    leaves: new Map(properties.map((property) => [str(property.propertyReference) ?? "", leavesOf(property.compliancyTypeSummaries)])),
+    names: new Map(properties.map((property) => [str(property.propertyReference) ?? "", str(property.propertyName) ?? ""])),
+  };
 }
+const fetchBucket = async (bucket: Bucket, propertyReference?: string) => (await fetchComplianceOverview(BUCKETS[bucket], propertyReference)).leaves;
 
 export type ComplianceBuckets = Record<Bucket, Map<string, Leaves>>;
 
@@ -113,11 +120,15 @@ export type ComplianceRecord = {
   detail: string | null;
 };
 
+// COHO stores UK dates as UK midnight in UTC (3 Aug BST = 2026-08-02T23:00Z),
+// so dates are read in UK time; the UTC date would be a day early in summer.
+const ukDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" });
+export const ukToday = () => ukDate.format(new Date());
 const isoDate = (value: unknown): string | null => {
   const text = str(value);
   if (!text) return null;
   const date = new Date(text);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+  return Number.isNaN(date.getTime()) ? null : ukDate.format(date);
 };
 const addDays = (date: string, days: number) => new Date(Date.parse(date) + days * 86_400_000).toISOString().slice(0, 10);
 const addMonths = (date: string, months: number) => {
@@ -162,7 +173,7 @@ export type PropertyRecords = {
 
 export async function fetchPropertyRecords(reference: string, required: Set<string>): Promise<PropertyRecords> {
   const base = `/properties/${encodeURIComponent(reference)}`;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = ukToday();
   const unavailable: string[] = [];
   const load = (path: string, label: string) =>
     cohoOptional(`${base}/${path}`).catch(() => {

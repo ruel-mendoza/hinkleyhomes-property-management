@@ -43,7 +43,9 @@ import type {
   CohoStatus,
   CohoViewingCreated,
   CohoViewingInput,
+  ComplianceList,
   EntityList,
+  GetComplianceParams,
   GetPerformanceParams,
   HealthStatus,
   ListCohoActionsParams,
@@ -2409,6 +2411,90 @@ export function useGetPerformance<TData = Awaited<ReturnType<typeof getPerforman
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetPerformanceQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetComplianceUrl = (params?: GetComplianceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/compliance?${stringifiedParams}` : `/api/compliance`
+}
+
+/**
+ * @summary COHO compliance items for every property, filtered by status, with counts by type and each item's dates
+ */
+export const getCompliance = async (params?: GetComplianceParams, options?: Parameters<typeof customFetch>[1]): Promise<ComplianceList> => {
+
+  return customFetch<ComplianceList>(getGetComplianceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetComplianceQueryKey = (params?: GetComplianceParams,) => {
+    return [
+    `/api/compliance`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetComplianceQueryOptions = <TData = Awaited<ReturnType<typeof getCompliance>>, TError = ErrorType<void>>(params?: GetComplianceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompliance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetComplianceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCompliance>>> = ({ signal }) => getCompliance(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCompliance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetComplianceQueryResult = NonNullable<Awaited<ReturnType<typeof getCompliance>>>
+export type GetComplianceQueryError = ErrorType<void>
+
+
+/**
+ * @summary COHO compliance items for every property, filtered by status, with counts by type and each item's dates
+ */
+
+export function useGetCompliance<TData = Awaited<ReturnType<typeof getCompliance>>, TError = ErrorType<void>>(
+ params?: GetComplianceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompliance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetComplianceQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

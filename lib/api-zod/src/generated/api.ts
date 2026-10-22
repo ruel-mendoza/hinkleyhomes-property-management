@@ -1015,6 +1015,41 @@ export const GetPerformanceResponse = zod.object({
 
 
 /**
+ * @summary COHO compliance items for every property, filtered by status, with counts by type and each item's dates
+ */
+export const GetComplianceQueryParams = zod.object({
+  "status": zod.enum(['expired', 'due_30', 'due_60', 'due_90', 'not_started', 'not_required', 'all']).optional()
+})
+
+export const GetComplianceResponse = zod.object({
+  "status": zod.enum(['expired', 'due_30', 'due_60', 'due_90', 'not_started', 'not_required', 'all']),
+  "asOf": zod.string(),
+  "categories": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "count": zod.number().int(),
+  "types": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "count": zod.number().int()
+}))
+})),
+  "rows": zod.array(zod.object({
+  "propertyReference": zod.string(),
+  "propertyName": zod.string(),
+  "categoryKey": zod.string(),
+  "categoryName": zod.string(),
+  "typeKey": zod.string(),
+  "typeName": zod.string(),
+  "status": zod.enum(['expired', 'due_soon', 'not_started', 'not_required', 'in_date']),
+  "carriedOut": zod.string().nullable().describe('UK date (YYYY-MM-DD) of the latest record'),
+  "expiry": zod.string().nullable().describe('UK date the latest record expires (worked out from COHO\'s validity period when COHO gives none)')
+})),
+  "datesUnavailable": zod.array(zod.string()).describe('Properties whose record dates could not be loaded from COHO')
+})
+
+
+/**
  * @summary Available rooms and properties for the website widget (no sign-in; no house numbers)
  */
 export const ListPublicListingsResponse = zod.object({

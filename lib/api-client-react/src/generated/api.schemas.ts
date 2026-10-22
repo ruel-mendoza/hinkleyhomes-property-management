@@ -271,6 +271,72 @@ export interface Performance {
   snapshotError: string | null;
 }
 
+export type ComplianceFilter = typeof ComplianceFilter[keyof typeof ComplianceFilter];
+
+
+export const ComplianceFilter = {
+  expired: 'expired',
+  due_30: 'due_30',
+  due_60: 'due_60',
+  due_90: 'due_90',
+  not_started: 'not_started',
+  not_required: 'not_required',
+  all: 'all',
+} as const;
+
+export type ComplianceItemStatus = typeof ComplianceItemStatus[keyof typeof ComplianceItemStatus];
+
+
+export const ComplianceItemStatus = {
+  expired: 'expired',
+  due_soon: 'due_soon',
+  not_started: 'not_started',
+  not_required: 'not_required',
+  in_date: 'in_date',
+} as const;
+
+export interface ComplianceTypeCount {
+  key: string;
+  name: string;
+  count: number;
+}
+
+export interface ComplianceCategoryCount {
+  key: string;
+  name: string;
+  count: number;
+  types: ComplianceTypeCount[];
+}
+
+export interface ComplianceRow {
+  propertyReference: string;
+  propertyName: string;
+  categoryKey: string;
+  categoryName: string;
+  typeKey: string;
+  typeName: string;
+  status: ComplianceItemStatus;
+  /**
+     * UK date (YYYY-MM-DD) of the latest record
+     * @nullable
+     */
+  carriedOut: string | null;
+  /**
+     * UK date the latest record expires (worked out from COHO's validity period when COHO gives none)
+     * @nullable
+     */
+  expiry: string | null;
+}
+
+export interface ComplianceList {
+  status: ComplianceFilter;
+  asOf: string;
+  categories: ComplianceCategoryCount[];
+  rows: ComplianceRow[];
+  /** Properties whose record dates could not be loaded from COHO */
+  datesUnavailable: string[];
+}
+
 export type PropertyRentalType = typeof PropertyRentalType[keyof typeof PropertyRentalType];
 
 
@@ -1156,5 +1222,9 @@ export type GetPerformanceParams = {
  * @maxLength 200
  */
 propertyReference?: string;
+};
+
+export type GetComplianceParams = {
+status?: ComplianceFilter;
 };
 

@@ -1,0 +1,36 @@
+/* Compliance page, in the app's dark panel style; tiles match Occupancy and Performance. */
+.hh-comp-filter{display:flex;flex-wrap:wrap;gap:10px;background:#141f30;border:1px solid #2a374d;border-radius:8px;padding:12px;margin-bottom:14px}
+.hh-comp-select{min-width:220px;height:38px;font-size:13px}
+.hh-comp-search{flex:1;min-width:220px;max-width:420px;display:flex;align-items:center;gap:7px;min-height:38px;padding:4px 10px;border:1px solid #314057;border-radius:7px;background:#182337;color:#8492a8}
+.hh-comp-search input{flex:1;min-width:90px;border:0;outline:0;background:transparent;color:#e0e6ef;font:inherit;font-size:13px;padding:4px 0}
+.hh-comp-search input::placeholder{color:#77859a}
+.hh-comp-search:focus-within{border-color:#4f9c88;box-shadow:0 0 0 2px #4f9c8840}
+
+.hh-comp-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px;margin-bottom:10px}
+.hh-comp-tiles.sub{margin-bottom:16px}
+.hh-comp-tiles.sub .hh-comp-tile{min-height:64px}
+.hh-comp-tiles.sub .hh-comp-tile strong{font-size:24px}
+.hh-comp-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:72px;padding:8px 6px;border-radius:8px;border:2px solid transparent;background:#25324a;color:#95a2b5;font:inherit;cursor:pointer;transition:transform .12s,border-color .12s}
+.hh-comp-tile strong{font-size:28px;font-weight:800;line-height:1;color:#dce4ed}
+.hh-comp-tile span{font-size:12px;font-weight:700;text-align:center;line-height:1.25}
+.hh-comp-tile.bad{background:#5a1f3a;color:#f6cfe0}
+.hh-comp-tile.warn{background:#4a3a1e;color:#f3d9a4}
+.hh-comp-tile.info{background:#1f3550;color:#c4dbf5}
+.hh-comp-tile.neutral{background:#2e3c55;color:#c6d1de}
+.hh-comp-tile.bad strong,.hh-comp-tile.warn strong,.hh-comp-tile.info strong,.hh-comp-tile.neutral strong{color:inherit}
+.hh-comp-tile:hover{transform:translateY(-1px)}
+.hh-comp-tile.active{border-color:#79cdb0;box-shadow:0 0 0 2px #79cdb040}
+.hh-comp-tile:focus-visible{outline:2px solid #79cdb0;outline-offset:2px}
+.hh-comp-loading{grid-column:1/-1;padding:14px;font-size:13px;color:#95a2b5}
+
+.hh-comp-table td{vertical-align:middle}
+.hh-comp-table .status.na{background:#25324a;color:#95a2b5}
+.hh-comp-property{color:#e2e9f1;font-weight:600;text-decoration:none}
+.hh-comp-property:hover,.hh-comp-property:focus-visible{color:#79cdb0;text-decoration:underline}
+.hh-comp-sep{color:#6f7f96;margin:0 2px}
+.hh-comp-when{display:block;font-size:11px;color:#8f9db0;margin-top:1px}
+.hh-comp-when.expired{color:#f08f91}
+.hh-comp-when.due_soon{color:#edc16b}
+
+/* Expired count on the sidebar link */
+.nav-badge{margin-left:auto;min-width:19px;height:18px;padding:0 6px;border-radius:999px;background:#c2287a;color:#fff;font-size:11px;font-weight:800;display:inline-grid;place-items:center;line-height:1}

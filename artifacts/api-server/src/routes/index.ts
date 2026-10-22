@@ -7,6 +7,7 @@ import integrationsRouter from "./integrations";
 import moneyRouter from "./money";
 import occupancyRouter from "./occupancy";
 import performanceRouter from "./performance";
+import complianceRouter from "./compliance";
 import { propertiesRouter, publicListingsRouter } from "./properties";
 import { requireStaffAccess } from "../middlewares/requireStaffAccess";
 
@@ -25,5 +26,6 @@ router.use(propertiesRouter);
 router.use(occupancyRouter);
 router.use(moneyRouter);
 router.use(performanceRouter);
+router.use(complianceRouter);
 
 export default router;

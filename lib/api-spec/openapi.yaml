@@ -661,6 +661,28 @@ paths:
           description: COHO returned an error
         "503":
           description: COHO API key is not configured
+  /compliance:
+    get:
+      operationId: getCompliance
+      tags: [coho]
+      summary: COHO compliance items for every property, filtered by status, with counts by type and each item's dates
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ComplianceFilter"
+      responses:
+        "200":
+          description: Compliance items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceList"
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO API key is not configured
   /public/listings:
     get:
       operationId: listPublicListings
@@ -1000,6 +1022,81 @@ components:
           description: Set when today's snapshot could not be saved
           type: ["string", "null"]
       required: [asOf, propertyReference, units, occupiedToday, occupancyTodayPercent, rentRollThisMonth, rentRollLastMonth, periods, averageTenancyMonths, tenanciesCounted, snapshotsSince, snapshotError]
+    ComplianceFilter:
+      type: string
+      enum: [expired, due_30, due_60, due_90, not_started, not_required, all]
+    ComplianceItemStatus:
+      type: string
+      enum: [expired, due_soon, not_started, not_required, in_date]
+    ComplianceTypeCount:
+      type: object
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        count:
+          type: integer
+      required: [key, name, count]
+    ComplianceCategoryCount:
+      type: object
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        count:
+          type: integer
+        types:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComplianceTypeCount"
+      required: [key, name, count, types]
+    ComplianceRow:
+      type: object
+      properties:
+        propertyReference:
+          type: string
+        propertyName:
+          type: string
+        categoryKey:
+          type: string
+        categoryName:
+          type: string
+        typeKey:
+          type: string
+        typeName:
+          type: string
+        status:
+          $ref: "#/components/schemas/ComplianceItemStatus"
+        carriedOut:
+          description: UK date (YYYY-MM-DD) of the latest record
+          type: ["string", "null"]
+        expiry:
+          description: UK date the latest record expires (worked out from COHO's validity period when COHO gives none)
+          type: ["string", "null"]
+      required: [propertyReference, propertyName, categoryKey, categoryName, typeKey, typeName, status, carriedOut, expiry]
+    ComplianceList:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/ComplianceFilter"
+        asOf:
+          type: string
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComplianceCategoryCount"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComplianceRow"
+        datesUnavailable:
+          description: Properties whose record dates could not be loaded from COHO
+          type: array
+          items:
+            type: string
+      required: [status, asOf, categories, rows, datesUnavailable]
     PropertyRentalType:
       type: string
       enum: [room, whole_property]
