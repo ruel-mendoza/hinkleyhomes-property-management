@@ -1,8 +1,10 @@
 import { AlertTriangle, ArrowLeft, Briefcase, House } from "lucide-react";
 import { Link } from "wouter";
 import {
+  getGetOccupancyQueryKey,
   getGetPropertyDetailsQueryKey,
   getListPropertiesQueryKey,
+  useGetOccupancy,
   useGetPropertyDetails,
   useListProperties,
   type ComplianceRecord,
@@ -10,6 +12,7 @@ import {
   type PropertyDetails,
 } from "@workspace/api-client-react";
 import { complianceTone, formatDate, formatMoney, humanize, locationLine, occupancy, statusLabel } from "@/services/properties";
+import { rentText, statusText, STATUS_TONE } from "@/services/occupancy";
 import { ComplianceBar } from "@/components/properties/ComplianceBar";
 import { actionsPath } from "@/components/properties/PropertyCard";
 import "./properties.css";
@@ -98,6 +101,8 @@ export default function PropertyDetailPage({ id }: { id: string }) {
         </div>
       </section>
 
+      {reference && <PropertyTenancy reference={reference} />}
+
       {reference && (
         detailsQuery.isLoading ? (
           <section className="panel hh-detail-note">Loading letting, ownership and compliance details from COHO…</section>
@@ -108,6 +113,43 @@ export default function PropertyDetailPage({ id }: { id: string }) {
         )
       )}
     </>
+  );
+}
+
+function PropertyTenancy({ reference }: { reference: string }) {
+  const query = useGetOccupancy({ query: { queryKey: getGetOccupancyQueryKey(), staleTime: 2 * 60_000 } });
+  const rows = (query.data?.rows ?? []).filter((row) => row.propertyReference === reference);
+  return (
+    <section className="panel hh-detail-section">
+      <div className="panel-head">
+        <div><div className="panel-title">Tenancy</div><div className="panel-caption">Current and upcoming tenancies from COHO</div></div>
+        <Link href={`/occupancy?q=${encodeURIComponent(query.data?.rows.find((row) => row.propertyReference === reference)?.propertyName ?? "")}`} className="button">Occupancy</Link>
+      </div>
+      {query.isLoading ? (
+        <p className="hh-detail-note">Loading tenancies from COHO…</p>
+      ) : query.isError ? (
+        <p className="hh-detail-note warn"><AlertTriangle size={14} /> Tenancies could not be loaded from COHO.</p>
+      ) : (
+        <div className="table-wrap">
+          <table className="hh-detail-table">
+            <thead><tr><th>Unit</th><th>Tenants</th><th>Rent</th><th>Start</th><th>Fixed term</th><th>Status</th></tr></thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.tenancyGuid ?? `${row.unitReference}-vacant`}>
+                  <td>{row.unitsInProperty > 1 ? row.unitName : "Whole property"}</td>
+                  <td>{row.tenants.length ? row.tenants.map((tenant) => tenant.name).join(", ") : "—"}{row.tenancyNumber ? <small> · {row.tenancyNumber}</small> : null}</td>
+                  <td className="hh-nowrap">{rentText(row)}</td>
+                  <td className="hh-nowrap">{row.startDate ? formatDate(row.startDate) : row.availableFrom ? `Available ${formatDate(row.availableFrom)}` : "—"}</td>
+                  <td className="hh-nowrap">{row.fixedTermEnd ? formatDate(row.fixedTermEnd) : "—"}</td>
+                  <td><span className={`status ${STATUS_TONE[row.status]}`}>{statusText(row)}</span></td>
+                </tr>
+              ))}
+              {!rows.length && <tr><td colSpan={6} className="secondary-text">No units for this property in COHO.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 

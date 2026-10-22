@@ -5,6 +5,75 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type OccupancyStatus = typeof OccupancyStatus[keyof typeof OccupancyStatus];
+
+
+export const OccupancyStatus = {
+  fixed_term: 'fixed_term',
+  becoming_periodic: 'becoming_periodic',
+  periodic: 'periodic',
+  ending: 'ending',
+  future: 'future',
+  vacant: 'vacant',
+} as const;
+
+export interface OccupancyTenant {
+  name: string;
+  /**
+     * person or company
+     * @nullable
+     */
+  type: string | null;
+  /**
+     * COHO app account status (e.g. joined, invited, notInvited)
+     * @nullable
+     */
+  cohoAccount: string | null;
+}
+
+export interface OccupancyRow {
+  propertyReference: string;
+  propertyName: string;
+  unitReference: string;
+  unitName: string;
+  unitsInProperty: number;
+  /** @nullable */
+  tenancyGuid: string | null;
+  /** @nullable */
+  tenancyNumber: string | null;
+  tenants: OccupancyTenant[];
+  /**
+     * Tenancy rent, or the unit's advertised rent for vacant units
+     * @nullable
+     */
+  rent: number | null;
+  /** @nullable */
+  paymentFrequency: string | null;
+  /**
+     * UK date (YYYY-MM-DD)
+     * @nullable
+     */
+  startDate: string | null;
+  /** @nullable */
+  fixedTermEnd: string | null;
+  /** @nullable */
+  endDate: string | null;
+  /** @nullable */
+  availableFrom: string | null;
+  /** @nullable */
+  nextRentReview: string | null;
+  status: OccupancyStatus;
+}
+
+export interface Occupancy {
+  /** Today's UK date the statuses were worked out for */
+  asOf: string;
+  /** A fixed term ending within this many days counts as becoming periodic */
+  becomingPeriodicDays: number;
+  units: number;
+  rows: OccupancyRow[];
+}
+
 export type PropertyRentalType = typeof PropertyRentalType[keyof typeof PropertyRentalType];
 
 

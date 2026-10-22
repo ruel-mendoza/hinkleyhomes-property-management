@@ -609,6 +609,22 @@ paths:
                 $ref: "#/components/schemas/EntityList"
         "503":
           description: Database is not configured
+  /occupancy:
+    get:
+      operationId: getOccupancy
+      tags: [coho]
+      summary: Every COHO unit with its current or future tenancy (rent, dates, periodic status) or vacancy
+      responses:
+        "200":
+          description: Units and tenancies
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Occupancy"
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO API key is not configured
   /public/listings:
     get:
       operationId: listPublicListings
@@ -636,6 +652,77 @@ components:
         minLength: 1
         maxLength: 200
   schemas:
+    OccupancyStatus:
+      type: string
+      enum: [fixed_term, becoming_periodic, periodic, ending, future, vacant]
+    OccupancyTenant:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          description: person or company
+          type: ["string", "null"]
+        cohoAccount:
+          description: COHO app account status (e.g. joined, invited, notInvited)
+          type: ["string", "null"]
+      required: [name, type, cohoAccount]
+    OccupancyRow:
+      type: object
+      properties:
+        propertyReference:
+          type: string
+        propertyName:
+          type: string
+        unitReference:
+          type: string
+        unitName:
+          type: string
+        unitsInProperty:
+          type: integer
+        tenancyGuid:
+          type: ["string", "null"]
+        tenancyNumber:
+          type: ["string", "null"]
+        tenants:
+          type: array
+          items:
+            $ref: "#/components/schemas/OccupancyTenant"
+        rent:
+          description: Tenancy rent, or the unit's advertised rent for vacant units
+          type: ["number", "null"]
+        paymentFrequency:
+          type: ["string", "null"]
+        startDate:
+          description: UK date (YYYY-MM-DD)
+          type: ["string", "null"]
+        fixedTermEnd:
+          type: ["string", "null"]
+        endDate:
+          type: ["string", "null"]
+        availableFrom:
+          type: ["string", "null"]
+        nextRentReview:
+          type: ["string", "null"]
+        status:
+          $ref: "#/components/schemas/OccupancyStatus"
+      required: [propertyReference, propertyName, unitReference, unitName, unitsInProperty, tenancyGuid, tenancyNumber, tenants, rent, paymentFrequency, startDate, fixedTermEnd, endDate, availableFrom, nextRentReview, status]
+    Occupancy:
+      type: object
+      properties:
+        asOf:
+          description: Today's UK date the statuses were worked out for
+          type: string
+        becomingPeriodicDays:
+          description: A fixed term ending within this many days counts as becoming periodic
+          type: integer
+        units:
+          type: integer
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/OccupancyRow"
+      required: [asOf, becomingPeriodicDays, units, rows]
     PropertyRentalType:
       type: string
       enum: [room, whole_property]

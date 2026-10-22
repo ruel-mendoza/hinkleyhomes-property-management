@@ -49,6 +49,7 @@ import type {
   ListCohoCalendarParams,
   ListCohoMaintenanceParams,
   ListCohoPropertiesParams,
+  Occupancy,
   PropertyCreate,
   PropertyDetails,
   PropertyRegister,
@@ -2167,6 +2168,83 @@ export function useListEntities<TData = Awaited<ReturnType<typeof listEntities>>
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListEntitiesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOccupancyUrl = () => {
+
+
+
+
+  return `/api/occupancy`
+}
+
+/**
+ * @summary Every COHO unit with its current or future tenancy (rent, dates, periodic status) or vacancy
+ */
+export const getOccupancy = async ( options?: Parameters<typeof customFetch>[1]): Promise<Occupancy> => {
+
+  return customFetch<Occupancy>(getGetOccupancyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOccupancyQueryKey = () => {
+    return [
+    `/api/occupancy`
+    ] as const;
+    }
+
+
+export const getGetOccupancyQueryOptions = <TData = Awaited<ReturnType<typeof getOccupancy>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOccupancy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOccupancyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOccupancy>>> = ({ signal }) => getOccupancy({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOccupancy>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOccupancyQueryResult = NonNullable<Awaited<ReturnType<typeof getOccupancy>>>
+export type GetOccupancyQueryError = ErrorType<void>
+
+
+/**
+ * @summary Every COHO unit with its current or future tenancy (rent, dates, periodic status) or vacancy
+ */
+
+export function useGetOccupancy<TData = Awaited<ReturnType<typeof getOccupancy>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOccupancy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOccupancyQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

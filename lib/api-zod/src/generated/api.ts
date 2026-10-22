@@ -867,6 +867,38 @@ export const ListEntitiesResponse = zod.object({
 
 
 /**
+ * @summary Every COHO unit with its current or future tenancy (rent, dates, periodic status) or vacancy
+ */
+export const GetOccupancyResponse = zod.object({
+  "asOf": zod.string().describe('Today\'s UK date the statuses were worked out for'),
+  "becomingPeriodicDays": zod.number().int().describe('A fixed term ending within this many days counts as becoming periodic'),
+  "units": zod.number().int(),
+  "rows": zod.array(zod.object({
+  "propertyReference": zod.string(),
+  "propertyName": zod.string(),
+  "unitReference": zod.string(),
+  "unitName": zod.string(),
+  "unitsInProperty": zod.number().int(),
+  "tenancyGuid": zod.string().nullable(),
+  "tenancyNumber": zod.string().nullable(),
+  "tenants": zod.array(zod.object({
+  "name": zod.string(),
+  "type": zod.string().nullable().describe('person or company'),
+  "cohoAccount": zod.string().nullable().describe('COHO app account status (e.g. joined, invited, notInvited)')
+})),
+  "rent": zod.number().nullable().describe('Tenancy rent, or the unit\'s advertised rent for vacant units'),
+  "paymentFrequency": zod.string().nullable(),
+  "startDate": zod.string().nullable().describe('UK date (YYYY-MM-DD)'),
+  "fixedTermEnd": zod.string().nullable(),
+  "endDate": zod.string().nullable(),
+  "availableFrom": zod.string().nullable(),
+  "nextRentReview": zod.string().nullable(),
+  "status": zod.enum(['fixed_term', 'becoming_periodic', 'periodic', 'ending', 'future', 'vacant'])
+}))
+})
+
+
+/**
  * @summary Available rooms and properties for the website widget (no sign-in; no house numbers)
  */
 export const ListPublicListingsResponse = zod.object({

@@ -1,0 +1,37 @@
+/* Occupancy page, in the app's dark panel style (see index.css). */
+.hh-occ-filter{background:#141f30;border:1px solid #2a374d;border-radius:8px;padding:12px;margin-bottom:14px}
+.hh-occ-filter .hh-search{max-width:460px;display:flex;align-items:center;gap:7px;min-height:38px;padding:4px 10px;border:1px solid #314057;border-radius:7px;background:#182337;color:#8492a8}
+.hh-occ-filter .hh-search input{flex:1;min-width:90px;border:0;outline:0;background:transparent;color:#e0e6ef;font:inherit;font-size:13px;padding:4px 0}
+.hh-occ-filter .hh-search:focus-within{border-color:#4f9c88;box-shadow:0 0 0 2px #4f9c8840}
+
+.hh-occ-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.hh-occ-sum{display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:8px;background:#25324a;border:1px solid #33425a;color:#dce4ed;font-size:15px}
+.hh-occ-sum strong{font-size:18px;font-weight:800}
+.hh-occ-sum.good{background:#173d35;border-color:#24584b;color:#bfeadb}
+.hh-occ-sum.warn{background:#403421;border-color:#5a4626;color:#f0d29b}
+
+.hh-occ-tiles{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-bottom:16px}
+.hh-occ-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:72px;padding:8px 6px;border-radius:8px;border:2px solid transparent;background:#25324a;color:#dce4ed;font:inherit;cursor:pointer;transition:transform .12s,border-color .12s}
+.hh-occ-tile strong{font-size:28px;font-weight:800;line-height:1}
+.hh-occ-tile span{font-size:12px;font-weight:700;text-align:center}
+.hh-occ-tile.good{background:#1d4a3c;color:#c9f0e0}
+.hh-occ-tile.bad{background:#5a1f3a;color:#f6cfe0}
+.hh-occ-tile.warn{background:#4a3a1e;color:#f3d9a4}
+.hh-occ-tile.info{background:#1f3550;color:#c4dbf5}
+.hh-occ-tile:hover{transform:translateY(-1px)}
+.hh-occ-tile.active{border-color:#79cdb0;box-shadow:0 0 0 2px #79cdb040}
+.hh-occ-tile:focus-visible{outline:2px solid #79cdb0;outline-offset:2px}
+
+.hh-occ-table td{vertical-align:top}
+.hh-occ-table .status.na{background:#25324a;color:#95a2b5}
+.hh-occ-group th{background:#141f30;font-size:13px;letter-spacing:0;text-transform:none;color:#e2e9f1;padding-top:14px}
+.hh-occ-group a{color:inherit;text-decoration:none}
+.hh-occ-group a:hover,.hh-occ-group a:focus-visible{color:#79cdb0;text-decoration:underline}
+.hh-occ-tenants{white-space:normal!important;min-width:200px}
+.hh-occ-tenant{display:flex;align-items:center;gap:6px;color:#dce4ed}
+.hh-occ-tenant i{flex:none;width:8px;height:8px;border-radius:50%;background:#e2a93b}
+.hh-occ-tenant i.joined{background:#3fb37f}
+.hh-occ-tenants small{display:block;margin-top:2px;color:#8f9db0;font-size:12px}
+
+@media(max-width:1100px){.hh-occ-tiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:680px){.hh-occ-summary{grid-template-columns:1fr}.hh-occ-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
