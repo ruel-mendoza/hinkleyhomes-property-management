@@ -9,7 +9,7 @@ import { shadcn } from '@clerk/themes';
 import NotFound from '@/pages/not-found';
 import { Link, Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import {
-  AlertTriangle, ArrowUpRight, Building2, CalendarDays, ClipboardList, House, LayoutDashboard, LogOut, Menu, PlugZap, PoundSterling, Search, Users, Wrench, X,
+  AlertTriangle, ArrowUpRight, Building2, CalendarDays, ClipboardList, House, LayoutDashboard, LogOut, Menu, PlugZap, PoundSterling, Search, TrendingUp, Users, Wrench, X,
 } from 'lucide-react';
 import {
   getGetCohoStatusQueryKey,
@@ -28,6 +28,7 @@ import ActionsPage from '@/pages/actions';
 import PropertiesPage from '@/pages/properties/PropertiesPage';
 import PropertyDetailPage from '@/pages/properties/PropertyDetailPage';
 import OccupancyPage from '@/pages/occupancy/OccupancyPage';
+import PerformancePage, { PerformanceStrip } from '@/pages/performance/PerformancePage';
 import ListingsWidget from '@/pages/listings-widget';
 import { AccountsNotices, MoneyPanels, formatPounds } from '@/components/overview/MoneyPanels';
 import {
@@ -43,7 +44,7 @@ import { isAllowedStaffEmail } from '@/lib/staff-email';
 const LEGACY_DEMO_STORAGE = 'hinkley-pms-demo-v1';
 const navGroups = [
   { label: 'CORE', items: [['/dashboard', 'Overview', LayoutDashboard], ['/properties', 'Properties', Building2]] },
-  { label: 'OPERATIONS', items: [['/calendar', 'Calendar', CalendarDays], ['/occupancy', 'Occupancy', Users], ['/actions', 'Actions', ClipboardList], ['/maintenance', 'Maintenance', Wrench]] },
+  { label: 'OPERATIONS', items: [['/calendar', 'Calendar', CalendarDays], ['/occupancy', 'Occupancy', Users], ['/performance', 'Performance', TrendingUp], ['/actions', 'Actions', ClipboardList], ['/maintenance', 'Maintenance', Wrench]] },
 ] as const;
 const initials = (s: string) => s.split(' ').map(a => a[0]).slice(0, 2).join('').toUpperCase();
 const greeting = (date: Date) => date.getHours() < 12 ? 'Good morning' : date.getHours() < 18 ? 'Good afternoon' : 'Good evening';
@@ -116,6 +117,7 @@ function AppShell() {
           <Route path="/calendar"><CalendarPage selectedPropertyReference={selectedPropertyReference} /></Route>
           <Route path="/actions"><ActionsPage selectedPropertyReference={selectedPropertyReference} /></Route>
           <Route path="/occupancy"><OccupancyPage selectedPropertyReference={selectedPropertyReference} /></Route>
+          <Route path="/performance"><PerformancePage selectedPropertyReference={selectedPropertyReference} /></Route>
           <Route path="/maintenance" component={CohoMaintenancePage} />
           <Route path="/properties"><PropertiesPage /></Route>
           <Route path="/properties/:id">{(params) => <PropertyDetailPage id={decodeURIComponent(params.id)} />}</Route>
@@ -156,6 +158,7 @@ function Overview({ profileName, configured, statusLoading, properties, properti
       <SmallMetric label="Rent collected" value={moneyValue(cohoMoney?.paidThisMonth)} foot={cohoMoney ? `of ${formatPounds(cohoMoney.dueThisMonth)} due this month${collectedShare === null ? '' : ` (${collectedShare}%)`}${propertyReference ? ' · all properties' : ''}` : 'This month, from COHO'} icon={<PoundSterling size={14} />} />
       <SmallMetric label="Overdue rent" value={propertyReference ? moneyValue(cohoMoney ? arrearsInScope.reduce((sum, item) => sum + item.outstanding, 0) : undefined) : moneyValue(cohoMoney?.overdue)} foot={cohoMoney ? (arrearsInScope.length ? `${arrearsInScope.length} ${arrearsInScope.length === 1 ? 'tenancy' : 'tenancies'} in arrears` : 'No arrears') : 'From COHO credit control'} icon={<AlertTriangle size={14} />} />
     </div>
+    <PerformanceStrip propertyReference={propertyReference} />
     <MoneyPanels data={moneyQuery.data} loading={moneyQuery.isLoading} failed={moneyQuery.isError} propertyReference={propertyReference} />
     <section className="panel arrival-panel"><div className="panel-head"><div><div className="panel-title">Coming up in COHO</div><div className="panel-caption">Tenancies, viewings, maintenance and actions in the next 7 days</div></div><Link href="/calendar" className="button" style={{ textDecoration: 'none' }}>Open calendar <ArrowUpRight size={13} /></Link></div>
       {!configured ? <div className="empty-state"><PlugZap size={21} /><h3>COHO is not configured</h3><p>Add the COHO API key to see live activity.</p></div>
@@ -191,7 +194,7 @@ function SignedOutOnly({ children }: { children: ReactNode }) { const { isLoaded
 function ProtectedCRM() { const { isLoaded, isSignedIn } = useAuth(); const { user, isLoaded: userLoaded } = useUser(); const { signOut } = useClerk(); if (!isLoaded || !userLoaded) return <AuthLoadingPage />; if (!isSignedIn) return <Redirect to="/sign-in" />; const email = user?.primaryEmailAddress?.emailAddress ?? ''; if (!isAllowedStaffEmail(email)) return <AccessRestrictedPage onSignOut={() => void signOut({ redirectUrl: basePath || '/' })} />; return <AppShell />; }
 function ClerkQueryClientCacheInvalidator() { const { addListener } = useClerk(); const client = useRef<string | null | undefined>(undefined); useEffect(() => addListener(({ user }) => { const userId = user?.id ?? null; if (client.current !== undefined && client.current !== userId) queryClient.clear(); client.current = userId; }), []); return null; }
 function RoutedErrorBoundary({ children }: { children: ReactNode }) { const [location] = useLocation(); return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>; }
-function Router() { return <RoutedErrorBoundary><Switch><Route path="/" component={HomeRedirect} /><Route path="/sign-in/*?" component={() => <SignedOutOnly><SignInPage /></SignedOutOnly>} /><Route path="/sign-up/*?" component={() => <SignedOutOnly><SignUpPage /></SignedOutOnly>} /><Route path="/dashboard" component={ProtectedCRM} /><Route path="/calendar" component={ProtectedCRM} /><Route path="/actions" component={ProtectedCRM} /><Route path="/occupancy" component={ProtectedCRM} /><Route path="/maintenance" component={ProtectedCRM} /><Route path="/properties" component={ProtectedCRM} /><Route path="/properties/:id" component={ProtectedCRM} /><Route path="/widget" component={ListingsWidget} /><Route component={NotFound} /></Switch></RoutedErrorBoundary>; }
+function Router() { return <RoutedErrorBoundary><Switch><Route path="/" component={HomeRedirect} /><Route path="/sign-in/*?" component={() => <SignedOutOnly><SignInPage /></SignedOutOnly>} /><Route path="/sign-up/*?" component={() => <SignedOutOnly><SignUpPage /></SignedOutOnly>} /><Route path="/dashboard" component={ProtectedCRM} /><Route path="/calendar" component={ProtectedCRM} /><Route path="/actions" component={ProtectedCRM} /><Route path="/occupancy" component={ProtectedCRM} /><Route path="/performance" component={ProtectedCRM} /><Route path="/maintenance" component={ProtectedCRM} /><Route path="/properties" component={ProtectedCRM} /><Route path="/properties/:id" component={ProtectedCRM} /><Route path="/widget" component={ListingsWidget} /><Route component={NotFound} /></Switch></RoutedErrorBoundary>; }
 function ClerkApp() { const [, setLocation] = useLocation(); function stripBase(path: string) { return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || '/' : path; } return <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={clerkAppearance} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} localization={{ signIn: { start: { title: 'Welcome back', subtitle: 'Sign in to access your Hinkley Homes staff account' } }, signUp: { start: { title: 'Create your account', subtitle: 'Use your Hinkley Homes company email to register' } } }} routerPush={to => setLocation(stripBase(to))} routerReplace={to => setLocation(stripBase(to), { replace: true })}><QueryClientProvider client={queryClient}><TooltipProvider><ClerkQueryClientCacheInvalidator /><Router /><Toaster /></TooltipProvider></QueryClientProvider></ClerkProvider>; }
 function App() { return <WouterRouter base={basePath}><ClerkApp /></WouterRouter>; }
 export default App;

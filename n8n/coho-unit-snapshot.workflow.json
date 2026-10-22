@@ -1,0 +1,65 @@
+{
+ "name": "Hinkley PMS – COHO unit snapshot (daily)",
+ "nodes": [
+  {
+   "id": "ec2a46e7-aa66-4013-be50-d914b9f8fd1d",
+   "name": "Every day at 23:30",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "days",
+       "triggerAtHour": 23,
+       "triggerAtMinute": 30
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "9d5accf6-c413-4390-a1d5-1ebfb32ada24",
+   "name": "Record unit snapshot",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    240,
+    0
+   ],
+   "notes": "Calls the PMS API, which saves today's let/vacant status for every COHO unit to Supabase (occupancy history for the Performance page). Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret (the same credential as the COHO actions sync).",
+   "parameters": {
+    "method": "POST",
+    "url": "https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/coho/unit-snapshot",
+    "authentication": "genericCredentialType",
+    "genericAuthType": "httpHeaderAuth",
+    "options": {
+     "timeout": 120000
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Every day at 23:30": {
+   "main": [
+    [
+     {
+      "node": "Record unit snapshot",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "saveDataSuccessExecution": "none",
+  "timezone": "Europe/London"
+ },
+ "pinData": {}
+}

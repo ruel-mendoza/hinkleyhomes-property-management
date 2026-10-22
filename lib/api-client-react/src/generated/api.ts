@@ -44,6 +44,7 @@ import type {
   CohoViewingCreated,
   CohoViewingInput,
   EntityList,
+  GetPerformanceParams,
   HealthStatus,
   ListCohoActionsParams,
   ListCohoCalendarParams,
@@ -51,6 +52,7 @@ import type {
   ListCohoPropertiesParams,
   MoneyOverview,
   Occupancy,
+  Performance,
   PropertyCreate,
   PropertyDetails,
   PropertyRegister,
@@ -2323,6 +2325,90 @@ export function useGetMoneyOverview<TData = Awaited<ReturnType<typeof getMoneyOv
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetMoneyOverviewQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPerformanceUrl = (params?: GetPerformanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/performance?${stringifiedParams}` : `/api/performance`
+}
+
+/**
+ * @summary Rent roll, rent paid on time, days late, occupancy, tenancy length, voids and satisfaction (COHO plus daily unit snapshots)
+ */
+export const getPerformance = async (params?: GetPerformanceParams, options?: Parameters<typeof customFetch>[1]): Promise<Performance> => {
+
+  return customFetch<Performance>(getGetPerformanceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPerformanceQueryKey = (params?: GetPerformanceParams,) => {
+    return [
+    `/api/performance`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPerformanceQueryOptions = <TData = Awaited<ReturnType<typeof getPerformance>>, TError = ErrorType<void>>(params?: GetPerformanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPerformance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPerformanceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPerformance>>> = ({ signal }) => getPerformance(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPerformance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPerformanceQueryResult = NonNullable<Awaited<ReturnType<typeof getPerformance>>>
+export type GetPerformanceQueryError = ErrorType<void>
+
+
+/**
+ * @summary Rent roll, rent paid on time, days late, occupancy, tenancy length, voids and satisfaction (COHO plus daily unit snapshots)
+ */
+
+export function useGetPerformance<TData = Awaited<ReturnType<typeof getPerformance>>, TError = ErrorType<void>>(
+ params?: GetPerformanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPerformance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPerformanceQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

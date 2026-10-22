@@ -6,6 +6,7 @@ import healthRouter from "./health";
 import integrationsRouter from "./integrations";
 import moneyRouter from "./money";
 import occupancyRouter from "./occupancy";
+import performanceRouter from "./performance";
 import { propertiesRouter, publicListingsRouter } from "./properties";
 import { requireStaffAccess } from "../middlewares/requireStaffAccess";
 
@@ -23,5 +24,6 @@ router.use(cohoActionsRouter);
 router.use(propertiesRouter);
 router.use(occupancyRouter);
 router.use(moneyRouter);
+router.use(performanceRouter);
 
 export default router;

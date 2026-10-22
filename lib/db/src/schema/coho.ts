@@ -1,5 +1,5 @@
-import { boolean, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { id, timestamps } from "./columns";
+import { boolean, date, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { id, money, timestamps } from "./columns";
 
 // The six action tabs COHO shows (Property, Tenancy, Maintenance, Onboarding, Viewing, Other).
 export const cohoActionCategoryEnum = pgEnum("coho_action_category", [
@@ -72,3 +72,33 @@ export const cohoActionsTable = pgTable(
 
 export type CohoAction = typeof cohoActionsTable.$inferSelect;
 export type InsertCohoAction = typeof cohoActionsTable.$inferInsert;
+
+export const unitSnapshotStatusEnum = pgEnum("unit_snapshot_status", ["let", "vacant"]);
+
+// One row per COHO unit per UK day, recorded by the Performance page and a
+// daily n8n call. COHO's API returns no past tenancies, so occupancy over
+// time, tenancy length and days to fill voids are worked out from these rows.
+export const cohoUnitSnapshotsTable = pgTable(
+  "coho_unit_snapshots",
+  {
+    id: id(),
+    snapshotDate: date("snapshot_date").notNull(),
+    cohoPropertyReference: text("coho_property_reference").notNull(),
+    propertyName: text("property_name").notNull(),
+    cohoUnitReference: text("coho_unit_reference").notNull(),
+    status: unitSnapshotStatusEnum("status").notNull(),
+    tenancyGuid: uuid("tenancy_guid"),
+    tenancyStartDate: date("tenancy_start_date"),
+    rent: money("rent"),
+    advertisedRent: money("advertised_rent"),
+    ...timestamps,
+  },
+  (t) => [
+    // Also serves date-range reads, since snapshot_date leads.
+    uniqueIndex("coho_unit_snapshots_day_unit_idx").on(t.snapshotDate, t.cohoPropertyReference, t.cohoUnitReference),
+    index("coho_unit_snapshots_property_idx").on(t.cohoPropertyReference, t.snapshotDate),
+  ],
+).enableRLS();
+
+export type CohoUnitSnapshot = typeof cohoUnitSnapshotsTable.$inferSelect;
+export type InsertCohoUnitSnapshot = typeof cohoUnitSnapshotsTable.$inferInsert;

@@ -637,6 +637,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MoneyOverview"
+  /performance:
+    get:
+      operationId: getPerformance
+      tags: [coho]
+      summary: Rent roll, rent paid on time, days late, occupancy, tenancy length, voids and satisfaction (COHO plus daily unit snapshots)
+      parameters:
+        - name: propertyReference
+          in: query
+          required: false
+          description: Limit to one COHO property
+          schema:
+            type: string
+            maxLength: 200
+      responses:
+        "200":
+          description: Performance metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Performance"
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO API key is not configured
   /public/listings:
     get:
       operationId: listPublicListings
@@ -892,6 +916,90 @@ components:
         xero:
           $ref: "#/components/schemas/MoneyXero"
       required: [asOf, coho, xero]
+    PerformanceRentRollMonth:
+      type: object
+      properties:
+        month:
+          description: YYYY-MM
+          type: string
+        amount:
+          description: Rent due in the month
+          type: number
+        target:
+          description: Sum of advertised rents for the units in scope
+          type: number
+        percent:
+          type: ["integer", "null"]
+      required: [month, amount, target, percent]
+    PerformancePeriodKey:
+      type: string
+      enum: [month_to_date, last_month, last_90_days, last_year]
+    PerformancePeriod:
+      type: object
+      properties:
+        key:
+          $ref: "#/components/schemas/PerformancePeriodKey"
+        label:
+          type: string
+        from:
+          type: string
+        to:
+          type: string
+        rentRecords:
+          description: Rent payments due in the period (up to today)
+          type: integer
+        paidOnTimePercent:
+          type: ["number", "null"]
+        averageDaysLate:
+          type: ["number", "null"]
+        occupancyPercent:
+          type: ["number", "null"]
+        occupancyComplete:
+          description: False when the period starts before snapshots began, so ended tenancies may be missing
+          type: boolean
+        satisfaction:
+          type: ["number", "null"]
+        satisfactionResponses:
+          type: integer
+        daysToFillVoids:
+          type: ["number", "null"]
+        voidsFilled:
+          type: integer
+      required: [key, label, from, to, rentRecords, paidOnTimePercent, averageDaysLate, occupancyPercent, occupancyComplete, satisfaction, satisfactionResponses, daysToFillVoids, voidsFilled]
+    Performance:
+      type: object
+      properties:
+        asOf:
+          description: UK date the figures are for
+          type: string
+        propertyReference:
+          type: ["string", "null"]
+        units:
+          type: integer
+        occupiedToday:
+          type: integer
+        occupancyTodayPercent:
+          type: ["number", "null"]
+        rentRollThisMonth:
+          $ref: "#/components/schemas/PerformanceRentRollMonth"
+        rentRollLastMonth:
+          $ref: "#/components/schemas/PerformanceRentRollMonth"
+        periods:
+          type: array
+          items:
+            $ref: "#/components/schemas/PerformancePeriod"
+        averageTenancyMonths:
+          description: Average length of tenancies known to the app (current ones to today, ended ones from snapshots)
+          type: ["number", "null"]
+        tenanciesCounted:
+          type: integer
+        snapshotsSince:
+          description: First day of unit snapshots; history before it is incomplete
+          type: ["string", "null"]
+        snapshotError:
+          description: Set when today's snapshot could not be saved
+          type: ["string", "null"]
+      required: [asOf, propertyReference, units, occupiedToday, occupancyTodayPercent, rentRollThisMonth, rentRollLastMonth, periods, averageTenancyMonths, tenanciesCounted, snapshotsSince, snapshotError]
     PropertyRentalType:
       type: string
       enum: [room, whole_property]

@@ -197,6 +197,80 @@ export interface MoneyOverview {
   xero: MoneyXero;
 }
 
+export interface PerformanceRentRollMonth {
+  /** YYYY-MM */
+  month: string;
+  /** Rent due in the month */
+  amount: number;
+  /** Sum of advertised rents for the units in scope */
+  target: number;
+  /** @nullable */
+  percent: number | null;
+}
+
+export type PerformancePeriodKey = typeof PerformancePeriodKey[keyof typeof PerformancePeriodKey];
+
+
+export const PerformancePeriodKey = {
+  month_to_date: 'month_to_date',
+  last_month: 'last_month',
+  last_90_days: 'last_90_days',
+  last_year: 'last_year',
+} as const;
+
+export interface PerformancePeriod {
+  key: PerformancePeriodKey;
+  label: string;
+  from: string;
+  to: string;
+  /** Rent payments due in the period (up to today) */
+  rentRecords: number;
+  /** @nullable */
+  paidOnTimePercent: number | null;
+  /** @nullable */
+  averageDaysLate: number | null;
+  /** @nullable */
+  occupancyPercent: number | null;
+  /** False when the period starts before snapshots began, so ended tenancies may be missing */
+  occupancyComplete: boolean;
+  /** @nullable */
+  satisfaction: number | null;
+  satisfactionResponses: number;
+  /** @nullable */
+  daysToFillVoids: number | null;
+  voidsFilled: number;
+}
+
+export interface Performance {
+  /** UK date the figures are for */
+  asOf: string;
+  /** @nullable */
+  propertyReference: string | null;
+  units: number;
+  occupiedToday: number;
+  /** @nullable */
+  occupancyTodayPercent: number | null;
+  rentRollThisMonth: PerformanceRentRollMonth;
+  rentRollLastMonth: PerformanceRentRollMonth;
+  periods: PerformancePeriod[];
+  /**
+     * Average length of tenancies known to the app (current ones to today, ended ones from snapshots)
+     * @nullable
+     */
+  averageTenancyMonths: number | null;
+  tenanciesCounted: number;
+  /**
+     * First day of unit snapshots; history before it is incomplete
+     * @nullable
+     */
+  snapshotsSince: string | null;
+  /**
+     * Set when today's snapshot could not be saved
+     * @nullable
+     */
+  snapshotError: string | null;
+}
+
 export type PropertyRentalType = typeof PropertyRentalType[keyof typeof PropertyRentalType];
 
 
@@ -1073,6 +1147,14 @@ page?: number;
  * @maximum 100
  */
 pageSize?: number;
+propertyReference?: string;
+};
+
+export type GetPerformanceParams = {
+/**
+ * Limit to one COHO property
+ * @maxLength 200
+ */
 propertyReference?: string;
 };
 

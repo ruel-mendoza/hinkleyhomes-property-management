@@ -3,6 +3,8 @@ import { Router, type IRouter, type RequestHandler } from "express";
 import { isDatabaseConfigured } from "@workspace/db";
 import { cohoApiKey, pmsSyncKey } from "../lib/integrations-env";
 import { syncCohoActions } from "../lib/coho-actions-sync";
+import { recordUnitSnapshot, ukToday } from "../lib/performance";
+import { performanceData } from "./performance";
 
 // Machine-to-machine endpoints (n8n schedules). Mounted before the staff
 // sign-in check, so each request must carry the shared PMS_SYNC_KEY instead.
@@ -31,6 +33,24 @@ router.post("/integrations/coho/actions/sync", requireSyncKey, async (_req, res)
   }
   const result = await syncCohoActions("schedule");
   res.status(result.status === "failed" ? 502 : 200).json(result);
+});
+
+// Daily unit snapshot for occupancy history (see lib/performance.ts). The
+// Performance page also records one when opened; this keeps days covered
+// when nobody opens it.
+router.post("/integrations/coho/unit-snapshot", requireSyncKey, async (req, res): Promise<void> => {
+  if (!isDatabaseConfigured() || !cohoApiKey()) {
+    res.status(503).json({ error: "COHO or the database is not configured." });
+    return;
+  }
+  try {
+    const day = ukToday();
+    const units = await recordUnitSnapshot(await performanceData(true), day);
+    res.json({ day, units });
+  } catch (error) {
+    req.log.error({ err: error }, "Scheduled unit snapshot failed");
+    res.status(502).json({ error: "The unit snapshot could not be recorded." });
+  }
 });
 
 export default router;

@@ -964,6 +964,57 @@ export const GetMoneyOverviewResponse = zod.object({
 
 
 /**
+ * @summary Rent roll, rent paid on time, days late, occupancy, tenancy length, voids and satisfaction (COHO plus daily unit snapshots)
+ */
+export const getPerformanceQueryPropertyReferenceMax = 200;
+
+
+
+export const GetPerformanceQueryParams = zod.object({
+  "propertyReference": zod.coerce.string().max(getPerformanceQueryPropertyReferenceMax).optional().describe('Limit to one COHO property')
+})
+
+export const GetPerformanceResponse = zod.object({
+  "asOf": zod.string().describe('UK date the figures are for'),
+  "propertyReference": zod.string().nullable(),
+  "units": zod.number().int(),
+  "occupiedToday": zod.number().int(),
+  "occupancyTodayPercent": zod.number().nullable(),
+  "rentRollThisMonth": zod.object({
+  "month": zod.string().describe('YYYY-MM'),
+  "amount": zod.number().describe('Rent due in the month'),
+  "target": zod.number().describe('Sum of advertised rents for the units in scope'),
+  "percent": zod.number().int().nullable()
+}),
+  "rentRollLastMonth": zod.object({
+  "month": zod.string().describe('YYYY-MM'),
+  "amount": zod.number().describe('Rent due in the month'),
+  "target": zod.number().describe('Sum of advertised rents for the units in scope'),
+  "percent": zod.number().int().nullable()
+}),
+  "periods": zod.array(zod.object({
+  "key": zod.enum(['month_to_date', 'last_month', 'last_90_days', 'last_year']),
+  "label": zod.string(),
+  "from": zod.string(),
+  "to": zod.string(),
+  "rentRecords": zod.number().int().describe('Rent payments due in the period (up to today)'),
+  "paidOnTimePercent": zod.number().nullable(),
+  "averageDaysLate": zod.number().nullable(),
+  "occupancyPercent": zod.number().nullable(),
+  "occupancyComplete": zod.boolean().describe('False when the period starts before snapshots began, so ended tenancies may be missing'),
+  "satisfaction": zod.number().nullable(),
+  "satisfactionResponses": zod.number().int(),
+  "daysToFillVoids": zod.number().nullable(),
+  "voidsFilled": zod.number().int()
+})),
+  "averageTenancyMonths": zod.number().nullable().describe('Average length of tenancies known to the app (current ones to today, ended ones from snapshots)'),
+  "tenanciesCounted": zod.number().int(),
+  "snapshotsSince": zod.string().nullable().describe('First day of unit snapshots; history before it is incomplete'),
+  "snapshotError": zod.string().nullable().describe('Set when today\'s snapshot could not be saved')
+})
+
+
+/**
  * @summary Available rooms and properties for the website widget (no sign-in; no house numbers)
  */
 export const ListPublicListingsResponse = zod.object({

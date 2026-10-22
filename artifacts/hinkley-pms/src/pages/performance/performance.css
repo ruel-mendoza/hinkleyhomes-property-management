@@ -1,0 +1,29 @@
+/* Performance page, in the app's dark panel style (see index.css). */
+.hh-perf-loading{padding:16px 17px;font-size:13px;color:#95a2b5}
+.hh-perf-section{margin-bottom:18px}
+.hh-perf-section h2{display:flex;align-items:center;gap:7px;margin:0 0 8px;font-size:15px;font-weight:800;color:#e2e9f1}
+.hh-perf-info{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#1f3550;color:#a9c9ef;cursor:help}
+.hh-perf-tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.hh-perf-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:76px;padding:9px 8px;border-radius:8px;background:#25324a;color:#dce4ed;text-align:center}
+.hh-perf-tile.wide{grid-column:span 2}
+.hh-perf-tile strong{font-size:26px;font-weight:800;line-height:1.1}
+.hh-perf-tile strong small{font-size:13px;font-weight:700;margin-left:1px}
+.hh-perf-sub{font-size:11px;opacity:.85}
+.hh-perf-label{font-size:12px;font-weight:700}
+.hh-perf-tile.good{background:#1d4a3c;color:#c9f0e0}
+.hh-perf-tile.warn{background:#4a3a1e;color:#f3d9a4}
+.hh-perf-tile.bad{background:#5a1f3a;color:#f6cfe0}
+.hh-perf-tile.none{background:#25324a;color:#95a2b5}
+.hh-perf-tile.partial{background-image:repeating-linear-gradient(135deg,#ffffff0a 0 8px,transparent 8px 16px)}
+.hh-perf-note{margin:7px 0 0;font-size:12px;color:#8f9db0;max-width:90ch}
+
+/* Overview strip */
+.hh-perf-strip{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:13px;padding:13px 16px}
+.hh-perf-strip-stats{display:flex;gap:22px;flex-wrap:wrap;flex:1}
+.hh-perf-strip-stats div{display:flex;flex-direction:column;gap:1px}
+.hh-perf-strip-stats span{font-size:12px;color:#95a2b5}
+.hh-perf-strip-stats strong{font-size:18px;font-weight:800;color:#e2e9f1}
+.hh-perf-strip-stats strong.good{color:#5fcf9c}.hh-perf-strip-stats strong.warn{color:#edc16b}.hh-perf-strip-stats strong.bad{color:#f08f91}
+
+@media(max-width:1100px){.hh-perf-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.hh-perf-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.hh-perf-tile.wide{grid-column:span 2}}
