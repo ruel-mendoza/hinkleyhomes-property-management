@@ -120,3 +120,54 @@ export type PaymentBatch = typeof paymentBatchesTable.$inferSelect;
 export type InsertPaymentBatch = z.infer<typeof insertPaymentBatchSchema>;
 export type PaymentBatchItem = typeof paymentBatchItemsTable.$inferSelect;
 export type InsertPaymentBatchItem = z.infer<typeof insertPaymentBatchItemSchema>;
+
+// --- Receivables follow-up (Xero sales invoices) ------------------------------
+// Xero holds the invoices; these tables only hold our chasing: the current state
+// per invoice and an append-only log of what was done. Nothing here is sent to Xero.
+
+export const invoiceFollowUpOutcomeEnum = pgEnum("invoice_follow_up_outcome", [
+  "not_contacted",
+  "chased",
+  "promised",
+  "disputed",
+  "paid_elsewhere",
+  "write_off_review",
+]);
+
+export const xeroInvoiceFollowUpsTable = pgTable(
+  "xero_invoice_follow_ups",
+  {
+    id: id(),
+    xeroTenantId: text("xero_tenant_id").notNull(),
+    xeroInvoiceId: uuid("xero_invoice_id").notNull(),
+    invoiceNumber: text("invoice_number"),
+    contactName: text("contact_name"),
+    outcome: invoiceFollowUpOutcomeEnum("outcome").notNull().default("not_contacted"),
+    nextChaseDate: date("next_chase_date"),
+    promisedDate: date("promised_date"),
+    updatedBy: text("updated_by"),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("xero_invoice_follow_ups_invoice_idx").on(t.xeroTenantId, t.xeroInvoiceId),
+    index("xero_invoice_follow_ups_next_chase_idx").on(t.nextChaseDate),
+  ],
+).enableRLS();
+
+export const xeroInvoiceFollowUpNotesTable = pgTable(
+  "xero_invoice_follow_up_notes",
+  {
+    id: id(),
+    followUpId: uuid("follow_up_id")
+      .notNull()
+      .references(() => xeroInvoiceFollowUpsTable.id, { onDelete: "cascade" }),
+    outcome: invoiceFollowUpOutcomeEnum("outcome").notNull(),
+    note: text("note"),
+    authorEmail: text("author_email"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("xero_invoice_follow_up_notes_follow_up_idx").on(t.followUpId, t.createdAt)],
+).enableRLS();
+
+export type XeroInvoiceFollowUp = typeof xeroInvoiceFollowUpsTable.$inferSelect;
+export type XeroInvoiceFollowUpNote = typeof xeroInvoiceFollowUpNotesTable.$inferSelect;

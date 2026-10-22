@@ -492,6 +492,146 @@ export interface FinanceBankFeed {
   lines: FinanceBankLine[];
 }
 
+export type InvoiceFollowUpOutcome = typeof InvoiceFollowUpOutcome[keyof typeof InvoiceFollowUpOutcome];
+
+
+export const InvoiceFollowUpOutcome = {
+  not_contacted: 'not_contacted',
+  chased: 'chased',
+  promised: 'promised',
+  disputed: 'disputed',
+  paid_elsewhere: 'paid_elsewhere',
+  write_off_review: 'write_off_review',
+} as const;
+
+export interface InvoiceFollowUpNote {
+  outcome: InvoiceFollowUpOutcome;
+  /** @nullable */
+  note: string | null;
+  /** @nullable */
+  authorEmail: string | null;
+  createdAt: string;
+}
+
+export interface InvoiceFollowUp {
+  outcome: InvoiceFollowUpOutcome;
+  /** @nullable */
+  nextChaseDate: string | null;
+  /** @nullable */
+  promisedDate: string | null;
+  /** @nullable */
+  updatedBy: string | null;
+  updatedAt: string;
+  /** Most recent first (up to 10) */
+  notes: InvoiceFollowUpNote[];
+}
+
+export interface InvoiceFollowUpUpdate {
+  outcome: InvoiceFollowUpOutcome;
+  /**
+     * @maxLength 10
+     * @nullable
+     */
+  nextChaseDate?: string | null;
+  /**
+     * @maxLength 10
+     * @nullable
+     */
+  promisedDate?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  note?: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  invoiceNumber?: string | null;
+  /**
+     * @maxLength 300
+     * @nullable
+     */
+  contactName?: string | null;
+}
+
+export interface InvoicePaymentLink {
+  url: string;
+}
+
+export interface ReceivableInvoice {
+  tenantId: string;
+  company: string;
+  invoiceId: string;
+  /** @nullable */
+  number: string | null;
+  contactName: string;
+  /** @nullable */
+  reference: string | null;
+  /** @nullable */
+  description: string | null;
+  /**
+     * Xero tracking option, if set
+     * @nullable
+     */
+  property: string | null;
+  /** @nullable */
+  date: string | null;
+  /** @nullable */
+  dueDate: string | null;
+  /** Days past the due date; negative when not yet due */
+  daysOverdue: number;
+  total: number;
+  amountDue: number;
+  sent: boolean;
+  /** A COHO property this invoice looks like rent for, so the same rent may be tracked in both systems */
+  cohoProperty: MoneyPropertyRef | null;
+  followUp: InvoiceFollowUp | null;
+}
+
+export interface PayableBill {
+  tenantId: string;
+  company: string;
+  billId: string;
+  /** @nullable */
+  number: string | null;
+  contactName: string;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  property: string | null;
+  /** @nullable */
+  dueDate: string | null;
+  daysOverdue: number;
+  total: number;
+  amountDue: number;
+  status: string;
+}
+
+export interface ReceivablesCompany {
+  tenantId: string;
+  name: string;
+  holdsPropertyMoney: boolean;
+  receivableOpen: number;
+  receivableOverdue: number;
+  overdueCount: number;
+  billsOverdue: number;
+  billsOverdueCount: number;
+  /** @nullable */
+  error: string | null;
+}
+
+export interface Receivables {
+  asOf: string;
+  /** @nullable */
+  error: string | null;
+  companies: ReceivablesCompany[];
+  invoices: ReceivableInvoice[];
+  bills: PayableBill[];
+  /** False when the database is not configured or the follow-up tables are missing */
+  followUpsAvailable: boolean;
+}
+
 export type PropertyRentalType = typeof PropertyRentalType[keyof typeof PropertyRentalType];
 
 

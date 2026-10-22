@@ -35,7 +35,7 @@ const RENT_REVIEW_DAYS = 28;
 
 // The five Xero organisations. Notes mark companies that don't hold tenant
 // rent or deposits, so their banking isn't read as property money.
-const COMPANIES = [
+export const COMPANIES = [
   { tenantId: "47f65b32-d0d7-4417-bb5c-89ff2d93651e", name: "Hinkley Homes Lettings", holdsPropertyMoney: true, note: null },
   { tenantId: "3ae8a283-c7e0-4287-9bcd-4c2561295890", name: "Hinkley Homes Holdings", holdsPropertyMoney: true, note: null },
   { tenantId: "9d1fee42-4203-47d8-87aa-6fa8e8ac0fef", name: "Hinkley Homes Ltd", holdsPropertyMoney: true, note: null },

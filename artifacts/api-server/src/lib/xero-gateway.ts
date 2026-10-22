@@ -9,6 +9,7 @@ export type XeroResource =
   | "trackingCategories"
   | "contacts"
   | "invoices"
+  | "onlineInvoice"
   | "creditNotes"
   | "payments"
   | "bankTransactions"
@@ -20,7 +21,7 @@ export type XeroResource =
 export type XeroGatewayRequest = {
   tenantId: string;
   resource: XeroResource;
-  // Xero GUID for a single record (contacts, invoices, creditNotes, payments, bankTransactions).
+  // Xero GUID for a single record (contacts, invoices, onlineInvoice, creditNotes, payments, bankTransactions).
   id?: string;
   query?: Record<string, string | number | boolean>;
   // Only records changed since this time (sent to Xero as If-Modified-Since).

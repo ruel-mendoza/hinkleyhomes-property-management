@@ -50,6 +50,9 @@ import type {
   GetComplianceParams,
   GetPerformanceParams,
   HealthStatus,
+  InvoiceFollowUp,
+  InvoiceFollowUpUpdate,
+  InvoicePaymentLink,
   ListCohoActionsParams,
   ListCohoCalendarParams,
   ListCohoMaintenanceParams,
@@ -62,6 +65,7 @@ import type {
   PropertyRegister,
   PropertySummary,
   PublicListingList,
+  Receivables,
   SignupEmailCheckRequest,
   SignupEmailCheckResult,
   SyncCohoActionsParams
@@ -2662,6 +2666,256 @@ export function useGetFinanceBankFeed<TData = Awaited<ReturnType<typeof getFinan
 
 
 
+
+export const getGetReceivablesUrl = () => {
+
+
+
+
+  return `/api/receivables`
+}
+
+/**
+ * @summary Open sales invoices (owed to us) and bills (we owe) across all Xero companies, with our follow-up state
+ */
+export const getReceivables = async ( options?: Parameters<typeof customFetch>[1]): Promise<Receivables> => {
+
+  return customFetch<Receivables>(getGetReceivablesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetReceivablesQueryKey = () => {
+    return [
+    `/api/receivables`
+    ] as const;
+    }
+
+
+export const getGetReceivablesQueryOptions = <TData = Awaited<ReturnType<typeof getReceivables>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReceivables>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetReceivablesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getReceivables>>> = ({ signal }) => getReceivables({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getReceivables>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetReceivablesQueryResult = NonNullable<Awaited<ReturnType<typeof getReceivables>>>
+export type GetReceivablesQueryError = ErrorType<void>
+
+
+/**
+ * @summary Open sales invoices (owed to us) and bills (we owe) across all Xero companies, with our follow-up state
+ */
+
+export function useGetReceivables<TData = Awaited<ReturnType<typeof getReceivables>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReceivables>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetReceivablesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetInvoicePaymentLinkUrl = (tenantId: string,
+    invoiceId: string,) => {
+
+
+
+
+  return `/api/receivables/${tenantId}/${invoiceId}/payment-link`
+}
+
+/**
+ * @summary Xero's online "view and pay" link for a sales invoice
+ */
+export const getInvoicePaymentLink = async (tenantId: string,
+    invoiceId: string, options?: Parameters<typeof customFetch>[1]): Promise<InvoicePaymentLink> => {
+
+  return customFetch<InvoicePaymentLink>(getGetInvoicePaymentLinkUrl(tenantId,invoiceId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetInvoicePaymentLinkQueryKey = (tenantId: string,
+    invoiceId: string,) => {
+    return [
+    `/api/receivables/${tenantId}/${invoiceId}/payment-link`
+    ] as const;
+    }
+
+
+export const getGetInvoicePaymentLinkQueryOptions = <TData = Awaited<ReturnType<typeof getInvoicePaymentLink>>, TError = ErrorType<void>>(tenantId: string,
+    invoiceId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInvoicePaymentLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInvoicePaymentLinkQueryKey(tenantId,invoiceId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInvoicePaymentLink>>> = ({ signal }) => getInvoicePaymentLink(tenantId,invoiceId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: tenantId !== null && tenantId !== undefined && invoiceId !== null && invoiceId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getInvoicePaymentLink>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetInvoicePaymentLinkQueryResult = NonNullable<Awaited<ReturnType<typeof getInvoicePaymentLink>>>
+export type GetInvoicePaymentLinkQueryError = ErrorType<void>
+
+
+/**
+ * @summary Xero's online "view and pay" link for a sales invoice
+ */
+
+export function useGetInvoicePaymentLink<TData = Awaited<ReturnType<typeof getInvoicePaymentLink>>, TError = ErrorType<void>>(
+ tenantId: string,
+    invoiceId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInvoicePaymentLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetInvoicePaymentLinkQueryOptions(tenantId,invoiceId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateInvoiceFollowUpUrl = (tenantId: string,
+    invoiceId: string,) => {
+
+
+
+
+  return `/api/receivables/${tenantId}/${invoiceId}/follow-up`
+}
+
+/**
+ * @summary Record a follow-up on a sales invoice (stored in Supabase only; nothing is sent to Xero or the customer)
+ */
+export const updateInvoiceFollowUp = async (tenantId: string,
+    invoiceId: string,
+    invoiceFollowUpUpdate: InvoiceFollowUpUpdate, options?: Parameters<typeof customFetch>[1]): Promise<InvoiceFollowUp> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<InvoiceFollowUp>(getUpdateInvoiceFollowUpUrl(tenantId,invoiceId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(invoiceFollowUpUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateInvoiceFollowUpMutationKey = () => ['updateInvoiceFollowUp'] as const;
+
+export const getUpdateInvoiceFollowUpMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateInvoiceFollowUp>>, TError,UpdateInvoiceFollowUpMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateInvoiceFollowUp>>, TError,UpdateInvoiceFollowUpMutationVariables, TContext> => {
+
+const mutationKey = getUpdateInvoiceFollowUpMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateInvoiceFollowUp>>, UpdateInvoiceFollowUpMutationVariables> = (props) => {
+          const {tenantId,invoiceId,data} = props ?? {};
+
+          return  updateInvoiceFollowUp(tenantId,invoiceId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateInvoiceFollowUpMutationResult = NonNullable<Awaited<ReturnType<typeof updateInvoiceFollowUp>>>
+    export type UpdateInvoiceFollowUpMutationBody = BodyType<InvoiceFollowUpUpdate>
+    export type UpdateInvoiceFollowUpMutationError = ErrorType<void>
+    export type UpdateInvoiceFollowUpMutationVariables = {tenantId: string;invoiceId: string;data: BodyType<InvoiceFollowUpUpdate>}
+
+    /**
+ * @summary Record a follow-up on a sales invoice (stored in Supabase only; nothing is sent to Xero or the customer)
+ */
+export const useUpdateInvoiceFollowUp = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateInvoiceFollowUp>>, TError,UpdateInvoiceFollowUpMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateInvoiceFollowUp>>,
+        TError,
+        UpdateInvoiceFollowUpMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateInvoiceFollowUpMutationOptions(options));
+    }
 
 export const getListPublicListingsUrl = () => {
 

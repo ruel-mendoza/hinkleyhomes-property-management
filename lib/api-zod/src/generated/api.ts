@@ -1151,6 +1151,131 @@ export const GetFinanceBankFeedResponse = zod.object({
 
 
 /**
+ * @summary Open sales invoices (owed to us) and bills (we owe) across all Xero companies, with our follow-up state
+ */
+export const GetReceivablesResponse = zod.object({
+  "asOf": zod.string(),
+  "error": zod.string().nullable(),
+  "companies": zod.array(zod.object({
+  "tenantId": zod.string(),
+  "name": zod.string(),
+  "holdsPropertyMoney": zod.boolean(),
+  "receivableOpen": zod.number(),
+  "receivableOverdue": zod.number(),
+  "overdueCount": zod.number().int(),
+  "billsOverdue": zod.number(),
+  "billsOverdueCount": zod.number().int(),
+  "error": zod.string().nullable()
+})),
+  "invoices": zod.array(zod.object({
+  "tenantId": zod.string(),
+  "company": zod.string(),
+  "invoiceId": zod.string(),
+  "number": zod.string().nullable(),
+  "contactName": zod.string(),
+  "reference": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "property": zod.string().nullable().describe('Xero tracking option, if set'),
+  "date": zod.string().nullable(),
+  "dueDate": zod.string().nullable(),
+  "daysOverdue": zod.number().int().describe('Days past the due date; negative when not yet due'),
+  "total": zod.number(),
+  "amountDue": zod.number(),
+  "sent": zod.boolean(),
+  "cohoProperty": zod.union([zod.object({
+  "propertyReference": zod.string(),
+  "propertyName": zod.string()
+}),zod.null()]).describe('A COHO property this invoice looks like rent for, so the same rent may be tracked in both systems'),
+  "followUp": zod.union([zod.object({
+  "outcome": zod.enum(['not_contacted', 'chased', 'promised', 'disputed', 'paid_elsewhere', 'write_off_review']),
+  "nextChaseDate": zod.string().nullable(),
+  "promisedDate": zod.string().nullable(),
+  "updatedBy": zod.string().nullable(),
+  "updatedAt": zod.string(),
+  "notes": zod.array(zod.object({
+  "outcome": zod.enum(['not_contacted', 'chased', 'promised', 'disputed', 'paid_elsewhere', 'write_off_review']),
+  "note": zod.string().nullable(),
+  "authorEmail": zod.string().nullable(),
+  "createdAt": zod.string()
+})).describe('Most recent first (up to 10)')
+}),zod.null()])
+})),
+  "bills": zod.array(zod.object({
+  "tenantId": zod.string(),
+  "company": zod.string(),
+  "billId": zod.string(),
+  "number": zod.string().nullable(),
+  "contactName": zod.string(),
+  "description": zod.string().nullable(),
+  "property": zod.string().nullable(),
+  "dueDate": zod.string().nullable(),
+  "daysOverdue": zod.number().int(),
+  "total": zod.number(),
+  "amountDue": zod.number(),
+  "status": zod.string()
+})),
+  "followUpsAvailable": zod.boolean().describe('False when the database is not configured or the follow-up tables are missing')
+})
+
+
+/**
+ * @summary Xero's online "view and pay" link for a sales invoice
+ */
+export const GetInvoicePaymentLinkParams = zod.object({
+  "tenantId": zod.coerce.string().uuid().describe('Xero organisation (tenant) id'),
+  "invoiceId": zod.coerce.string().uuid()
+})
+
+export const GetInvoicePaymentLinkResponse = zod.object({
+  "url": zod.string()
+})
+
+
+/**
+ * @summary Record a follow-up on a sales invoice (stored in Supabase only; nothing is sent to Xero or the customer)
+ */
+export const UpdateInvoiceFollowUpParams = zod.object({
+  "tenantId": zod.coerce.string().uuid().describe('Xero organisation (tenant) id'),
+  "invoiceId": zod.coerce.string().uuid()
+})
+
+export const updateInvoiceFollowUpBodyNextChaseDateMax = 10;
+
+export const updateInvoiceFollowUpBodyPromisedDateMax = 10;
+
+export const updateInvoiceFollowUpBodyNoteMax = 2000;
+
+export const updateInvoiceFollowUpBodyInvoiceNumberMax = 100;
+
+export const updateInvoiceFollowUpBodyContactNameMax = 300;
+
+
+
+export const UpdateInvoiceFollowUpBody = zod.object({
+  "outcome": zod.enum(['not_contacted', 'chased', 'promised', 'disputed', 'paid_elsewhere', 'write_off_review']),
+  "nextChaseDate": zod.string().max(updateInvoiceFollowUpBodyNextChaseDateMax).nullish(),
+  "promisedDate": zod.string().max(updateInvoiceFollowUpBodyPromisedDateMax).nullish(),
+  "note": zod.string().max(updateInvoiceFollowUpBodyNoteMax).nullish(),
+  "invoiceNumber": zod.string().max(updateInvoiceFollowUpBodyInvoiceNumberMax).nullish(),
+  "contactName": zod.string().max(updateInvoiceFollowUpBodyContactNameMax).nullish()
+})
+
+export const UpdateInvoiceFollowUpResponse = zod.object({
+  "outcome": zod.enum(['not_contacted', 'chased', 'promised', 'disputed', 'paid_elsewhere', 'write_off_review']),
+  "nextChaseDate": zod.string().nullable(),
+  "promisedDate": zod.string().nullable(),
+  "updatedBy": zod.string().nullable(),
+  "updatedAt": zod.string(),
+  "notes": zod.array(zod.object({
+  "outcome": zod.enum(['not_contacted', 'chased', 'promised', 'disputed', 'paid_elsewhere', 'write_off_review']),
+  "note": zod.string().nullable(),
+  "authorEmail": zod.string().nullable(),
+  "createdAt": zod.string()
+})).describe('Most recent first (up to 10)')
+})
+
+
+/**
  * @summary Available rooms and properties for the website widget (no sign-in; no house numbers)
  */
 export const ListPublicListingsResponse = zod.object({

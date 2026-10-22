@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: coho
     description: Server-side proxy for COHO Public API 1.1 property, calendar, and maintenance operations
+  - name: xero
+    description: Xero data through the read-only n8n gateway, plus follow-up notes kept in Supabase
 paths:
   /healthz:
     get:
@@ -715,6 +717,86 @@ paths:
           description: COHO returned an error
         "503":
           description: COHO API key is not configured
+  /receivables:
+    get:
+      operationId: getReceivables
+      tags: [xero]
+      summary: Open sales invoices (owed to us) and bills (we owe) across all Xero companies, with our follow-up state
+      responses:
+        "200":
+          description: Receivables and payables
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Receivables"
+        "503":
+          description: The n8n Xero gateway is not configured
+  /receivables/{tenantId}/{invoiceId}/payment-link:
+    get:
+      operationId: getInvoicePaymentLink
+      tags: [xero]
+      summary: Xero's online "view and pay" link for a sales invoice
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          description: Xero organisation (tenant) id
+          schema:
+            type: string
+            format: uuid
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoicePaymentLink"
+        "404":
+          description: No online invoice for this invoice
+        "502":
+          description: Xero returned an error
+  /receivables/{tenantId}/{invoiceId}/follow-up:
+    put:
+      operationId: updateInvoiceFollowUp
+      tags: [xero]
+      summary: Record a follow-up on a sales invoice (stored in Supabase only; nothing is sent to Xero or the customer)
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          description: Xero organisation (tenant) id
+          schema:
+            type: string
+            format: uuid
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceFollowUpUpdate"
+      responses:
+        "200":
+          description: The saved follow-up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceFollowUp"
+        "400":
+          description: Invalid follow-up
+        "503":
+          description: Database is not configured
   /public/listings:
     get:
       operationId: listPublicListings
@@ -1356,6 +1438,183 @@ components:
           items:
             $ref: "#/components/schemas/FinanceBankLine"
       required: [asOf, from, accounts, matchedCount, unmatchedCount, excludedCount, matchedAmount, unmatchedAmount, oldestUnmatched, months, lines]
+    InvoiceFollowUpOutcome:
+      type: string
+      enum: [not_contacted, chased, promised, disputed, paid_elsewhere, write_off_review]
+    InvoiceFollowUpNote:
+      type: object
+      properties:
+        outcome:
+          $ref: "#/components/schemas/InvoiceFollowUpOutcome"
+        note:
+          type: ["string", "null"]
+        authorEmail:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [outcome, note, authorEmail, createdAt]
+    InvoiceFollowUp:
+      type: object
+      properties:
+        outcome:
+          $ref: "#/components/schemas/InvoiceFollowUpOutcome"
+        nextChaseDate:
+          type: ["string", "null"]
+        promisedDate:
+          type: ["string", "null"]
+        updatedBy:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+        notes:
+          description: Most recent first (up to 10)
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceFollowUpNote"
+      required: [outcome, nextChaseDate, promisedDate, updatedBy, updatedAt, notes]
+    InvoiceFollowUpUpdate:
+      type: object
+      properties:
+        outcome:
+          $ref: "#/components/schemas/InvoiceFollowUpOutcome"
+        nextChaseDate:
+          type: ["string", "null"]
+          maxLength: 10
+        promisedDate:
+          type: ["string", "null"]
+          maxLength: 10
+        note:
+          type: ["string", "null"]
+          maxLength: 2000
+        invoiceNumber:
+          type: ["string", "null"]
+          maxLength: 100
+        contactName:
+          type: ["string", "null"]
+          maxLength: 300
+      required: [outcome]
+    InvoicePaymentLink:
+      type: object
+      properties:
+        url:
+          type: string
+      required: [url]
+    ReceivableInvoice:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        company:
+          type: string
+        invoiceId:
+          type: string
+        number:
+          type: ["string", "null"]
+        contactName:
+          type: string
+        reference:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        property:
+          description: Xero tracking option, if set
+          type: ["string", "null"]
+        date:
+          type: ["string", "null"]
+        dueDate:
+          type: ["string", "null"]
+        daysOverdue:
+          description: Days past the due date; negative when not yet due
+          type: integer
+        total:
+          type: number
+        amountDue:
+          type: number
+        sent:
+          type: boolean
+        cohoProperty:
+          description: A COHO property this invoice looks like rent for, so the same rent may be tracked in both systems
+          oneOf:
+            - $ref: "#/components/schemas/MoneyPropertyRef"
+            - type: "null"
+        followUp:
+          oneOf:
+            - $ref: "#/components/schemas/InvoiceFollowUp"
+            - type: "null"
+      required: [tenantId, company, invoiceId, number, contactName, reference, description, property, date, dueDate, daysOverdue, total, amountDue, sent, cohoProperty, followUp]
+    PayableBill:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        company:
+          type: string
+        billId:
+          type: string
+        number:
+          type: ["string", "null"]
+        contactName:
+          type: string
+        description:
+          type: ["string", "null"]
+        property:
+          type: ["string", "null"]
+        dueDate:
+          type: ["string", "null"]
+        daysOverdue:
+          type: integer
+        total:
+          type: number
+        amountDue:
+          type: number
+        status:
+          type: string
+      required: [tenantId, company, billId, number, contactName, description, property, dueDate, daysOverdue, total, amountDue, status]
+    ReceivablesCompany:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        name:
+          type: string
+        holdsPropertyMoney:
+          type: boolean
+        receivableOpen:
+          type: number
+        receivableOverdue:
+          type: number
+        overdueCount:
+          type: integer
+        billsOverdue:
+          type: number
+        billsOverdueCount:
+          type: integer
+        error:
+          type: ["string", "null"]
+      required: [tenantId, name, holdsPropertyMoney, receivableOpen, receivableOverdue, overdueCount, billsOverdue, billsOverdueCount, error]
+    Receivables:
+      type: object
+      properties:
+        asOf:
+          type: string
+        error:
+          type: ["string", "null"]
+        companies:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReceivablesCompany"
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReceivableInvoice"
+        bills:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayableBill"
+        followUpsAvailable:
+          description: False when the database is not configured or the follow-up tables are missing
+          type: boolean
+      required: [asOf, error, companies, invoices, bills, followUpsAvailable]
     PropertyRentalType:
       type: string
       enum: [room, whole_property]
