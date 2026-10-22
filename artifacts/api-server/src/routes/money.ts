@@ -266,6 +266,13 @@ async function companyBanking(company: (typeof COMPANIES)[number]) {
 
 // --- Route ---------------------------------------------------------------------------
 
+// Says which secret is missing or wrong (names only, never values), so a
+// deployment without the gateway secrets is easy to fix.
+function gatewaySetupError(gateway: ReturnType<typeof readXeroGatewayEnv>): string {
+  if (gateway.status === "invalid") return `The n8n Xero gateway settings need fixing: ${gateway.problems.join("; ")}.`;
+  return "The n8n Xero gateway is not configured: add the N8N_XERO_GATEWAY_URL and N8N_XERO_GATEWAY_KEY secrets to this deployment and redeploy.";
+}
+
 const CACHE_MS = 5 * 60_000;
 let cache: { at: number; body: unknown } | null = null;
 
@@ -281,6 +288,7 @@ moneyRouter.get("/overview/money", async (req, res): Promise<void> => {
     depositsHeld: 0, depositsHeldTotal: 0, depositsPending: 0, depositsClosing: 0, depositsClosingOverdue: 0,
     tenanciesWithoutDeposit: [], rentReviews: [],
   };
+  const gateway = readXeroGatewayEnv();
   const [coho, xero] = await Promise.all([
     cohoApiKey()
       ? cohoMoney().catch((error: unknown) => {
@@ -288,9 +296,9 @@ moneyRouter.get("/overview/money", async (req, res): Promise<void> => {
           return { ...emptyCoho, error: "COHO could not be reached." };
         })
       : Promise.resolve({ ...emptyCoho, error: "COHO_API_KEY is not configured." }),
-    readXeroGatewayEnv().status === "configured"
+    gateway.status === "configured"
       ? Promise.all(COMPANIES.map(companyBanking)).then((companies) => ({ error: null, companies }))
-      : Promise.resolve({ error: "The n8n Xero gateway is not configured.", companies: [] as Awaited<ReturnType<typeof companyBanking>>[] }),
+      : Promise.resolve({ error: gatewaySetupError(gateway), companies: [] as Awaited<ReturnType<typeof companyBanking>>[] }),
   ]);
   const body = GetMoneyOverviewResponse.parse({ asOf: new Date().toISOString(), coho, xero });
   // Only cache complete answers, so a COHO or Xero blip is retried on the next load.
