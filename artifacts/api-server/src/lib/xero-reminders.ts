@@ -62,12 +62,25 @@ export async function saveReminderSettings(patch: ReminderSettingsPatch, updated
 
 // --- Xero activity (history) --------------------------------------------------------
 
-export type XeroActivity = { sentOn: string | null; reminderDates: string[]; recent: { date: string; change: string; details: string | null }[] };
+export type XeroActivity = {
+  sentOn: string | null;
+  reminderDates: string[];
+  // Latest "reminders turned off/on" change in the invoice's History: true = off. Null if never changed.
+  remindersOff: boolean | null;
+  // Name of the contact's Xero group that opts it out of reminders (e.g. "No reminders").
+  optedOutGroup: string | null;
+  recent: { date: string; change: string; details: string | null }[];
+};
 const HISTORY_CACHE_MS = 30 * 60_000;
 const historyCache = new Map<string, { at: number; value: XeroActivity | null }>();
 
-// Reads the invoice's History & notes. Reminder entries are recognised by the
-// word "remind"; sends by "sent"/"emailed". Null if the gateway can't read history.
+// Reads the invoice's History & notes. Entries mentioning reminders are split into
+// "turned off"/"turned on" switches (Xero's per-invoice Reminders setting isn't in
+// its API, but changing it is recorded here) and reminders sent; other "sent" or
+// "emailed" entries are invoice sends. Null if the gateway can't read history.
+const REMINDER = /remind/i;
+const SWITCHED_OFF = /(turned off|switched off|disabled|stopped|paused|\boff\b)/i;
+const SWITCHED_ON = /(turned on|switched on|enabled|resumed|\bon\b)/i;
 export async function xeroActivity(tenantId: string, invoiceId: string): Promise<XeroActivity | null> {
   const key = `${tenantId}|${invoiceId}`;
   const hit = historyCache.get(key);
@@ -84,11 +97,15 @@ export async function xeroActivity(tenantId: string, invoiceId: string): Promise
         .filter((record) => record.date)
         .sort((a, b) => b.date.localeCompare(a.date));
       const text = (record: { change: string; details: string | null }) => `${record.change} ${record.details ?? ""}`;
-      const reminders = records.filter((record) => /remind/i.test(text(record)));
-      const sends = records.filter((record) => !/remind/i.test(text(record)) && /\b(sent|emailed)\b/i.test(text(record)));
+      const switches = records.filter((record) => REMINDER.test(text(record)) && !/\b(sent|emailed)\b/i.test(text(record)) && (SWITCHED_OFF.test(text(record)) || SWITCHED_ON.test(text(record))));
+      const reminders = records.filter((record) => REMINDER.test(text(record)) && !switches.includes(record));
+      // "Invoice Unsent" / "unmarked as sent" entries are not sends.
+      const sends = records.filter((record) => !REMINDER.test(text(record)) && !/unsent|unmarked as sent/i.test(text(record)) && /\b(sent|emailed)\b/i.test(text(record)));
       value = {
         sentOn: sends.length ? sends[sends.length - 1].date : null,
         reminderDates: reminders.map((record) => record.date),
+        remindersOff: switches.length ? SWITCHED_OFF.test(text(switches[0])) : null,
+        optedOutGroup: null,
         recent: records.slice(0, 6),
       };
     }
@@ -112,8 +129,11 @@ export async function xeroRemindersSwitchedOn(tenantId: string): Promise<boolean
 
 // --- Contacts ---------------------------------------------------------------------
 
-const contactCache = new Map<string, { at: number; email: string | null; firstName: string | null }>();
-export async function contactEmail(tenantId: string, contactId: string): Promise<{ email: string | null; firstName: string | null }> {
+// A Xero contact group whose name contains "no reminder(s)" opts the contact out.
+const OPT_OUT_GROUP = /no[\s-]*reminders?/i;
+type ContactInfo = { at: number; email: string | null; firstName: string | null; optedOutGroup: string | null };
+const contactCache = new Map<string, ContactInfo>();
+export async function contactEmail(tenantId: string, contactId: string): Promise<ContactInfo> {
   const key = `${tenantId}|${contactId}`;
   const hit = contactCache.get(key);
   if (hit && Date.now() - hit.at < HISTORY_CACHE_MS) return hit;
@@ -124,6 +144,7 @@ export async function contactEmail(tenantId: string, contactId: string): Promise
     at: Date.now(),
     email: str(contact.EmailAddress) ?? str(person.EmailAddress),
     firstName: str(contact.FirstName) ?? str(person.FirstName),
+    optedOutGroup: list(contact.ContactGroups).map((group) => str(group.Name)).find((name) => name && OPT_OUT_GROUP.test(name)) ?? null,
   };
   contactCache.set(key, value);
   return value;
@@ -228,6 +249,8 @@ export function decideReminder(
   }
   const staffChase = followUp?.notes.find((note) => note.outcome === "chased" && note.authorEmail !== AUTOMATIC_AUTHOR && daysBetween(dayOf(new Date(note.createdAt)), today) < settings.manualChaseCooldownDays);
   if (staffChase) return blocked(`Chased by staff on ${pretty(dayOf(new Date(staffChase.createdAt)))}`, nextStage);
+  if (activity?.remindersOff) return blocked("Reminders turned off in Xero", nextStage);
+  if (activity?.optedOutGroup) return blocked(`Contact is in the Xero group "${activity.optedOutGroup}"`, nextStage);
   const xeroReminder = activity?.reminderDates.find((date) => daysBetween(date, today) < settings.xeroReminderCooldownDays);
   if (xeroReminder) return blocked(`Xero sent a reminder on ${pretty(xeroReminder)}`, nextStage);
   return { ...base, nextStage, eligible: true, reason: `Stage ${nextStage} reminder due` };

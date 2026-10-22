@@ -1213,6 +1213,8 @@ export const GetReceivablesResponse = zod.object({
   "xeroActivity": zod.union([zod.object({
   "sentOn": zod.string().nullable(),
   "reminderDates": zod.array(zod.string()),
+  "remindersOff": zod.boolean().nullable().describe('True when the invoice\'s latest reminders switch in Xero\'s History is "off"; null if never changed'),
+  "optedOutGroup": zod.string().nullable().describe('Xero contact group that opts this customer out of reminders (name contains "No reminders")'),
   "recent": zod.array(zod.object({
   "date": zod.string(),
   "change": zod.string(),

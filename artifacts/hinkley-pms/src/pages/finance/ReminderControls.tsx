@@ -49,6 +49,8 @@ export function ReminderCell({ invoice }: { invoice: ReceivableInvoice }) {
   if (!reminder && !xero) return <span className="secondary-text" style={{ margin: 0 }}>—</span>;
   return (
     <div className="hh-rem-cell">
+      {xero?.remindersOff && <span className="hh-rem-off">Reminders off in Xero</span>}
+      {xero?.optedOutGroup && <span className="hh-rem-off" title={`Xero contact group: ${xero.optedOutGroup}`}>No reminders (Xero group)</span>}
       {reminder && reminder.lastStage > 0 && (
         <span className="hh-rem-last">
           Stage {reminder.lastStage}/{reminder.totalStages} · {reminder.lastSentAt ? formatDate(reminder.lastSentAt) : ""}
@@ -84,6 +86,8 @@ export function SendReminderModal({ invoice, status, onClose, onDone }: { invoic
   const warnings = [
     reminder && !reminder.eligible && reminder.reason && !/^Stage \d+ (reminder )?due/.test(reminder.reason) ? reminder.reason : null,
     invoice.followUp?.remindersPaused ? "Automatic reminders are paused for this invoice." : null,
+    invoice.xeroActivity?.remindersOff ? "Reminders are turned off for this invoice in Xero." : null,
+    invoice.xeroActivity?.optedOutGroup ? `This customer is in the Xero contact group "${invoice.xeroActivity.optedOutGroup}".` : null,
   ].filter(Boolean) as string[];
   const submit = (event: React.FormEvent) => {
     event.preventDefault();

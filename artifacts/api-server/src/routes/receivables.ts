@@ -298,7 +298,20 @@ async function inBatches<T, R>(items: T[], size: number, run: (item: T) => Promi
 
 export async function activityFor(invoices: SnapshotInvoice[]): Promise<Map<string, XeroActivity | null>> {
   const overdue = invoices.filter((invoice) => invoice.daysOverdue >= 1);
-  const pairs = await inBatches(overdue, 4, async (invoice) => [`${invoice.tenantId}|${invoice.invoiceId}`, await xeroActivity(invoice.tenantId, invoice.invoiceId)] as const);
+  const pairs = await inBatches(overdue, 4, async (invoice) => {
+    const [history, contact] = await Promise.all([
+      xeroActivity(invoice.tenantId, invoice.invoiceId),
+      invoice.contactId ? contactEmail(invoice.tenantId, invoice.contactId).catch(() => null) : Promise.resolve(null),
+    ]);
+    const optedOutGroup = contact?.optedOutGroup ?? null;
+    // Keep the contact opt-out even when the invoice history can't be read.
+    const activity: XeroActivity | null = history
+      ? { ...history, optedOutGroup }
+      : optedOutGroup
+        ? { sentOn: null, reminderDates: [], remindersOff: null, optedOutGroup, recent: [] }
+        : null;
+    return [`${invoice.tenantId}|${invoice.invoiceId}`, activity] as const;
+  });
   return new Map(pairs);
 }
 
@@ -582,7 +595,7 @@ receivablesRouter.post("/receivables/:tenantId/:invoiceId/actions", async (req, 
   let item: Record<string, unknown>;
   if (body.data.action === "reminder") {
     const followUps = (await loadFollowUps([invoice.invoiceId])) ?? new Map();
-    const activity = new Map([[`${tenantId}|${invoice.invoiceId}`, await xeroActivity(tenantId, invoice.invoiceId)]]);
+    const activity = await activityFor([invoice]);
     const decision = (await reminderDecisions({ ...snapshot, invoices: [invoice] }, settings, followUps, activity)).get(`${tenantId}|${invoice.invoiceId}`)!;
     // A person can send the next stage at any time; after the last stage they repeat the final notice.
     const stage = Math.min(decision.lastStage + 1, settings.stageDays.length);

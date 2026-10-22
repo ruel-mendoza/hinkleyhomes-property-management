@@ -1743,11 +1743,17 @@ components:
           type: array
           items:
             type: string
+        remindersOff:
+          description: True when the invoice's latest reminders switch in Xero's History is "off"; null if never changed
+          type: ["boolean", "null"]
+        optedOutGroup:
+          description: Xero contact group that opts this customer out of reminders (name contains "No reminders")
+          type: ["string", "null"]
         recent:
           type: array
           items:
             $ref: "#/components/schemas/XeroHistoryEntry"
-      required: [sentOn, reminderDates, recent]
+      required: [sentOn, reminderDates, remindersOff, optedOutGroup, recent]
     ReminderStatus:
       type: object
       properties:

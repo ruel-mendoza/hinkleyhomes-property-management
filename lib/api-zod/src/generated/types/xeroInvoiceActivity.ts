@@ -11,5 +11,15 @@ export interface XeroInvoiceActivity {
   /** @nullable */
   sentOn: string | null;
   reminderDates: string[];
+  /**
+     * True when the invoice's latest reminders switch in Xero's History is "off"; null if never changed
+     * @nullable
+     */
+  remindersOff: boolean | null;
+  /**
+     * Xero contact group that opts this customer out of reminders (name contains "No reminders")
+     * @nullable
+     */
+  optedOutGroup: string | null;
   recent: XeroHistoryEntry[];
 }
