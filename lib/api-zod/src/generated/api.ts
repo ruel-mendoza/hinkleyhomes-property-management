@@ -672,7 +672,19 @@ export const ListPropertiesResponse = zod.object({
   "deactivated": zod.boolean(),
   "openActionsCount": zod.number().int(),
   "buildings": zod.array(zod.string()),
-  "entityName": zod.string().nullable()
+  "entityName": zod.string().nullable(),
+  "compliance": zod.union([zod.object({
+  "score": zod.number().int().describe('Percentage (0-100) of required compliance items that are in date'),
+  "required": zod.number().int().describe('Compliance items COHO tracks for this property (excludes ones not enabled)'),
+  "inDate": zod.number().int(),
+  "missing": zod.number().int(),
+  "expired": zod.number().int(),
+  "expiringSoon": zod.number().int().describe('In date but expiring within 30 days'),
+  "issues": zod.array(zod.object({
+  "name": zod.string(),
+  "state": zod.enum(['missing', 'expired', 'expiring_soon'])
+}))
+}),zod.null()]).describe('COHO compliance score; null for register-only properties or when COHO could not be reached')
 })),
   "buildings": zod.array(zod.object({
   "id": zod.string(),
@@ -737,7 +749,78 @@ export const CreatePropertyResponse = zod.object({
   "deactivated": zod.boolean(),
   "openActionsCount": zod.number().int(),
   "buildings": zod.array(zod.string()),
-  "entityName": zod.string().nullable()
+  "entityName": zod.string().nullable(),
+  "compliance": zod.union([zod.object({
+  "score": zod.number().int().describe('Percentage (0-100) of required compliance items that are in date'),
+  "required": zod.number().int().describe('Compliance items COHO tracks for this property (excludes ones not enabled)'),
+  "inDate": zod.number().int(),
+  "missing": zod.number().int(),
+  "expired": zod.number().int(),
+  "expiringSoon": zod.number().int().describe('In date but expiring within 30 days'),
+  "issues": zod.array(zod.object({
+  "name": zod.string(),
+  "state": zod.enum(['missing', 'expired', 'expiring_soon'])
+}))
+}),zod.null()]).describe('COHO compliance score; null for register-only properties or when COHO could not be reached')
+})
+
+
+/**
+ * @summary Full COHO details for one property (letting, ownership and compliance records)
+ */
+export const getPropertyDetailsPathReferenceMax = 200;
+
+
+
+export const GetPropertyDetailsParams = zod.object({
+  "reference": zod.coerce.string().min(1).max(getPropertyDetailsPathReferenceMax).describe('COHO property reference')
+})
+
+export const GetPropertyDetailsResponse = zod.object({
+  "reference": zod.string(),
+  "publicReference": zod.string().nullable(),
+  "description": zod.string().nullable().describe('Advert description as plain text'),
+  "propertyType": zod.string().nullable(),
+  "bedrooms": zod.number().int().nullable(),
+  "bathrooms": zod.number().int().nullable(),
+  "amenities": zod.array(zod.string()),
+  "minimumMonths": zod.number().int().nullable(),
+  "petsAllowed": zod.boolean().nullable(),
+  "smokingAllowed": zod.boolean().nullable(),
+  "allowedTenantType": zod.string().nullable(),
+  "county": zod.string().nullable(),
+  "rooms": zod.array(zod.object({
+  "reference": zod.string(),
+  "name": zod.string(),
+  "rent": zod.number().nullable(),
+  "paymentFrequency": zod.string().nullable(),
+  "availableFrom": zod.string().nullable(),
+  "depositType": zod.string().nullable(),
+  "depositAmount": zod.number().nullable(),
+  "bills": zod.string().nullable().describe('COHO bills setting (included, notIncluded, partiallyIncluded, notApplicable)')
+})),
+  "ownership": zod.union([zod.object({
+  "type": zod.string().nullable(),
+  "agencyPercentage": zod.number().nullable(),
+  "guaranteedRentAmount": zod.number().nullable(),
+  "agencyFeeDue": zod.string().nullable(),
+  "startDate": zod.string().nullable(),
+  "endDate": zod.string().nullable(),
+  "vatStatus": zod.string().nullable()
+}),zod.null()]),
+  "records": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "group": zod.enum(['certificates', 'fire_safety', 'health_and_safety', 'inspections']),
+  "required": zod.boolean(),
+  "status": zod.enum(['valid', 'expiring_soon', 'expired', 'missing', 'not_required']),
+  "validFrom": zod.string().nullable().describe('ISO date (YYYY-MM-DD)'),
+  "validTo": zod.string().nullable().describe('ISO date (YYYY-MM-DD); worked out from COHO\'s validity period when COHO gives none'),
+  "detail": zod.string().nullable().describe('Extra facts, e.g. EPC rating or HMO licence number')
+})),
+  "lastInspection": zod.string().nullable(),
+  "nextInspectionDue": zod.string().nullable(),
+  "unavailable": zod.array(zod.string()).describe('COHO sections that could not be loaded')
 })
 
 

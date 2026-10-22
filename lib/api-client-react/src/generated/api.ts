@@ -50,6 +50,7 @@ import type {
   ListCohoMaintenanceParams,
   ListCohoPropertiesParams,
   PropertyCreate,
+  PropertyDetails,
   PropertyRegister,
   PropertySummary,
   PublicListingList,
@@ -1935,6 +1936,83 @@ export const useCreateProperty = <TError = ErrorType<void>,
       > => {
       return useMutation(getCreatePropertyMutationOptions(options));
     }
+
+export const getGetPropertyDetailsUrl = (reference: string,) => {
+
+
+
+
+  return `/api/properties/${reference}/details`
+}
+
+/**
+ * @summary Full COHO details for one property (letting, ownership and compliance records)
+ */
+export const getPropertyDetails = async (reference: string, options?: Parameters<typeof customFetch>[1]): Promise<PropertyDetails> => {
+
+  return customFetch<PropertyDetails>(getGetPropertyDetailsUrl(reference),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPropertyDetailsQueryKey = (reference: string,) => {
+    return [
+    `/api/properties/${reference}/details`
+    ] as const;
+    }
+
+
+export const getGetPropertyDetailsQueryOptions = <TData = Awaited<ReturnType<typeof getPropertyDetails>>, TError = ErrorType<void>>(reference: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPropertyDetails>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPropertyDetailsQueryKey(reference);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPropertyDetails>>> = ({ signal }) => getPropertyDetails(reference, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: reference !== null && reference !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPropertyDetails>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPropertyDetailsQueryResult = NonNullable<Awaited<ReturnType<typeof getPropertyDetails>>>
+export type GetPropertyDetailsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Full COHO details for one property (letting, ownership and compliance records)
+ */
+
+export function useGetPropertyDetails<TData = Awaited<ReturnType<typeof getPropertyDetails>>, TError = ErrorType<void>>(
+ reference: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPropertyDetails>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPropertyDetailsQueryOptions(reference,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getCreateBuildingUrl = () => {
 

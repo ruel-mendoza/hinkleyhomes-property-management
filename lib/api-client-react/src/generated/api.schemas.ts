@@ -21,6 +21,33 @@ export const PropertySummarySource = {
   register: 'register',
 } as const;
 
+export type ComplianceIssueState = typeof ComplianceIssueState[keyof typeof ComplianceIssueState];
+
+
+export const ComplianceIssueState = {
+  missing: 'missing',
+  expired: 'expired',
+  expiring_soon: 'expiring_soon',
+} as const;
+
+export interface ComplianceIssue {
+  name: string;
+  state: ComplianceIssueState;
+}
+
+export interface PropertyCompliance {
+  /** Percentage (0-100) of required compliance items that are in date */
+  score: number;
+  /** Compliance items COHO tracks for this property (excludes ones not enabled) */
+  required: number;
+  inDate: number;
+  missing: number;
+  expired: number;
+  /** In date but expiring within 30 days */
+  expiringSoon: number;
+  issues: ComplianceIssue[];
+}
+
 export interface PropertySummary {
   /** COHO reference for COHO properties, register id for register-only ones */
   id: string;
@@ -53,6 +80,126 @@ export interface PropertySummary {
   buildings: string[];
   /** @nullable */
   entityName: string | null;
+  /** COHO compliance score; null for register-only properties or when COHO could not be reached */
+  compliance: PropertyCompliance | null;
+}
+
+export type ComplianceRecordStatus = typeof ComplianceRecordStatus[keyof typeof ComplianceRecordStatus];
+
+
+export const ComplianceRecordStatus = {
+  valid: 'valid',
+  expiring_soon: 'expiring_soon',
+  expired: 'expired',
+  missing: 'missing',
+  not_required: 'not_required',
+} as const;
+
+export type ComplianceRecordGroup = typeof ComplianceRecordGroup[keyof typeof ComplianceRecordGroup];
+
+
+export const ComplianceRecordGroup = {
+  certificates: 'certificates',
+  fire_safety: 'fire_safety',
+  health_and_safety: 'health_and_safety',
+  inspections: 'inspections',
+} as const;
+
+export interface ComplianceRecord {
+  key: string;
+  name: string;
+  group: ComplianceRecordGroup;
+  required: boolean;
+  status: ComplianceRecordStatus;
+  /**
+     * ISO date (YYYY-MM-DD)
+     * @nullable
+     */
+  validFrom: string | null;
+  /**
+     * ISO date (YYYY-MM-DD); worked out from COHO's validity period when COHO gives none
+     * @nullable
+     */
+  validTo: string | null;
+  /**
+     * Extra facts, e.g. EPC rating or HMO licence number
+     * @nullable
+     */
+  detail: string | null;
+}
+
+export interface PropertyLettingRoom {
+  reference: string;
+  name: string;
+  /** @nullable */
+  rent: number | null;
+  /** @nullable */
+  paymentFrequency: string | null;
+  /** @nullable */
+  availableFrom: string | null;
+  /** @nullable */
+  depositType: string | null;
+  /** @nullable */
+  depositAmount: number | null;
+  /**
+     * COHO bills setting (included, notIncluded, partiallyIncluded, notApplicable)
+     * @nullable
+     */
+  bills: string | null;
+}
+
+export interface PropertyOwnershipInfo {
+  /** @nullable */
+  type: string | null;
+  /** @nullable */
+  agencyPercentage: number | null;
+  /** @nullable */
+  guaranteedRentAmount: number | null;
+  /** @nullable */
+  agencyFeeDue: string | null;
+  /** @nullable */
+  startDate: string | null;
+  /** @nullable */
+  endDate: string | null;
+  /** @nullable */
+  vatStatus: string | null;
+}
+
+export interface PropertyDetails {
+  reference: string;
+  /** @nullable */
+  publicReference: string | null;
+  /**
+     * Advert description as plain text
+     * @nullable
+     */
+  description: string | null;
+  /** @nullable */
+  propertyType: string | null;
+  /** @nullable */
+  bedrooms: number | null;
+  /** @nullable */
+  bathrooms: number | null;
+  amenities: string[];
+  /** @nullable */
+  minimumMonths: number | null;
+  /** @nullable */
+  petsAllowed: boolean | null;
+  /** @nullable */
+  smokingAllowed: boolean | null;
+  /** @nullable */
+  allowedTenantType: string | null;
+  /** @nullable */
+  county: string | null;
+  rooms: PropertyLettingRoom[];
+  ownership: PropertyOwnershipInfo | null;
+  records: ComplianceRecord[];
+  /** @nullable */
+  lastInspection: string | null;
+  /** @nullable */
+  nextInspectionDue: string | null;
+  /** COHO sections that could not be loaded */
+  unavailable: string[];
 }
 
 export interface BuildingSummary {

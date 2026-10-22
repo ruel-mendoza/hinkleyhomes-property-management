@@ -1,4 +1,4 @@
-import type { PropertySummary } from "@workspace/api-client-react";
+import type { PropertyCompliance, PropertySummary } from "@workspace/api-client-react";
 
 // Properties page data helpers. The data itself comes from the PMS API
 // (GET /api/properties), which combines live COHO properties, open action
@@ -75,6 +75,37 @@ export const allTags = (items: PropertySummary[]) =>
 export const occupancy = (property: Pick<PropertySummary, "roomsOccupied" | "totalRooms">) =>
   property.roomsOccupied === null || property.totalRooms <= 0 ? null : property.roomsOccupied / property.totalRooms;
 
+// Compliance score tone: "good" all in date, "low" missing or expiring soon,
+// "bad" anything expired or under half in date.
+export type ComplianceTone = "good" | "low" | "bad" | "unknown";
+export function complianceTone(compliance: PropertyCompliance | null): ComplianceTone {
+  if (!compliance || compliance.required === 0) return "unknown";
+  if (compliance.expired > 0 || compliance.score < 50) return "bad";
+  return compliance.missing > 0 || compliance.expiringSoon > 0 ? "low" : "good";
+}
+
+const ISSUE_LABEL = { expired: "expired", missing: "no record", expiring_soon: "expiring within 30 days" } as const;
+export function complianceSummary(compliance: PropertyCompliance | null): string {
+  if (!compliance) return "Compliance not known (not in COHO, or COHO could not be reached)";
+  if (compliance.required === 0) return "No compliance items are tracked in COHO";
+  const head = `Compliance ${compliance.score}%: ${compliance.inDate} of ${compliance.required} items in date`;
+  return compliance.issues.length
+    ? `${head}\n${compliance.issues.map((issue) => `• ${issue.name} (${ISSUE_LABEL[issue.state]})`).join("\n")}`
+    : head;
+}
+
+// "semiDetached", "ON_RENT_PAID", "not_required" -> "Semi detached", "On rent paid", "Not required".
+export function humanize(value: string | null | undefined): string {
+  if (!value) return "—";
+  const words = value.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim().toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+const dateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+export const formatDate = (value: string | null | undefined) => (value ? dateFormat.format(new Date(`${value.slice(0, 10)}T00:00:00Z`)) : "—");
+export const formatMoney = (value: number | null | undefined) =>
+  value === null || value === undefined ? "—" : new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 2 }).format(value);
+
 export const statusLabel = (property: PropertySummary) =>
   property.deactivated ? "Inactive" : property.source === "register" ? "Not in COHO yet" : "Active";
 
@@ -90,7 +121,7 @@ const csvCell = (value: string | number | null) => {
 };
 
 export function propertiesCsv(items: PropertySummary[]): string {
-  const header = ["reference", "name", "town", "postcode", "totalRooms", "roomsOccupied", "occupancy %", "openActions", "tags", "status"];
+  const header = ["reference", "name", "town", "postcode", "totalRooms", "roomsOccupied", "occupancy %", "compliance %", "complianceIssues", "openActions", "tags", "status"];
   const rows = items.map((property) => {
     const share = occupancy(property);
     return [
@@ -101,6 +132,8 @@ export function propertiesCsv(items: PropertySummary[]): string {
       property.totalRooms,
       property.roomsOccupied,
       share === null ? null : Math.round(share * 100),
+      property.compliance?.required ? property.compliance.score : null,
+      property.compliance?.issues.map((issue) => `${issue.name} (${issue.state.replace("_", " ")})`).join("; ") ?? null,
       property.openActionsCount,
       property.tags.join("; "),
       statusLabel(property),

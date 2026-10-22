@@ -55,11 +55,12 @@
 .hh-actions-corner{position:absolute;top:0;right:0;width:34px;height:34px;border-bottom-left-radius:100%;background:#c2287a;color:#fff;font-size:12px;font-weight:800;display:flex;justify-content:flex-end;align-items:flex-start;padding:5px 7px 0 0;box-sizing:border-box;line-height:1}
 .hh-actions-pill{display:inline-grid;place-items:center;min-width:22px;height:20px;padding:0 6px;border-radius:999px;background:#c2287a;color:#fff;font-size:12px;font-weight:800}
 
-/* Occupancy bar */
+/* Occupancy and compliance bars */
 .hh-occ{height:4px;border-radius:999px;background:#2d3a50;overflow:hidden}
 .hh-occ span{display:block;height:100%;border-radius:inherit}
 .hh-occ .good{background:#3fb37f}
 .hh-occ .low{background:#e2a93b}
+.hh-occ .bad{background:#e0575b}
 .hh-occ.unknown{background:repeating-linear-gradient(90deg,#2d3a50 0 6px,#25324a 6px 12px)}
 .hh-occ.edge{position:absolute;top:0;left:0;right:0;border-radius:0}
 .hh-occ.detail{height:6px;margin-bottom:14px}
@@ -121,8 +122,33 @@
 .hh-detail{display:grid;grid-template-columns:minmax(0,320px) 1fr;gap:20px;padding:18px}
 .hh-detail-photo{width:100%;aspect-ratio:3/2;object-fit:cover;border-radius:8px;background:#1f2c41}
 .hh-detail-photo.empty{display:grid;place-items:center;color:#4a5b75}
+.hh-score{margin-bottom:16px}
+.hh-score-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin-bottom:7px}
+.hh-score-label{font-size:12px;font-weight:700;color:#8f9db0;text-transform:uppercase;letter-spacing:.04em}
+.hh-score-value{font-size:24px;font-weight:800;line-height:1}
+.hh-score-value.good{color:#5fcf9c}.hh-score-value.low{color:#edc16b}.hh-score-value.bad{color:#f08f91}
+.hh-score-sub{font-size:13px;color:#95a2b5}
+.hh-score-issues{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0;padding:0}
+.hh-score-issues li{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 9px;border-radius:6px;border:1px solid #6a3440;background:#2f1e26;color:#f3c2c4}
+.hh-score-issues li.soon{border-color:#5a4626;background:#3a2e1c;color:#f0d29b}
+.hh-score-issues small{font-weight:500;opacity:.8}
+.hh-detail-grid{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:14px;margin-top:14px}
+.hh-detail-section{margin-top:14px}
+.hh-detail-body{padding:14px 17px;display:flex;flex-direction:column;gap:14px}
+.hh-detail-note{margin-top:14px;padding:14px 17px;font-size:13px;color:#95a2b5;display:flex;align-items:center;gap:8px}
+.hh-detail-note.warn{color:#f0c27b}
+.hh-detail-table{width:100%;border-collapse:collapse;font-size:13px}
+.hh-detail-table th,.hh-detail-table td{text-align:left;padding:8px 12px;border-bottom:1px solid #2a374d;color:#dce4ed;vertical-align:middle}
+.hh-detail-table thead th{font-size:12px;font-weight:700;color:#8f9db0}
+.hh-detail-table small{color:#8f9db0;font-size:12px}
+.hh-detail-group th{background:#141f30;font-size:12px;font-weight:700;color:#a9b5c5;text-transform:uppercase;letter-spacing:.04em}
+.hh-detail-body .hh-detail-table th:first-child,.hh-detail-body .hh-detail-table td:first-child{padding-left:0}
+.status.na{background:#25324a;color:#95a2b5}
+.hh-amenities{margin:0}
+.hh-description{margin:0;font-size:13px;line-height:1.6;color:#c6d1de;white-space:pre-line;max-width:80ch}
 
 @media(max-width:1100px){.hh-prop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hh-report-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){.hh-detail-grid{grid-template-columns:1fr}}
 @media(max-width:680px){.hh-prop-grid,.hh-filter-row{grid-template-columns:1fr}.hh-detail{grid-template-columns:1fr}}
 
 /* Public website widget (light, for embedding on the Hinkley Homes site) */

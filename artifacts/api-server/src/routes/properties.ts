@@ -17,10 +17,12 @@ import {
   CreatePropertyResponse,
   ListEntitiesResponse,
   ListPropertiesResponse,
+  GetPropertyDetailsResponse,
   ListPublicListingsResponse,
 } from "@workspace/api-zod";
 import { cohoApiKey } from "../lib/integrations-env";
-import { cohoGet } from "../lib/coho-api";
+import { CohoApiError, cohoGet } from "../lib/coho-api";
+import { complianceFor, fetchComplianceBuckets, fetchPropertyRecords, requiredItems, type ComplianceBuckets } from "../lib/coho-compliance";
 
 type RecordValue = Record<string, unknown>;
 const asRecord = (value: unknown): RecordValue =>
@@ -116,9 +118,17 @@ propertiesRouter.get("/properties", async (req, res): Promise<void> => {
   const db = getDb();
   let coho: CohoPropertyRow[] = [];
   let cohoError: string | null = null;
+  let compliance: ComplianceBuckets | null = null;
   if (cohoApiKey()) {
     try {
-      coho = await fetchCohoProperties();
+      [coho, compliance] = await Promise.all([
+        fetchCohoProperties(),
+        // A compliance failure only hides the scores; the property list still loads.
+        fetchComplianceBuckets().catch((error: unknown) => {
+          req.log.warn({ err: error }, "COHO compliance overview unavailable for the Properties page");
+          return null;
+        }),
+      ]);
     } catch (error) {
       cohoError = error instanceof Error ? error.message : "COHO could not be reached.";
       req.log.warn({ err: error }, "COHO properties unavailable for the Properties page");
@@ -172,6 +182,7 @@ propertiesRouter.get("/properties", async (req, res): Promise<void> => {
       openActionsCount: openActions.get(row.reference) ?? 0,
       buildings: buildingsFor.get(row.reference) ?? [],
       entityName: null,
+      compliance: compliance ? complianceFor(compliance, row.reference) : null,
     })),
     // Register rows already linked to a listed COHO property are shown once, as the COHO one.
     ...register
@@ -195,6 +206,7 @@ propertiesRouter.get("/properties", async (req, res): Promise<void> => {
         openActionsCount: 0,
         buildings: buildingsFor.get(property.id) ?? [],
         entityName,
+        compliance: null,
       })),
   ];
   const propertyCount = new Map<string, number>();
@@ -211,6 +223,108 @@ propertiesRouter.get("/properties", async (req, res): Promise<void> => {
         propertyCount: propertyCount.get(building.id) ?? 0,
       })),
       cohoError,
+    }),
+  );
+});
+
+// Plain text from COHO's advert HTML.
+const htmlToText = (html: string | null): string | null => {
+  if (!html) return null;
+  const text = html
+    .replace(/<\s*(br|\/?p|\/li|\/h\d)\b[^>]*>/gi, "\n")
+    .replace(/<\s*li[^>]*>/gi, "• ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&rsquo;|&lsquo;/g, "'")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return text || null;
+};
+const bool = (value: unknown): boolean | null => (typeof value === "boolean" ? value : null);
+const intOrNull = (value: unknown): number | null => (Number.isInteger(value) ? (value as number) : null);
+const numOrNull = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) ? value : null);
+const dateOnly = (value: unknown): string | null => str(value)?.slice(0, 10) ?? null;
+
+propertiesRouter.get("/properties/:reference/details", async (req, res): Promise<void> => {
+  if (!cohoApiKey()) {
+    res.status(503).json({ error: "COHO_API_KEY is not configured." });
+    return;
+  }
+  const reference = String(req.params.reference ?? "").trim();
+  if (!reference || reference.length > 200) {
+    res.status(400).json({ error: "Give a COHO property reference." });
+    return;
+  }
+  const path = `/properties/${encodeURIComponent(reference)}`;
+  let property: RecordValue;
+  try {
+    property = asRecord(await cohoGet(`${path}?includeRooms=true`));
+  } catch (error) {
+    if (error instanceof CohoApiError && error.status === 404) {
+      res.status(404).json({ error: "This property is not in COHO." });
+      return;
+    }
+    req.log.warn({ err: error, reference }, "COHO property details unavailable");
+    res.status(502).json({ error: "COHO could not be reached. Try again." });
+    return;
+  }
+
+  const unavailable: string[] = [];
+  const [ownership, buckets] = await Promise.all([
+    cohoGet(`${path}/ownership/overview?includeRooms=false`).then(asRecord).catch(() => {
+      unavailable.push("Ownership");
+      return null;
+    }),
+    fetchComplianceBuckets(reference).catch(() => {
+      unavailable.push("Compliance overview");
+      return null;
+    }),
+  ]);
+  const records = await fetchPropertyRecords(reference, buckets ? requiredItems(buckets, reference) : new Set());
+  const address = asRecord(property.address);
+
+  res.json(
+    GetPropertyDetailsResponse.parse({
+      reference,
+      publicReference: str(property.publicReference),
+      description: htmlToText(str(property.description) ?? str(property.headlineDescription)),
+      propertyType: str(property.propertyType),
+      bedrooms: intOrNull(property.numberOfBedrooms),
+      bathrooms: intOrNull(property.numberOfBathrooms),
+      amenities: Array.isArray(property.amenities) ? property.amenities.filter((item): item is string => typeof item === "string") : [],
+      minimumMonths: intOrNull(property.minimumMonthsRental) || null,
+      petsAllowed: bool(property.petsAllowed),
+      smokingAllowed: bool(property.smokingAllowed),
+      allowedTenantType: str(property.allowedTenantType),
+      county: str(address.provinceName) ?? str(address.adminAreaName),
+      rooms: (Array.isArray(property.rooms) ? property.rooms.map(asRecord) : []).map((room) => ({
+        reference: str(room.reference) ?? "",
+        name: str(room.name) ?? "Room",
+        rent: numOrNull(room.rent),
+        paymentFrequency: str(room.paymentFrequency),
+        availableFrom: dateOnly(room.availableFrom),
+        depositType: str(room.depositType),
+        depositAmount: numOrNull(room.depositAmountRequired),
+        bills: str(room.billsInclusive) ?? str(property.billsInclusive),
+      })),
+      ownership: ownership && {
+        type: str(ownership.propertyOwnershipType),
+        agencyPercentage: numOrNull(ownership.agencyPercentage),
+        guaranteedRentAmount: numOrNull(ownership.guaranteedRentAmount),
+        agencyFeeDue: str(ownership.agencyFeeDueCondition),
+        startDate: dateOnly(ownership.startDate),
+        endDate: dateOnly(ownership.endDate),
+        vatStatus: str(ownership.vatStatus),
+      },
+      records: records.records,
+      lastInspection: records.lastInspection,
+      nextInspectionDue: records.nextInspectionDue,
+      unavailable: [...unavailable, ...records.unavailable],
     }),
   );
 });
@@ -309,6 +423,7 @@ propertiesRouter.post("/properties", async (req, res): Promise<void> => {
       openActionsCount: 0,
       buildings: [],
       entityName: entity.name,
+      compliance: null,
     }),
   );
 });

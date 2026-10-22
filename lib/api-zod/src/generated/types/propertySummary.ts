@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PropertyCompliance } from './propertyCompliance';
 import type { PropertyRentalType } from './propertyRentalType';
 import type { PropertySummarySource } from './propertySummarySource';
 
@@ -40,4 +41,6 @@ export interface PropertySummary {
   buildings: string[];
   /** @nullable */
   entityName: string | null;
+  /** COHO compliance score; null for register-only properties or when COHO could not be reached */
+  compliance: PropertyCompliance | null;
 }

@@ -546,6 +546,33 @@ paths:
           description: A property with this address already exists
         "503":
           description: Database is not configured
+  /properties/{reference}/details:
+    get:
+      operationId: getPropertyDetails
+      tags: [properties]
+      summary: Full COHO details for one property (letting, ownership and compliance records)
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          description: COHO property reference
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+      responses:
+        "200":
+          description: The property's COHO details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertyDetails"
+        "404":
+          description: Property not found in COHO
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO API key is not configured
   /buildings:
     post:
       operationId: createBuilding
@@ -658,7 +685,164 @@ components:
             type: string
         entityName:
           type: ["string", "null"]
-      required: [id, source, cohoReference, name, houseNumber, streetName, postcode, town, imageUrl, tags, totalRooms, roomsOccupied, rentalType, propertyType, deactivated, openActionsCount, buildings, entityName]
+        compliance:
+          description: COHO compliance score; null for register-only properties or when COHO could not be reached
+          oneOf:
+            - $ref: "#/components/schemas/PropertyCompliance"
+            - type: "null"
+      required: [id, source, cohoReference, name, houseNumber, streetName, postcode, town, imageUrl, tags, totalRooms, roomsOccupied, rentalType, propertyType, deactivated, openActionsCount, buildings, entityName, compliance]
+    ComplianceIssueState:
+      type: string
+      enum: [missing, expired, expiring_soon]
+    ComplianceIssue:
+      type: object
+      properties:
+        name:
+          type: string
+        state:
+          $ref: "#/components/schemas/ComplianceIssueState"
+      required: [name, state]
+    PropertyCompliance:
+      type: object
+      properties:
+        score:
+          description: Percentage (0-100) of required compliance items that are in date
+          type: integer
+        required:
+          description: Compliance items COHO tracks for this property (excludes ones not enabled)
+          type: integer
+        inDate:
+          type: integer
+        missing:
+          type: integer
+        expired:
+          type: integer
+        expiringSoon:
+          description: In date but expiring within 30 days
+          type: integer
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComplianceIssue"
+      required: [score, required, inDate, missing, expired, expiringSoon, issues]
+    ComplianceRecordStatus:
+      type: string
+      enum: [valid, expiring_soon, expired, missing, not_required]
+    ComplianceRecord:
+      type: object
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        group:
+          type: string
+          enum: [certificates, fire_safety, health_and_safety, inspections]
+        required:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/ComplianceRecordStatus"
+        validFrom:
+          description: ISO date (YYYY-MM-DD)
+          type: ["string", "null"]
+        validTo:
+          description: ISO date (YYYY-MM-DD); worked out from COHO's validity period when COHO gives none
+          type: ["string", "null"]
+        detail:
+          description: Extra facts, e.g. EPC rating or HMO licence number
+          type: ["string", "null"]
+      required: [key, name, group, required, status, validFrom, validTo, detail]
+    PropertyLettingRoom:
+      type: object
+      properties:
+        reference:
+          type: string
+        name:
+          type: string
+        rent:
+          type: ["number", "null"]
+        paymentFrequency:
+          type: ["string", "null"]
+        availableFrom:
+          type: ["string", "null"]
+        depositType:
+          type: ["string", "null"]
+        depositAmount:
+          type: ["number", "null"]
+        bills:
+          description: COHO bills setting (included, notIncluded, partiallyIncluded, notApplicable)
+          type: ["string", "null"]
+      required: [reference, name, rent, paymentFrequency, availableFrom, depositType, depositAmount, bills]
+    PropertyOwnershipInfo:
+      type: object
+      properties:
+        type:
+          type: ["string", "null"]
+        agencyPercentage:
+          type: ["number", "null"]
+        guaranteedRentAmount:
+          type: ["number", "null"]
+        agencyFeeDue:
+          type: ["string", "null"]
+        startDate:
+          type: ["string", "null"]
+        endDate:
+          type: ["string", "null"]
+        vatStatus:
+          type: ["string", "null"]
+      required: [type, agencyPercentage, guaranteedRentAmount, agencyFeeDue, startDate, endDate, vatStatus]
+    PropertyDetails:
+      type: object
+      properties:
+        reference:
+          type: string
+        publicReference:
+          type: ["string", "null"]
+        description:
+          description: Advert description as plain text
+          type: ["string", "null"]
+        propertyType:
+          type: ["string", "null"]
+        bedrooms:
+          type: ["integer", "null"]
+        bathrooms:
+          type: ["integer", "null"]
+        amenities:
+          type: array
+          items:
+            type: string
+        minimumMonths:
+          type: ["integer", "null"]
+        petsAllowed:
+          type: ["boolean", "null"]
+        smokingAllowed:
+          type: ["boolean", "null"]
+        allowedTenantType:
+          type: ["string", "null"]
+        county:
+          type: ["string", "null"]
+        rooms:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyLettingRoom"
+        ownership:
+          oneOf:
+            - $ref: "#/components/schemas/PropertyOwnershipInfo"
+            - type: "null"
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComplianceRecord"
+        lastInspection:
+          type: ["string", "null"]
+        nextInspectionDue:
+          type: ["string", "null"]
+        unavailable:
+          description: COHO sections that could not be loaded
+          type: array
+          items:
+            type: string
+      required: [reference, publicReference, description, propertyType, bedrooms, bathrooms, amenities, minimumMonths, petsAllowed, smokingAllowed, allowedTenantType, county, rooms, ownership, records, lastInspection, nextInspectionDue, unavailable]
     BuildingSummary:
       type: object
       properties:

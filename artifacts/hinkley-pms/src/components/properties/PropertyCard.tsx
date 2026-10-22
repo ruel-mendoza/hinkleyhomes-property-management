@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import type { PropertySummary } from "@workspace/api-client-react";
 import { locationLine } from "@/services/properties";
 import { ActionsBadge } from "./ActionsBadge";
-import { OccupancyBar } from "./OccupancyBar";
+import { ComplianceBar } from "./ComplianceBar";
 
 export const propertyPath = (property: PropertySummary) => `/properties/${encodeURIComponent(property.id)}`;
 export const actionsPath = (property: PropertySummary) =>
@@ -41,7 +41,7 @@ export function PropertyCard({ property }: { property: PropertySummary }) {
         </div>
       </div>
       <div className="hh-prop-body">
-        <OccupancyBar occupied={property.roomsOccupied} total={property.totalRooms} className="edge" />
+        <ComplianceBar compliance={property.compliance} className="edge" />
         <strong className="hh-prop-name">{property.name}</strong>
         <span className="hh-prop-loc">
           {locationLine(property)}

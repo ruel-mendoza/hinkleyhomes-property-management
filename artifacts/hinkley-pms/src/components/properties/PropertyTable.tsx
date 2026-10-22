@@ -2,20 +2,25 @@ import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { useLocation } from "wouter";
 import type { PropertySummary } from "@workspace/api-client-react";
-import { compareByStreet, statusLabel } from "@/services/properties";
+import { compareByStreet, complianceTone, statusLabel } from "@/services/properties";
 import { ActionsBadge } from "./ActionsBadge";
+import { ComplianceBar } from "./ComplianceBar";
 import { OccupancyBar } from "./OccupancyBar";
 import { EmptyProperties } from "./PropertyGrid";
 import { PropertyThumb, propertyPath } from "./PropertyCard";
 
-type SortKey = "property" | "actions";
+type SortKey = "property" | "actions" | "compliance";
+// Properties without a known score sort after every scored one.
+const scoreOf = (property: PropertySummary) => (complianceTone(property.compliance) === "unknown" ? 101 : property.compliance!.score);
 
 export function PropertyTable({ items, loading, filtered, onClear }: { items: PropertySummary[]; loading: boolean; filtered: boolean; onClear: () => void }) {
   const [, navigate] = useLocation();
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "property", dir: 1 });
   const rows = useMemo(() => {
     const sorted = [...items].sort((a, b) =>
-      sort.key === "actions" ? a.openActionsCount - b.openActionsCount || compareByStreet(a, b) : compareByStreet(a, b),
+      sort.key === "actions" ? a.openActionsCount - b.openActionsCount || compareByStreet(a, b)
+        : sort.key === "compliance" ? scoreOf(a) - scoreOf(b) || compareByStreet(a, b)
+        : compareByStreet(a, b),
     );
     return sort.dir === 1 ? sorted : sorted.reverse();
   }, [items, sort]);
@@ -36,11 +41,11 @@ export function PropertyTable({ items, loading, filtered, onClear }: { items: Pr
       <div className="table-wrap">
         <table className="hh-prop-table">
           <thead>
-            <tr><th>Image</th><SortHeader keyName="property" label="Property" /><th>Town</th><th>Postcode</th><th>Rooms</th><th>Tags</th><SortHeader keyName="actions" label="Actions" /><th>Status</th></tr>
+            <tr><th>Image</th><SortHeader keyName="property" label="Property" /><th>Town</th><th>Postcode</th><th>Rooms</th><SortHeader keyName="compliance" label="Compliance" /><th>Tags</th><SortHeader keyName="actions" label="Actions" /><th>Status</th></tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8}><div className="empty-state"><h3>Loading properties…</h3></div></td></tr>
+              <tr><td colSpan={9}><div className="empty-state"><h3>Loading properties…</h3></div></td></tr>
             ) : rows.map((property) => (
               <tr
                 key={property.id}
@@ -58,6 +63,10 @@ export function PropertyTable({ items, loading, filtered, onClear }: { items: Pr
                 <td className="hh-rooms-cell">
                   <span>{property.roomsOccupied === null ? "?" : property.roomsOccupied}/{property.totalRooms}</span>
                   <OccupancyBar occupied={property.roomsOccupied} total={property.totalRooms} />
+                </td>
+                <td className="hh-rooms-cell">
+                  <span>{complianceTone(property.compliance) === "unknown" ? "—" : `${property.compliance!.score}%`}</span>
+                  <ComplianceBar compliance={property.compliance} />
                 </td>
                 <td><div className="hh-act-tags">{property.tags.length ? property.tags.map((tag) => <span key={tag}>{tag}</span>) : <span className="secondary-text" style={{ background: "none", padding: 0, margin: 0 }}>—</span>}</div></td>
                 <td><ActionsBadge count={property.openActionsCount} variant="pill" /></td>
