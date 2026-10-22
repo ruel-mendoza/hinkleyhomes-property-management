@@ -867,6 +867,40 @@ paths:
           description: The n8n workflow or Xero returned an error
         "503":
           description: The reminders workflow is not configured
+  /presence:
+    get:
+      operationId: getPresence
+      tags: [health]
+      summary: Staff who are using the app now, and when others were last seen
+      responses:
+        "200":
+          description: Staff presence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresenceList"
+        "503":
+          description: Database is not configured
+  /presence/heartbeat:
+    post:
+      operationId: sendPresenceHeartbeat
+      tags: [health]
+      summary: Mark the signed-in staff member as using the app (sent about once a minute) and return everyone's presence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresenceHeartbeat"
+      responses:
+        "200":
+          description: Staff presence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresenceList"
+        "503":
+          description: Database is not configured
   /public/listings:
     get:
       operationId: listPublicListings
@@ -1888,6 +1922,56 @@ components:
         testMode:
           type: boolean
       required: [status, detail, sentTo, testMode]
+    PresenceHeartbeat:
+      type: object
+      properties:
+        path:
+          description: The app page's path only (no search or filters)
+          type: string
+          maxLength: 200
+        visible:
+          description: False when the app's browser tab is in the background
+          type: boolean
+        displayName:
+          type: ["string", "null"]
+          maxLength: 120
+      required: [path, visible]
+    PresenceStatus:
+      type: string
+      enum: [online, away, offline]
+    PresenceUser:
+      type: object
+      properties:
+        userId:
+          type: string
+        name:
+          type: string
+        email:
+          type: ["string", "null"]
+        status:
+          $ref: "#/components/schemas/PresenceStatus"
+        currentPage:
+          type: ["string", "null"]
+        lastSeenAt:
+          type: string
+        sessionStartedAt:
+          type: string
+        isYou:
+          type: boolean
+      required: [userId, name, email, status, currentPage, lastSeenAt, sessionStartedAt, isYou]
+    PresenceList:
+      type: object
+      properties:
+        asOf:
+          type: string
+        onlineCount:
+          type: integer
+        users:
+          description: Online and away first, then everyone seen in the last 30 days
+          type: array
+          items:
+            $ref: "#/components/schemas/PresenceUser"
+      required: [asOf, onlineCount, users]
     PropertyRentalType:
       type: string
       enum: [room, whole_property]

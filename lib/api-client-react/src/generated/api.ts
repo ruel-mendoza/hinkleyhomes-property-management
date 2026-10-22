@@ -62,6 +62,8 @@ import type {
   MoneyOverview,
   Occupancy,
   Performance,
+  PresenceHeartbeat,
+  PresenceList,
   PropertyCreate,
   PropertyDetails,
   PropertyRegister,
@@ -3175,6 +3177,171 @@ export const useRunInvoiceAction = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getRunInvoiceActionMutationOptions(options));
+    }
+
+export const getGetPresenceUrl = () => {
+
+
+
+
+  return `/api/presence`
+}
+
+/**
+ * @summary Staff who are using the app now, and when others were last seen
+ */
+export const getPresence = async ( options?: Parameters<typeof customFetch>[1]): Promise<PresenceList> => {
+
+  return customFetch<PresenceList>(getGetPresenceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPresenceQueryKey = () => {
+    return [
+    `/api/presence`
+    ] as const;
+    }
+
+
+export const getGetPresenceQueryOptions = <TData = Awaited<ReturnType<typeof getPresence>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPresence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPresenceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPresence>>> = ({ signal }) => getPresence({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPresence>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPresenceQueryResult = NonNullable<Awaited<ReturnType<typeof getPresence>>>
+export type GetPresenceQueryError = ErrorType<void>
+
+
+/**
+ * @summary Staff who are using the app now, and when others were last seen
+ */
+
+export function useGetPresence<TData = Awaited<ReturnType<typeof getPresence>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPresence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPresenceQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSendPresenceHeartbeatUrl = () => {
+
+
+
+
+  return `/api/presence/heartbeat`
+}
+
+/**
+ * @summary Mark the signed-in staff member as using the app (sent about once a minute) and return everyone's presence
+ */
+export const sendPresenceHeartbeat = async (presenceHeartbeat: PresenceHeartbeat, options?: Parameters<typeof customFetch>[1]): Promise<PresenceList> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PresenceList>(getSendPresenceHeartbeatUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(presenceHeartbeat)
+  }
+);}
+
+
+
+
+
+export const getSendPresenceHeartbeatMutationKey = () => ['sendPresenceHeartbeat'] as const;
+
+export const getSendPresenceHeartbeatMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendPresenceHeartbeat>>, TError,SendPresenceHeartbeatMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendPresenceHeartbeat>>, TError,SendPresenceHeartbeatMutationVariables, TContext> => {
+
+const mutationKey = getSendPresenceHeartbeatMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendPresenceHeartbeat>>, SendPresenceHeartbeatMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendPresenceHeartbeat(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendPresenceHeartbeatMutationResult = NonNullable<Awaited<ReturnType<typeof sendPresenceHeartbeat>>>
+    export type SendPresenceHeartbeatMutationBody = BodyType<PresenceHeartbeat>
+    export type SendPresenceHeartbeatMutationError = ErrorType<void>
+    export type SendPresenceHeartbeatMutationVariables = {data: BodyType<PresenceHeartbeat>}
+
+    /**
+ * @summary Mark the signed-in staff member as using the app (sent about once a minute) and return everyone's presence
+ */
+export const useSendPresenceHeartbeat = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendPresenceHeartbeat>>, TError,SendPresenceHeartbeatMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendPresenceHeartbeat>>,
+        TError,
+        SendPresenceHeartbeatMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSendPresenceHeartbeatMutationOptions(options));
     }
 
 export const getListPublicListingsUrl = () => {

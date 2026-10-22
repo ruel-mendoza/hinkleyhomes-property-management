@@ -796,6 +796,50 @@ export interface InvoiceActionResult {
   testMode: boolean;
 }
 
+export interface PresenceHeartbeat {
+  /**
+     * The app page's path only (no search or filters)
+     * @maxLength 200
+     */
+  path: string;
+  /** False when the app's browser tab is in the background */
+  visible: boolean;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  displayName?: string | null;
+}
+
+export type PresenceStatus = typeof PresenceStatus[keyof typeof PresenceStatus];
+
+
+export const PresenceStatus = {
+  online: 'online',
+  away: 'away',
+  offline: 'offline',
+} as const;
+
+export interface PresenceUser {
+  userId: string;
+  name: string;
+  /** @nullable */
+  email: string | null;
+  status: PresenceStatus;
+  /** @nullable */
+  currentPage: string | null;
+  lastSeenAt: string;
+  sessionStartedAt: string;
+  isYou: boolean;
+}
+
+export interface PresenceList {
+  asOf: string;
+  onlineCount: number;
+  /** Online and away first, then everyone seen in the last 30 days */
+  users: PresenceUser[];
+}
+
 export type PropertyRentalType = typeof PropertyRentalType[keyof typeof PropertyRentalType];
 
 

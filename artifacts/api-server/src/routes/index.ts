@@ -10,6 +10,7 @@ import performanceRouter from "./performance";
 import complianceRouter from "./compliance";
 import financeRouter from "./finance";
 import receivablesRouter from "./receivables";
+import presenceRouter from "./presence";
 import { propertiesRouter, publicListingsRouter } from "./properties";
 import { requireStaffAccess } from "../middlewares/requireStaffAccess";
 
@@ -31,5 +32,6 @@ router.use(performanceRouter);
 router.use(complianceRouter);
 router.use(financeRouter);
 router.use(receivablesRouter);
+router.use(presenceRouter);
 
 export default router;

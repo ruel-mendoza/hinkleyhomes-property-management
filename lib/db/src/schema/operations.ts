@@ -1,4 +1,4 @@
-import { bigserial, date, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { bigserial, boolean, date, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { id, timestamps } from "./columns";
@@ -121,3 +121,22 @@ export type InsertAuditLogEntry = z.infer<typeof insertAuditLogSchema>;
 export type IntegrationSyncRun = typeof integrationSyncRunsTable.$inferSelect;
 export type ClientReport = typeof clientReportsTable.$inferSelect;
 export type InsertClientReport = z.infer<typeof insertClientReportSchema>;
+
+// Who is using the app: one row per signed-in staff member, refreshed by a
+// heartbeat from the browser about once a minute while the app is open.
+export const staffPresenceTable = pgTable(
+  "staff_presence",
+  {
+    userId: text("user_id").primaryKey(),
+    email: text("email"),
+    displayName: text("display_name"),
+    // Page name only (e.g. "Invoices"); never the address bar's search or filters.
+    currentPage: text("current_page"),
+    tabVisible: boolean("tab_visible").notNull().default(true),
+    sessionStartedAt: timestamp("session_started_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("staff_presence_last_seen_idx").on(t.lastSeenAt)],
+).enableRLS();
+
+export type StaffPresence = typeof staffPresenceTable.$inferSelect;

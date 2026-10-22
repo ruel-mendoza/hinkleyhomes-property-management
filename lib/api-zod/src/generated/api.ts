@@ -1417,6 +1417,56 @@ export const RunInvoiceActionResponse = zod.object({
 
 
 /**
+ * @summary Staff who are using the app now, and when others were last seen
+ */
+export const GetPresenceResponse = zod.object({
+  "asOf": zod.string(),
+  "onlineCount": zod.number().int(),
+  "users": zod.array(zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "email": zod.string().nullable(),
+  "status": zod.enum(['online', 'away', 'offline']),
+  "currentPage": zod.string().nullable(),
+  "lastSeenAt": zod.string(),
+  "sessionStartedAt": zod.string(),
+  "isYou": zod.boolean()
+})).describe('Online and away first, then everyone seen in the last 30 days')
+})
+
+
+/**
+ * @summary Mark the signed-in staff member as using the app (sent about once a minute) and return everyone's presence
+ */
+export const sendPresenceHeartbeatBodyPathMax = 200;
+
+export const sendPresenceHeartbeatBodyDisplayNameMax = 120;
+
+
+
+export const SendPresenceHeartbeatBody = zod.object({
+  "path": zod.string().max(sendPresenceHeartbeatBodyPathMax).describe('The app page\'s path only (no search or filters)'),
+  "visible": zod.boolean().describe('False when the app\'s browser tab is in the background'),
+  "displayName": zod.string().max(sendPresenceHeartbeatBodyDisplayNameMax).nullish()
+})
+
+export const SendPresenceHeartbeatResponse = zod.object({
+  "asOf": zod.string(),
+  "onlineCount": zod.number().int(),
+  "users": zod.array(zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "email": zod.string().nullable(),
+  "status": zod.enum(['online', 'away', 'offline']),
+  "currentPage": zod.string().nullable(),
+  "lastSeenAt": zod.string(),
+  "sessionStartedAt": zod.string(),
+  "isYou": zod.boolean()
+})).describe('Online and away first, then everyone seen in the last 30 days')
+})
+
+
+/**
  * @summary Available rooms and properties for the website widget (no sign-in; no house numbers)
  */
 export const ListPublicListingsResponse = zod.object({
