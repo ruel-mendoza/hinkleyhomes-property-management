@@ -49,6 +49,7 @@ import type {
   ListCohoCalendarParams,
   ListCohoMaintenanceParams,
   ListCohoPropertiesParams,
+  MoneyOverview,
   Occupancy,
   PropertyCreate,
   PropertyDetails,
@@ -2245,6 +2246,83 @@ export function useGetOccupancy<TData = Awaited<ReturnType<typeof getOccupancy>>
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetOccupancyQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMoneyOverviewUrl = () => {
+
+
+
+
+  return `/api/overview/money`
+}
+
+/**
+ * @summary Rent collection, arrears, deposits and rent reviews from COHO, plus banking per company from Xero
+ */
+export const getMoneyOverview = async ( options?: Parameters<typeof customFetch>[1]): Promise<MoneyOverview> => {
+
+  return customFetch<MoneyOverview>(getGetMoneyOverviewUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMoneyOverviewQueryKey = () => {
+    return [
+    `/api/overview/money`
+    ] as const;
+    }
+
+
+export const getGetMoneyOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getMoneyOverview>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMoneyOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMoneyOverviewQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMoneyOverview>>> = ({ signal }) => getMoneyOverview({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMoneyOverview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMoneyOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getMoneyOverview>>>
+export type GetMoneyOverviewQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Rent collection, arrears, deposits and rent reviews from COHO, plus banking per company from Xero
+ */
+
+export function useGetMoneyOverview<TData = Awaited<ReturnType<typeof getMoneyOverview>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMoneyOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMoneyOverviewQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -625,6 +625,18 @@ paths:
           description: COHO returned an error
         "503":
           description: COHO API key is not configured
+  /overview/money:
+    get:
+      operationId: getMoneyOverview
+      tags: [coho]
+      summary: Rent collection, arrears, deposits and rent reviews from COHO, plus banking per company from Xero
+      responses:
+        "200":
+          description: Money overview; each source reports its own error if it could not be loaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MoneyOverview"
   /public/listings:
     get:
       operationId: listPublicListings
@@ -723,6 +735,151 @@ components:
           items:
             $ref: "#/components/schemas/OccupancyRow"
       required: [asOf, becomingPeriodicDays, units, rows]
+    MoneyArrear:
+      type: object
+      properties:
+        propertyReference:
+          type: string
+        propertyName:
+          type: string
+        tenantName:
+          type: ["string", "null"]
+        outstanding:
+          type: number
+        daysInArrears:
+          type: integer
+        earliestDue:
+          description: UK date (YYYY-MM-DD)
+          type: ["string", "null"]
+      required: [propertyReference, propertyName, tenantName, outstanding, daysInArrears, earliestDue]
+    MoneyPropertyRef:
+      type: object
+      properties:
+        propertyReference:
+          type: string
+        propertyName:
+          type: string
+      required: [propertyReference, propertyName]
+    MoneyRentReview:
+      type: object
+      properties:
+        propertyReference:
+          type: string
+        propertyName:
+          type: string
+        currentRent:
+          type: ["number", "null"]
+        paymentFrequency:
+          type: ["string", "null"]
+        nextReview:
+          type: string
+        overdue:
+          type: boolean
+      required: [propertyReference, propertyName, currentRent, paymentFrequency, nextReview, overdue]
+    MoneyCoho:
+      type: object
+      properties:
+        error:
+          type: ["string", "null"]
+        paidThisMonth:
+          type: number
+        dueThisMonth:
+          type: number
+        dueNextMonth:
+          type: number
+        dueToday:
+          type: number
+        overdue:
+          type: number
+        arrears:
+          type: array
+          items:
+            $ref: "#/components/schemas/MoneyArrear"
+        depositsHeld:
+          type: integer
+        depositsHeldTotal:
+          type: number
+        depositsPending:
+          type: integer
+        depositsClosing:
+          type: integer
+        depositsClosingOverdue:
+          type: integer
+        tenanciesWithoutDeposit:
+          type: array
+          items:
+            $ref: "#/components/schemas/MoneyPropertyRef"
+        rentReviews:
+          description: Tenancy rent reviews overdue or due within 28 days
+          type: array
+          items:
+            $ref: "#/components/schemas/MoneyRentReview"
+      required: [error, paidThisMonth, dueThisMonth, dueNextMonth, dueToday, overdue, arrears, depositsHeld, depositsHeldTotal, depositsPending, depositsClosing, depositsClosingOverdue, tenanciesWithoutDeposit, rentReviews]
+    MoneyBankAccount:
+      type: object
+      properties:
+        name:
+          type: string
+        balance:
+          description: Closing balance today from Xero's Bank Summary; null when the report is unavailable
+          type: ["number", "null"]
+        moneyIn:
+          description: Received this month
+          type: ["number", "null"]
+        moneyOut:
+          description: Spent this month
+          type: ["number", "null"]
+      required: [name, balance, moneyIn, moneyOut]
+    MoneyCompany:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        name:
+          type: string
+        holdsPropertyMoney:
+          type: boolean
+        note:
+          type: ["string", "null"]
+        error:
+          type: ["string", "null"]
+        unreconciledCount:
+          type: integer
+        unreconciledIn:
+          type: number
+        unreconciledOut:
+          type: number
+        oldestUnreconciled:
+          type: ["string", "null"]
+        bankAccounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/MoneyBankAccount"
+        balancesError:
+          description: Why balances are missing (e.g. the Xero reports permission is not granted in n8n)
+          type: ["string", "null"]
+      required: [tenantId, name, holdsPropertyMoney, note, error, unreconciledCount, unreconciledIn, unreconciledOut, oldestUnreconciled, bankAccounts, balancesError]
+    MoneyXero:
+      type: object
+      properties:
+        error:
+          type: ["string", "null"]
+        companies:
+          type: array
+          items:
+            $ref: "#/components/schemas/MoneyCompany"
+      required: [error, companies]
+    MoneyOverview:
+      type: object
+      properties:
+        asOf:
+          description: When the figures were fetched (ISO date-time)
+          type: string
+        coho:
+          $ref: "#/components/schemas/MoneyCoho"
+        xero:
+          $ref: "#/components/schemas/MoneyXero"
+      required: [asOf, coho, xero]
     PropertyRentalType:
       type: string
       enum: [room, whole_property]

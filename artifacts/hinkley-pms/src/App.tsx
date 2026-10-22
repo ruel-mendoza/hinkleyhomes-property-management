@@ -9,14 +9,16 @@ import { shadcn } from '@clerk/themes';
 import NotFound from '@/pages/not-found';
 import { Link, Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import {
-  ArrowUpRight, BedDouble, Building2, CalendarDays, ClipboardList, House, LayoutDashboard, LogOut, MapPin, Menu, PlugZap, Search, Users, Wrench, X,
+  AlertTriangle, ArrowUpRight, Building2, CalendarDays, ClipboardList, House, LayoutDashboard, LogOut, Menu, PlugZap, PoundSterling, Search, Users, Wrench, X,
 } from 'lucide-react';
 import {
   getGetCohoStatusQueryKey,
+  getGetMoneyOverviewQueryKey,
   getListCohoCalendarQueryKey,
   getListCohoPropertiesQueryKey,
   type CohoProperty,
   useGetCohoStatus,
+  useGetMoneyOverview,
   useListCohoCalendar,
   useListCohoProperties,
 } from '@workspace/api-client-react';
@@ -27,6 +29,7 @@ import PropertiesPage from '@/pages/properties/PropertiesPage';
 import PropertyDetailPage from '@/pages/properties/PropertyDetailPage';
 import OccupancyPage from '@/pages/occupancy/OccupancyPage';
 import ListingsWidget from '@/pages/listings-widget';
+import { MoneyPanels, formatPounds } from '@/components/overview/MoneyPanels';
 import {
   AccessRestrictedPage,
   AuthLandingPage,
@@ -136,8 +139,12 @@ function Overview({ profileName, configured, statusLoading, properties, properti
   const upcoming = (calendarQuery.data?.items ?? [])
     .filter(entry => (!propertyReference || entry.propertyReference === propertyReference) && new Date(entry.entryDate) < weekEnd)
     .slice(0, 8);
-  const roomCount = properties.reduce((total, property) => total + (property.rooms?.length ?? 0), 0);
-  const locationCount = new Set(properties.map(property => property.location?.trim() || 'Other locations')).size;
+  const moneyQuery = useGetMoneyOverview({ query: { queryKey: getGetMoneyOverviewQueryKey(), refetchInterval: 5 * 60_000 } });
+  const coho = moneyQuery.data?.coho;
+  const cohoMoney = coho && !coho.error ? coho : undefined;
+  const arrearsInScope = (cohoMoney?.arrears ?? []).filter(item => !propertyReference || item.propertyReference === propertyReference);
+  const collectedShare = cohoMoney?.dueThisMonth ? Math.round((cohoMoney.paidThisMonth / cohoMoney.dueThisMonth) * 100) : null;
+  const moneyValue = (value?: number) => moneyQuery.isLoading ? '…' : value === undefined ? '—' : formatPounds(value);
   const pending = statusLoading || (configured && propertiesLoading);
   const show = (value: number) => pending ? '…' : configured ? value.toString() : '—';
   return <>
@@ -145,9 +152,10 @@ function Overview({ profileName, configured, statusLoading, properties, properti
     <div className="metric-row2" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }}>
       <SmallMetric label="COHO connection" value={statusLoading ? '…' : configured ? 'Connected' : 'Not set up'} foot={configured ? 'Public API 1.1' : 'Add the COHO API key'} icon={<PlugZap size={14} />} />
       <SmallMetric label="Properties" value={show(properties.length)} foot="In COHO" icon={<Building2 size={14} />} />
-      <SmallMetric label="Rooms" value={show(roomCount)} foot="Across these properties" icon={<BedDouble size={14} />} />
-      <SmallMetric label="Locations" value={show(locationCount)} foot="Towns and areas" icon={<MapPin size={14} />} />
+      <SmallMetric label="Rent collected" value={moneyValue(cohoMoney?.paidThisMonth)} foot={cohoMoney ? `of ${formatPounds(cohoMoney.dueThisMonth)} due this month${collectedShare === null ? '' : ` (${collectedShare}%)`}${propertyReference ? ' · all properties' : ''}` : 'This month, from COHO'} icon={<PoundSterling size={14} />} />
+      <SmallMetric label="Overdue rent" value={propertyReference ? moneyValue(cohoMoney ? arrearsInScope.reduce((sum, item) => sum + item.outstanding, 0) : undefined) : moneyValue(cohoMoney?.overdue)} foot={cohoMoney ? (arrearsInScope.length ? `${arrearsInScope.length} ${arrearsInScope.length === 1 ? 'tenancy' : 'tenancies'} in arrears` : 'No arrears') : 'From COHO credit control'} icon={<AlertTriangle size={14} />} />
     </div>
+    <MoneyPanels data={moneyQuery.data} loading={moneyQuery.isLoading} failed={moneyQuery.isError} propertyReference={propertyReference} />
     <section className="panel arrival-panel"><div className="panel-head"><div><div className="panel-title">Coming up in COHO</div><div className="panel-caption">Tenancies, viewings, maintenance and actions in the next 7 days</div></div><Link href="/calendar" className="button" style={{ textDecoration: 'none' }}>Open calendar <ArrowUpRight size={13} /></Link></div>
       {!configured ? <div className="empty-state"><PlugZap size={21} /><h3>COHO is not configured</h3><p>Add the COHO API key to see live activity.</p></div>
         : calendarQuery.isLoading ? <div className="empty-state"><CalendarDays size={21} /><h3>Loading COHO activity…</h3></div>

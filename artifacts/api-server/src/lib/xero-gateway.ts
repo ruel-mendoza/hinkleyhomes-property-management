@@ -14,7 +14,8 @@ export type XeroResource =
   | "bankTransactions"
   | "profitAndLoss"
   | "balanceSheet"
-  | "agedPayables";
+  | "agedPayables"
+  | "bankSummary";
 
 export type XeroGatewayRequest = {
   tenantId: string;

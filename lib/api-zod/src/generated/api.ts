@@ -899,6 +899,68 @@ export const GetOccupancyResponse = zod.object({
 
 
 /**
+ * @summary Rent collection, arrears, deposits and rent reviews from COHO, plus banking per company from Xero
+ */
+export const GetMoneyOverviewResponse = zod.object({
+  "asOf": zod.string().describe('When the figures were fetched (ISO date-time)'),
+  "coho": zod.object({
+  "error": zod.string().nullable(),
+  "paidThisMonth": zod.number(),
+  "dueThisMonth": zod.number(),
+  "dueNextMonth": zod.number(),
+  "dueToday": zod.number(),
+  "overdue": zod.number(),
+  "arrears": zod.array(zod.object({
+  "propertyReference": zod.string(),
+  "propertyName": zod.string(),
+  "tenantName": zod.string().nullable(),
+  "outstanding": zod.number(),
+  "daysInArrears": zod.number().int(),
+  "earliestDue": zod.string().nullable().describe('UK date (YYYY-MM-DD)')
+})),
+  "depositsHeld": zod.number().int(),
+  "depositsHeldTotal": zod.number(),
+  "depositsPending": zod.number().int(),
+  "depositsClosing": zod.number().int(),
+  "depositsClosingOverdue": zod.number().int(),
+  "tenanciesWithoutDeposit": zod.array(zod.object({
+  "propertyReference": zod.string(),
+  "propertyName": zod.string()
+})),
+  "rentReviews": zod.array(zod.object({
+  "propertyReference": zod.string(),
+  "propertyName": zod.string(),
+  "currentRent": zod.number().nullable(),
+  "paymentFrequency": zod.string().nullable(),
+  "nextReview": zod.string(),
+  "overdue": zod.boolean()
+})).describe('Tenancy rent reviews overdue or due within 28 days')
+}),
+  "xero": zod.object({
+  "error": zod.string().nullable(),
+  "companies": zod.array(zod.object({
+  "tenantId": zod.string(),
+  "name": zod.string(),
+  "holdsPropertyMoney": zod.boolean(),
+  "note": zod.string().nullable(),
+  "error": zod.string().nullable(),
+  "unreconciledCount": zod.number().int(),
+  "unreconciledIn": zod.number(),
+  "unreconciledOut": zod.number(),
+  "oldestUnreconciled": zod.string().nullable(),
+  "bankAccounts": zod.array(zod.object({
+  "name": zod.string(),
+  "balance": zod.number().nullable().describe('Closing balance today from Xero\'s Bank Summary; null when the report is unavailable'),
+  "moneyIn": zod.number().nullable().describe('Received this month'),
+  "moneyOut": zod.number().nullable().describe('Spent this month')
+})),
+  "balancesError": zod.string().nullable().describe('Why balances are missing (e.g. the Xero reports permission is not granted in n8n)')
+}))
+})
+})
+
+
+/**
  * @summary Available rooms and properties for the website widget (no sign-in; no house numbers)
  */
 export const ListPublicListingsResponse = zod.object({

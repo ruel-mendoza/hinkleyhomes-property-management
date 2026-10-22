@@ -74,6 +74,108 @@ export interface Occupancy {
   rows: OccupancyRow[];
 }
 
+export interface MoneyArrear {
+  propertyReference: string;
+  propertyName: string;
+  /** @nullable */
+  tenantName: string | null;
+  outstanding: number;
+  daysInArrears: number;
+  /**
+     * UK date (YYYY-MM-DD)
+     * @nullable
+     */
+  earliestDue: string | null;
+}
+
+export interface MoneyPropertyRef {
+  propertyReference: string;
+  propertyName: string;
+}
+
+export interface MoneyRentReview {
+  propertyReference: string;
+  propertyName: string;
+  /** @nullable */
+  currentRent: number | null;
+  /** @nullable */
+  paymentFrequency: string | null;
+  nextReview: string;
+  overdue: boolean;
+}
+
+export interface MoneyCoho {
+  /** @nullable */
+  error: string | null;
+  paidThisMonth: number;
+  dueThisMonth: number;
+  dueNextMonth: number;
+  dueToday: number;
+  overdue: number;
+  arrears: MoneyArrear[];
+  depositsHeld: number;
+  depositsHeldTotal: number;
+  depositsPending: number;
+  depositsClosing: number;
+  depositsClosingOverdue: number;
+  tenanciesWithoutDeposit: MoneyPropertyRef[];
+  /** Tenancy rent reviews overdue or due within 28 days */
+  rentReviews: MoneyRentReview[];
+}
+
+export interface MoneyBankAccount {
+  name: string;
+  /**
+     * Closing balance today from Xero's Bank Summary; null when the report is unavailable
+     * @nullable
+     */
+  balance: number | null;
+  /**
+     * Received this month
+     * @nullable
+     */
+  moneyIn: number | null;
+  /**
+     * Spent this month
+     * @nullable
+     */
+  moneyOut: number | null;
+}
+
+export interface MoneyCompany {
+  tenantId: string;
+  name: string;
+  holdsPropertyMoney: boolean;
+  /** @nullable */
+  note: string | null;
+  /** @nullable */
+  error: string | null;
+  unreconciledCount: number;
+  unreconciledIn: number;
+  unreconciledOut: number;
+  /** @nullable */
+  oldestUnreconciled: string | null;
+  bankAccounts: MoneyBankAccount[];
+  /**
+     * Why balances are missing (e.g. the Xero reports permission is not granted in n8n)
+     * @nullable
+     */
+  balancesError: string | null;
+}
+
+export interface MoneyXero {
+  /** @nullable */
+  error: string | null;
+  companies: MoneyCompany[];
+}
+
+export interface MoneyOverview {
+  /** When the figures were fetched (ISO date-time) */
+  asOf: string;
+  coho: MoneyCoho;
+  xero: MoneyXero;
+}
+
 export type PropertyRentalType = typeof PropertyRentalType[keyof typeof PropertyRentalType];
 
 

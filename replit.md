@@ -16,6 +16,9 @@ _Replace the heading above with the project's name, and this line with one sente
 
 - Properties page (`/properties`): `GET /api/properties` merges live COHO properties, open-action counts from `coho_actions`, and register-only properties from Supabase `properties` (added with New property; COHO has no create-property API, so staff add them in COHO too). Buildings live in `buildings` / `building_properties`. Group companies are in `entities` (5 Xero orgs seeded with `pnpm --filter @workspace/db run seed:entities`).
 - Website widget: public page `/widget` (no sign-in) reads `GET /api/public/listings`, which lists only properties with a room free, by street, town and postcode area, never house numbers. Cached 5 min.
+- Occupancy page (`/occupancy`): `GET /api/occupancy` joins COHO units (`/properties?includeRooms=true`), current and future tenancies (`/tenancies`) and rent review (`/rent-review/tenancies`, for rent and fixed-term end). Dates are converted to UK dates; only tenant names leave the server. "Becoming periodic" = fixed term ending within 60 days (our choice; COHO doesn't expose its window).
+- Operations overview money section: `GET /api/overview/money` (cached 5 min) reads COHO rent collection, credit control, deposits and rent review, and Xero banking per company through the n8n gateway (unreconciled bank transactions; balances from `Reports/BankSummary`). Company notes for Management and Stays (no property money) live in `artifacts/api-server/src/routes/money.ts`.
+- n8n Xero gateway reports: report resources (`profitAndLoss`, `balanceSheet`, `agedPayables`, `bankSummary`) go through the "Call Xero (reports)" node, which needs a separate n8n OAuth2 credential "Xero reports" with scope `accounting.reports.read` (the built-in "Xero account" credential lacks it, so reports return 401). Everything else still uses "Xero account".
 
 ## Stack
 

@@ -4,6 +4,7 @@ import cohoRouter from "./coho";
 import cohoActionsRouter from "./coho-actions";
 import healthRouter from "./health";
 import integrationsRouter from "./integrations";
+import moneyRouter from "./money";
 import occupancyRouter from "./occupancy";
 import { propertiesRouter, publicListingsRouter } from "./properties";
 import { requireStaffAccess } from "../middlewares/requireStaffAccess";
@@ -21,5 +22,6 @@ router.use(cohoRouter);
 router.use(cohoActionsRouter);
 router.use(propertiesRouter);
 router.use(occupancyRouter);
+router.use(moneyRouter);
 
 export default router;
