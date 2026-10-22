@@ -181,57 +181,65 @@ export default function InvoicesPage() {
           <section className="panel table-panel">
             <div className="table-wrap">
               {tab === "receivables" ? (
-                <table className="hh-fin-table">
-                  <thead><tr><th>Invoice</th><th>Contact</th><th>For</th><th>Due</th><th className="num">Amount due</th><th>Follow-up</th><th>Reminders</th><th aria-label="Actions" /></tr></thead>
+                <table className="hh-fin-table hh-inv-table">
+                  <colgroup><col className="c-invoice" /><col className="c-for" /><col className="c-due" /><col className="c-amount" /><col className="c-follow" /><col className="c-actions" /></colgroup>
+                  <thead><tr><th>Invoice</th><th>For</th><th>Due</th><th className="num">Amount due</th><th>Follow-up &amp; reminders</th><th aria-label="Actions" /></tr></thead>
                   <tbody>
                     {(visible as ReceivableInvoice[]).map((row) => {
                       const outcome = row.followUp ? OUTCOMES[row.followUp.outcome] : null;
                       return (
                         <tr key={row.invoiceId} data-testid={`row-invoice-${row.invoiceId}`}>
-                          <td className="hh-nowrap"><strong>{row.number ?? "—"}</strong><small className="hh-fin-sub">{row.company}{row.sent ? " · sent" : " · not sent"}</small></td>
-                          <td>{row.contactName}</td>
                           <td>
-                            {row.reference ?? row.description ?? "—"}
+                            <strong className="hh-nowrap">{row.number ?? "—"}</strong>
+                            <span className="hh-inv-contact">{row.contactName}</span>
+                            <small className="hh-fin-sub">{row.company.replace("Hinkley Homes ", "")}{row.sent ? " · sent" : " · not sent"}</small>
+                          </td>
+                          <td>
+                            <span className="hh-inv-for" title={row.reference ?? row.description ?? undefined}>{row.reference ?? row.description ?? "—"}</span>
                             {row.property && <small className="hh-fin-sub">{row.property}</small>}
                             {row.cohoProperty && <small className="hh-fin-sub info">Rent also tracked in COHO: <Link href={`/properties/${encodeURIComponent(row.cohoProperty.propertyReference)}`}>{row.cohoProperty.propertyName}</Link></small>}
                           </td>
                           <td className="hh-nowrap">{row.dueDate ? formatDate(row.dueDate) : "—"}<small className={`hh-fin-sub ${row.daysOverdue > 30 ? "bad" : row.daysOverdue > 0 ? "warn" : ""}`}>{dueText(row.daysOverdue)}</small></td>
                           <td className="num">{pence.format(row.amountDue)}{row.amountDue !== row.total && <small className="hh-fin-sub">of {pence.format(row.total)}</small>}</td>
                           <td>
-                            {outcome ? <span className={`status ${outcome[1]}`}>{outcome[0]}</span> : <span className="secondary-text" style={{ margin: 0 }}>—</span>}
+                            {outcome && <span className={`status ${outcome[1]}`}>{outcome[0]}</span>}
                             {row.followUp?.nextChaseDate && <small className={`hh-fin-sub ${row.followUp.nextChaseDate <= data.asOf ? "warn" : ""}`}>Chase {formatDate(row.followUp.nextChaseDate)}</small>}
                             {row.followUp?.promisedDate && <small className="hh-fin-sub">Promised {formatDate(row.followUp.promisedDate)}</small>}
                             {row.followUp?.remindersPaused && <small className="hh-fin-sub warn">Reminders paused</small>}
+                            <ReminderCell invoice={row} />
                           </td>
-                          <td><ReminderCell invoice={row} /></td>
                           <td className="hh-inv-actions">
-                            <button type="button" className="button" onClick={() => setEditing(row)} disabled={!data.followUpsAvailable} title={data.followUpsAvailable ? "Record a follow-up" : "Follow-up tables not created yet"}><MessageSquarePlus size={13} /> Follow up</button>
+                            <button type="button" className="icon-btn" onClick={() => setEditing(row)} disabled={!data.followUpsAvailable} title={data.followUpsAvailable ? "Record a follow-up" : "Follow-up tables not created yet"} aria-label={`Follow up ${row.number ?? "invoice"}`}><MessageSquarePlus size={15} /></button>
                             {data.reminders && row.daysOverdue > 0 && (
-                              <button type="button" className="button" onClick={() => setSending(row)} title="Send a reminder now"><Send size={13} /> Chase</button>
+                              <button type="button" className="icon-btn" onClick={() => setSending(row)} title="Chase: send a reminder now" aria-label={`Chase ${row.number ?? "invoice"}`}><Send size={15} /></button>
                             )}
-                            <button type="button" className="icon-btn" onClick={() => copyLink(row)} title="Copy Xero's view-and-pay link" aria-label={`Copy payment link for ${row.number ?? "invoice"}`}><Copy size={14} /></button>
+                            <button type="button" className="icon-btn" onClick={() => copyLink(row)} title="Copy Xero's view-and-pay link" aria-label={`Copy payment link for ${row.number ?? "invoice"}`}><Copy size={15} /></button>
                           </td>
                         </tr>
                       );
                     })}
-                    {!visible.length && <tr><td colSpan={8}><div className="empty-state"><h3>Nothing owed here</h3><p>No open invoices match these filters.</p></div></td></tr>}
+                    {!visible.length && <tr><td colSpan={6}><div className="empty-state"><h3>Nothing owed here</h3><p>No open invoices match these filters.</p></div></td></tr>}
                   </tbody>
                 </table>
               ) : (
-                <table className="hh-fin-table">
-                  <thead><tr><th>Bill</th><th>Supplier</th><th>For</th><th>Due</th><th className="num">Amount due</th><th>Status</th></tr></thead>
+                <table className="hh-fin-table hh-inv-table">
+                  <colgroup><col className="c-invoice" /><col className="c-for" /><col className="c-due" /><col className="c-amount" /><col className="c-status" /></colgroup>
+                  <thead><tr><th>Bill</th><th>For</th><th>Due</th><th className="num">Amount due</th><th>Status</th></tr></thead>
                   <tbody>
                     {(visible as PayableBill[]).map((row) => (
                       <tr key={row.billId}>
-                        <td className="hh-nowrap"><strong>{row.number ?? "—"}</strong><small className="hh-fin-sub">{row.company}</small></td>
-                        <td>{row.contactName}</td>
-                        <td>{row.description ?? "—"}{row.property && <small className="hh-fin-sub">{row.property}</small>}</td>
+                        <td>
+                          <strong className="hh-nowrap">{row.number ?? "—"}</strong>
+                          <span className="hh-inv-contact">{row.contactName}</span>
+                          <small className="hh-fin-sub">{row.company.replace("Hinkley Homes ", "")}</small>
+                        </td>
+                        <td><span className="hh-inv-for" title={row.description ?? undefined}>{row.description ?? "—"}</span>{row.property && <small className="hh-fin-sub">{row.property}</small>}</td>
                         <td className="hh-nowrap">{row.dueDate ? formatDate(row.dueDate) : "—"}<small className={`hh-fin-sub ${row.daysOverdue > 30 ? "bad" : row.daysOverdue > 0 ? "warn" : ""}`}>{dueText(row.daysOverdue)}</small></td>
                         <td className="num">{pence.format(row.amountDue)}{row.amountDue !== row.total && <small className="hh-fin-sub">of {pence.format(row.total)}</small>}</td>
                         <td><span className={`status ${row.status === "SUBMITTED" ? "pending" : row.daysOverdue > 0 ? "overdue" : "upcoming"}`}>{row.status === "SUBMITTED" ? "Awaiting approval" : row.daysOverdue > 0 ? "Overdue" : "To pay"}</span></td>
                       </tr>
                     ))}
-                    {!visible.length && <tr><td colSpan={6}><div className="empty-state"><h3>No bills</h3><p>No open bills match these filters.</p></div></td></tr>}
+                    {!visible.length && <tr><td colSpan={5}><div className="empty-state"><h3>No bills</h3><p>No open bills match these filters.</p></div></td></tr>}
                   </tbody>
                 </table>
               )}
