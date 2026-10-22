@@ -68,7 +68,14 @@ function TenantMoney({ data, loading, failed, propertyReference }: { data?: Mone
                   <ul className="hh-money-list">
                     {arrears.map((item) => (
                       <li key={`${item.propertyReference}-${item.earliestDue}`}>
-                        <div><Link href={propertyLink(item.propertyReference)}>{item.propertyName}</Link><small>{item.tenantName ?? "Tenant"} · due since {formatDate(item.earliestDue)}</small></div>
+                        <div>
+                          <Link href={propertyLink(item.propertyReference)}>{item.propertyName}</Link><small>{item.tenantName ?? "Tenant"} · due since {formatDate(item.earliestDue)}</small>
+                          {item.possiblePayment && (
+                            <Link href="/bank-feed?status=suggested" className="hh-money-possible">
+                              Possible payment: {pence.format(item.possiblePayment.amount)} received {formatDate(item.possiblePayment.date)}{item.possiblePayment.payer ? ` from ${item.possiblePayment.payer}` : ""}, not yet matched in COHO
+                            </Link>
+                          )}
+                        </div>
                         <strong>{pence.format(item.outstanding)}</strong>
                         <span className={`status ${item.daysInArrears >= 14 ? "overdue" : "pending"}`}>{item.daysInArrears} {item.daysInArrears === 1 ? "day" : "days"}</span>
                       </li>

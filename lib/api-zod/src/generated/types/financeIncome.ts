@@ -8,6 +8,7 @@
 import type { FinanceIncomeMonth } from './financeIncomeMonth';
 import type { FinanceIncomeOwner } from './financeIncomeOwner';
 import type { FinanceIncomeProperty } from './financeIncomeProperty';
+import type { FinanceItem } from './financeItem';
 
 export interface FinanceIncome {
   asOf: string;
@@ -23,4 +24,5 @@ export interface FinanceIncome {
   months: FinanceIncomeMonth[];
   properties: FinanceIncomeProperty[];
   owners: FinanceIncomeOwner[];
+  items: FinanceItem[];
 }

@@ -52,3 +52,7 @@
 .hh-accounts-link:hover,.hh-accounts-link:focus-visible{color:#fff}
 
 @media(max-width:1000px){.hh-money-grid{grid-template-columns:1fr}}
+
+/* Unmatched bank line that may pay an overdue rent */
+.hh-money-list a.hh-money-possible{display:block;margin-top:4px;padding:4px 8px;border-radius:6px;background:#1f3550;border:1px solid #2c4a6e;color:#c4dbf5;font-size:12px;font-weight:600;line-height:1.4;text-decoration:none}
+.hh-money-list a.hh-money-possible:hover,.hh-money-list a.hh-money-possible:focus-visible{border-color:#79cdb0;color:#fff;text-decoration:none}

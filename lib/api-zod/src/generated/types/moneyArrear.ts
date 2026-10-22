@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PossiblePayment } from './possiblePayment';
 
 export interface MoneyArrear {
   propertyReference: string;
@@ -18,4 +19,6 @@ export interface MoneyArrear {
      * @nullable
      */
   earliestDue: string | null;
+  /** An unmatched bank line in COHO's rent feed for the same amount, so the rent may already be paid */
+  possiblePayment: PossiblePayment | null;
 }

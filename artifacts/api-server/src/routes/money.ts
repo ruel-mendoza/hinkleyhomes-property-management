@@ -3,6 +3,7 @@ import { GetMoneyOverviewResponse } from "@workspace/api-zod";
 import { cohoApiKey, readXeroGatewayEnv } from "../lib/integrations-env";
 import { cohoGet } from "../lib/coho-api";
 import { parseXeroDate, xeroGatewayRequest } from "../lib/xero-gateway";
+import { rentMatchingData, suggestPayments, type BankLine } from "../lib/rent-matching";
 
 // Money section of the Operations overview.
 // COHO (Public API v1.1) is the source for tenant money: rent collection,
@@ -76,6 +77,15 @@ async function cohoMoney() {
   ]);
   const summary = asRecord(collection.rentCollectionSummary);
   const today = ukDate.format(new Date());
+  // Unmatched bank lines for the same amount suggest the rent may already be paid.
+  // Best effort: arrears still show if the bank feed can't be read.
+  let suggestions = new Map<string, BankLine>();
+  try {
+    const feed = await rentMatchingData(`${Number(today.slice(0, 4)) - 1}${today.slice(4, 8)}01`);
+    suggestions = suggestPayments(feed.arrears, feed.lines, today);
+  } catch {
+    // Leave suggestions empty.
+  }
   const reviewHorizon = addDays(today, RENT_REVIEW_DAYS);
   const withDeposit = new Set(deposits.map((deposit) => str(deposit.tenancyGuid)));
   const propertyNames = new Map<string, string>();
@@ -101,6 +111,10 @@ async function cohoMoney() {
         outstanding: num(item.totalOutstanding) ?? 0,
         daysInArrears: Math.max(Math.trunc(num(item.daysInArrears) ?? 0), 0),
         earliestDue: toUkDate(item.earliestDateDue),
+        possiblePayment: (() => {
+          const line = suggestions.get(String(item.tenancyGuid));
+          return line ? { date: line.date, amount: line.amount, payer: line.payer, reference: line.reference ?? line.description } : null;
+        })(),
       }))
       .sort((a, b) => b.daysInArrears - a.daysInArrears || b.outstanding - a.outstanding),
     depositsHeld: num(depositSummary.active) ?? 0,

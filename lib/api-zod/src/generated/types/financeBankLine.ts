@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { FinanceBankLineStatus } from './financeBankLineStatus';
+import type { PossibleRentMatch } from './possibleRentMatch';
 
 export interface FinanceBankLine {
   id: string;
@@ -19,4 +20,13 @@ export interface FinanceBankLine {
   description: string | null;
   status: FinanceBankLineStatus;
   possibleDuplicate: boolean;
+  /**
+     * Bank and last four digits of the account
+     * @nullable
+     */
+  account: string | null;
+  /** @nullable */
+  snoozedUntil: string | null;
+  /** An overdue tenancy this unmatched line may pay (same amount, around the due date); matching is done in COHO */
+  possibleMatch: PossibleRentMatch | null;
 }

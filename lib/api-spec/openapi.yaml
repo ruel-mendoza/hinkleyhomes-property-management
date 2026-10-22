@@ -829,7 +829,12 @@ components:
         earliestDue:
           description: UK date (YYYY-MM-DD)
           type: ["string", "null"]
-      required: [propertyReference, propertyName, tenantName, outstanding, daysInArrears, earliestDue]
+        possiblePayment:
+          description: An unmatched bank line in COHO's rent feed for the same amount, so the rent may already be paid
+          oneOf:
+            - $ref: "#/components/schemas/PossiblePayment"
+            - type: "null"
+      required: [propertyReference, propertyName, tenantName, outstanding, daysInArrears, earliestDue, possiblePayment]
     MoneyPropertyRef:
       type: object
       properties:
@@ -1206,7 +1211,42 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FinanceIncomeOwner"
-      required: [asOf, from, rentTotal, feesTotal, feeRatePercent, unpaidTotal, unpaidCount, otherTotal, months, properties, owners]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinanceItem"
+      required: [asOf, from, rentTotal, feesTotal, feeRatePercent, unpaidTotal, unpaidCount, otherTotal, months, properties, owners, items]
+    FinanceItem:
+      type: object
+      properties:
+        id:
+          type: string
+        invoiceDate:
+          type: string
+        category:
+          type: string
+          enum: [rent, management_fee, other]
+        categoryName:
+          type: string
+        propertyReference:
+          type: string
+        propertyName:
+          type: string
+        ownerReference:
+          type: ["string", "null"]
+        ownerName:
+          type: ["string", "null"]
+        tenantName:
+          type: ["string", "null"]
+        amount:
+          type: number
+        unpaid:
+          type: number
+        paidStatus:
+          type: string
+        paidDate:
+          type: ["string", "null"]
+      required: [id, invoiceDate, category, categoryName, propertyReference, propertyName, ownerReference, ownerName, tenantName, amount, unpaid, paidStatus, paidDate]
     FinanceBankLineStatus:
       type: string
       enum: [matched, partly_matched, unmatched, excluded]
@@ -1229,7 +1269,43 @@ components:
           $ref: "#/components/schemas/FinanceBankLineStatus"
         possibleDuplicate:
           type: boolean
-      required: [id, date, amount, payer, reference, description, status, possibleDuplicate]
+        account:
+          description: Bank and last four digits of the account
+          type: ["string", "null"]
+        snoozedUntil:
+          type: ["string", "null"]
+        possibleMatch:
+          description: An overdue tenancy this unmatched line may pay (same amount, around the due date); matching is done in COHO
+          oneOf:
+            - $ref: "#/components/schemas/PossibleRentMatch"
+            - type: "null"
+      required: [id, date, amount, payer, reference, description, status, possibleDuplicate, account, snoozedUntil, possibleMatch]
+    PossibleRentMatch:
+      type: object
+      properties:
+        propertyReference:
+          type: string
+        propertyName:
+          type: string
+        tenantName:
+          type: ["string", "null"]
+        outstanding:
+          type: number
+        earliestDue:
+          type: ["string", "null"]
+      required: [propertyReference, propertyName, tenantName, outstanding, earliestDue]
+    PossiblePayment:
+      type: object
+      properties:
+        date:
+          type: string
+        amount:
+          type: number
+        payer:
+          type: ["string", "null"]
+        reference:
+          type: ["string", "null"]
+      required: [date, amount, payer, reference]
     FinanceBankFeedMonth:
       type: object
       properties:

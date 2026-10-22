@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { GetFinanceBankFeedResponse, GetFinanceIncomeResponse } from "@workspace/api-zod";
 import { cohoApiKey } from "../lib/integrations-env";
 import { cohoGet } from "../lib/coho-api";
+import { rentMatchingData, suggestPayments } from "../lib/rent-matching";
 
 // Finance section, read-only from COHO:
 //   GET /finance/financial-items  rent invoiced (client money) and management
@@ -64,11 +65,32 @@ async function buildIncome() {
   const byProperty = new Map<string, { propertyReference: string; propertyName: string; ownerName: string | null; rent: number; fees: number; unpaid: number; lastPaid: string | null }>();
   const byOwner = new Map<string, { ownerReference: string; ownerName: string; properties: Set<string>; rent: number; fees: number }>();
   let rentTotal = 0, feesTotal = 0, unpaidTotal = 0, unpaidCount = 0, otherTotal = 0;
+  const rows: {
+    id: string; invoiceDate: string; category: "rent" | "management_fee" | "other"; categoryName: string;
+    propertyReference: string; propertyName: string; ownerReference: string | null; ownerName: string | null;
+    tenantName: string | null; amount: number; unpaid: number; paidStatus: string; paidDate: string | null;
+  }[] = [];
 
   for (const item of items) {
     const category = str(item.parentCategory);
     const amount = num(item.totalAmount);
     const kind = category === "rent" ? "rent" : category === "managementFee" ? "fees" : null;
+    const itemUnpaid = ["unpaid", "partiallyPaid"].includes(String(item.paidStatus)) ? Math.max(amount - num(item.amountPaid), 0) : 0;
+    rows.push({
+      id: String(item.guid),
+      invoiceDate: toUkDate(item.invoiceDate) ?? today,
+      category: kind === "rent" ? "rent" : kind === "fees" ? "management_fee" : "other",
+      categoryName: str(item.categoryName) ?? "Other",
+      propertyReference: str(item.propertyReference) ?? "",
+      propertyName: str(item.propertyName) ?? "",
+      ownerReference: str(item.propertyOwnerReference),
+      ownerName: str(item.propertyOwnerDisplayName),
+      tenantName: str(item.tenantName),
+      amount: round(amount),
+      unpaid: round(itemUnpaid),
+      paidStatus: str(item.paidStatus) ?? "unknown",
+      paidDate: toUkDate(item.fullyPaidDate),
+    });
     if (!kind) {
       otherTotal += amount;
       continue;
@@ -124,61 +146,37 @@ async function buildIncome() {
     owners: [...byOwner.values()]
       .map((owner) => ({ ownerReference: owner.ownerReference, ownerName: owner.ownerName, properties: owner.properties.size, rent: round(owner.rent), fees: round(owner.fees) }))
       .sort((a, b) => b.rent - a.rent),
+    items: rows.sort((a, b) => b.invoiceDate.localeCompare(a.invoiceDate)),
   });
 }
 
-const lastFour = (value: string | null) => (value ? value.replace(/\s+/g, "").slice(-4) : null);
-
-async function buildBankFeed() {
+async function buildBankFeed(refresh: boolean) {
   const today = ukDate.format(new Date());
   const months = lastTwelveMonths(today);
   const from = `${months[0]}-01`;
-  const lines: RecordValue[] = [];
-  for (let page = 1; page <= 30; page++) {
-    const payload = asRecord(await cohoGet(`/transactions/items?transactionFilterStatus=all&startDate=${from}&endDate=${today}&page=${page}&pageSize=100`));
-    lines.push(...list(payload.items));
-    if (payload.hasNextPage !== true) break;
-  }
+  const { lines, arrears } = await rentMatchingData(from, refresh);
+  const suggestions = suggestPayments(arrears, lines, today);
+  const matchFor = new Map([...suggestions].map(([tenancyGuid, line]) => [line.id, arrears.find((arrear) => arrear.tenancyGuid === tenancyGuid)!]));
 
   const byMonth = new Map(months.map((month) => [month, { month, matched: 0, unmatched: 0 }]));
-  const accounts = new Set<string>();
   let matchedCount = 0, unmatchedCount = 0, excludedCount = 0, matchedAmount = 0, unmatchedAmount = 0;
   let oldestUnmatched: string | null = null;
-
-  const rows = lines.map((line) => {
-    const date = toUkDate(line.date) ?? today;
-    const amount = num(line.amount);
-    const status = line.isExcluded === true ? "excluded"
-      : line.status === "assigned" || line.isMatched === true ? "matched"
-        : line.status === "partiallyAssigned" ? "partly_matched"
-          : "unmatched";
-    const digits = lastFour(str(line.account));
-    accounts.add([str(line.bank), digits ? `••••${digits}` : null].filter(Boolean).join(" "));
-    const bucket = byMonth.get(date.slice(0, 7));
-    if (status === "excluded") excludedCount += 1;
-    else if (status === "matched") { matchedCount += 1; matchedAmount += amount; if (bucket) bucket.matched += amount; }
+  for (const line of lines) {
+    const bucket = byMonth.get(line.date.slice(0, 7));
+    if (line.status === "excluded") excludedCount += 1;
+    else if (line.status === "matched") { matchedCount += 1; matchedAmount += line.amount; if (bucket) bucket.matched += line.amount; }
     else {
       unmatchedCount += 1;
-      unmatchedAmount += amount;
-      if (bucket) bucket.unmatched += amount;
-      if (!oldestUnmatched || date < oldestUnmatched) oldestUnmatched = date;
+      unmatchedAmount += line.amount;
+      if (bucket) bucket.unmatched += line.amount;
+      if (!oldestUnmatched || line.date < oldestUnmatched) oldestUnmatched = line.date;
     }
-    return {
-      id: String(line.guid),
-      date,
-      amount: round(amount),
-      payer: str(line.name),
-      reference: str(line.reference),
-      description: str(line.description) ?? str(line.originalDescription),
-      status,
-      possibleDuplicate: line.potentialDuplicate === true,
-    };
-  });
+  }
 
   return GetFinanceBankFeedResponse.parse({
     asOf: today,
     from,
-    accounts: [...accounts].filter(Boolean),
+    accounts: [...new Set(lines.map((line) => line.account).filter(Boolean))],
     matchedCount,
     unmatchedCount,
     excludedCount,
@@ -186,7 +184,17 @@ async function buildBankFeed() {
     unmatchedAmount: round(unmatchedAmount),
     oldestUnmatched,
     months: [...byMonth.values()].map((month) => ({ month: month.month, matched: round(month.matched), unmatched: round(month.unmatched) })),
-    lines: rows.sort((a, b) => b.date.localeCompare(a.date)),
+    lines: lines
+      .map((line) => {
+        const match = matchFor.get(line.id);
+        return {
+          ...line,
+          possibleMatch: match
+            ? { propertyReference: match.propertyReference, propertyName: match.propertyName, tenantName: match.tenantName, outstanding: match.outstanding, earliestDue: match.earliestDue }
+            : null,
+        };
+      })
+      .sort((a, b) => b.date.localeCompare(a.date)),
   });
 }
 
@@ -211,7 +219,7 @@ financeRouter.get("/finance/bank-feed", async (req, res): Promise<void> => {
     return;
   }
   try {
-    res.json(await cached("bank-feed", req.query.refresh === "1", buildBankFeed));
+    res.json(await cached("bank-feed", req.query.refresh === "1", () => buildBankFeed(req.query.refresh === "1")));
   } catch (error) {
     req.log.warn({ err: error }, "COHO bank feed unavailable");
     res.status(502).json({ error: "COHO could not be reached. Try again." });

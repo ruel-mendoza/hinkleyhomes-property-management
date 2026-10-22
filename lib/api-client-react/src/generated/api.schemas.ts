@@ -74,6 +74,15 @@ export interface Occupancy {
   rows: OccupancyRow[];
 }
 
+export interface PossiblePayment {
+  date: string;
+  amount: number;
+  /** @nullable */
+  payer: string | null;
+  /** @nullable */
+  reference: string | null;
+}
+
 export interface MoneyArrear {
   propertyReference: string;
   propertyName: string;
@@ -86,6 +95,8 @@ export interface MoneyArrear {
      * @nullable
      */
   earliestDue: string | null;
+  /** An unmatched bank line in COHO's rent feed for the same amount, so the rent may already be paid */
+  possiblePayment: PossiblePayment | null;
 }
 
 export interface MoneyPropertyRef {
@@ -365,6 +376,35 @@ export interface FinanceIncomeOwner {
   fees: number;
 }
 
+export type FinanceItemCategory = typeof FinanceItemCategory[keyof typeof FinanceItemCategory];
+
+
+export const FinanceItemCategory = {
+  rent: 'rent',
+  management_fee: 'management_fee',
+  other: 'other',
+} as const;
+
+export interface FinanceItem {
+  id: string;
+  invoiceDate: string;
+  category: FinanceItemCategory;
+  categoryName: string;
+  propertyReference: string;
+  propertyName: string;
+  /** @nullable */
+  ownerReference: string | null;
+  /** @nullable */
+  ownerName: string | null;
+  /** @nullable */
+  tenantName: string | null;
+  amount: number;
+  unpaid: number;
+  paidStatus: string;
+  /** @nullable */
+  paidDate: string | null;
+}
+
 export interface FinanceIncome {
   asOf: string;
   from: string;
@@ -379,6 +419,7 @@ export interface FinanceIncome {
   months: FinanceIncomeMonth[];
   properties: FinanceIncomeProperty[];
   owners: FinanceIncomeOwner[];
+  items: FinanceItem[];
 }
 
 export type FinanceBankLineStatus = typeof FinanceBankLineStatus[keyof typeof FinanceBankLineStatus];
@@ -390,6 +431,16 @@ export const FinanceBankLineStatus = {
   unmatched: 'unmatched',
   excluded: 'excluded',
 } as const;
+
+export interface PossibleRentMatch {
+  propertyReference: string;
+  propertyName: string;
+  /** @nullable */
+  tenantName: string | null;
+  outstanding: number;
+  /** @nullable */
+  earliestDue: string | null;
+}
 
 export interface FinanceBankLine {
   id: string;
@@ -403,6 +454,15 @@ export interface FinanceBankLine {
   description: string | null;
   status: FinanceBankLineStatus;
   possibleDuplicate: boolean;
+  /**
+     * Bank and last four digits of the account
+     * @nullable
+     */
+  account: string | null;
+  /** @nullable */
+  snoozedUntil: string | null;
+  /** An overdue tenancy this unmatched line may pay (same amount, around the due date); matching is done in COHO */
+  possibleMatch: PossibleRentMatch | null;
 }
 
 export interface FinanceBankFeedMonth {

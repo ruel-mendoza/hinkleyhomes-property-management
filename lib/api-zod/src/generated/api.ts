@@ -916,7 +916,13 @@ export const GetMoneyOverviewResponse = zod.object({
   "tenantName": zod.string().nullable(),
   "outstanding": zod.number(),
   "daysInArrears": zod.number().int(),
-  "earliestDue": zod.string().nullable().describe('UK date (YYYY-MM-DD)')
+  "earliestDue": zod.string().nullable().describe('UK date (YYYY-MM-DD)'),
+  "possiblePayment": zod.union([zod.object({
+  "date": zod.string(),
+  "amount": zod.number(),
+  "payer": zod.string().nullable(),
+  "reference": zod.string().nullable()
+}),zod.null()]).describe('An unmatched bank line in COHO\'s rent feed for the same amount, so the rent may already be paid')
 })),
   "depositsHeld": zod.number().int(),
   "depositsHeldTotal": zod.number(),
@@ -1082,6 +1088,21 @@ export const GetFinanceIncomeResponse = zod.object({
   "properties": zod.number().int(),
   "rent": zod.number(),
   "fees": zod.number()
+})),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "invoiceDate": zod.string(),
+  "category": zod.enum(['rent', 'management_fee', 'other']),
+  "categoryName": zod.string(),
+  "propertyReference": zod.string(),
+  "propertyName": zod.string(),
+  "ownerReference": zod.string().nullable(),
+  "ownerName": zod.string().nullable(),
+  "tenantName": zod.string().nullable(),
+  "amount": zod.number(),
+  "unpaid": zod.number(),
+  "paidStatus": zod.string(),
+  "paidDate": zod.string().nullable()
 }))
 })
 
@@ -1112,7 +1133,16 @@ export const GetFinanceBankFeedResponse = zod.object({
   "reference": zod.string().nullable(),
   "description": zod.string().nullable(),
   "status": zod.enum(['matched', 'partly_matched', 'unmatched', 'excluded']),
-  "possibleDuplicate": zod.boolean()
+  "possibleDuplicate": zod.boolean(),
+  "account": zod.string().nullable().describe('Bank and last four digits of the account'),
+  "snoozedUntil": zod.string().nullable(),
+  "possibleMatch": zod.union([zod.object({
+  "propertyReference": zod.string(),
+  "propertyName": zod.string(),
+  "tenantName": zod.string().nullable(),
+  "outstanding": zod.number(),
+  "earliestDue": zod.string().nullable()
+}),zod.null()]).describe('An overdue tenancy this unmatched line may pay (same amount, around the due date); matching is done in COHO')
 }))
 })
 
