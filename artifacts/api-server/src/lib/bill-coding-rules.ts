@@ -48,18 +48,24 @@ export type TrackingProp = { tenantId: string; tenantName: string; category: str
 export type CodingTarget = { tenantId: string; tenantName: string; category: string; option: string | null };
 export type TextAlias = { tokens: string[]; target: CodingTarget };
 
+// "Property" and "Properties" are the same category (companies name it either way).
+const singular = (s: unknown) => norm(s).replace(/ies$/, "y").replace(/s$/, "");
+export const sameCategory = (a: unknown, b: unknown) => singular(a) === singular(b);
+// A short code before a dash is not part of the address: "HH - 1 Valetta Place" is matched as "1 Valetta Place".
+const optionTokens = (name: unknown) => tokens(String(name ?? "").replace(/^\s*[a-z]{1,4}\s*-\s+/i, ""));
+
 // Active options of each company's Property tracking category.
 export function trackingProps(orgs: (Org & { categories: Json[] | null; error?: string | null })[], categoryName: string) {
   const props: TrackingProp[] = [];
   const orgIssues: string[] = [];
   for (const org of orgs) {
     if (org.error || org.categories === null) { orgIssues.push(`${org.tenantName}: could not read tracking categories`); continue; }
-    const cat = org.categories.find((c) => norm(c.Name) === norm(categoryName) && String(c.Status ?? "ACTIVE").toUpperCase() === "ACTIVE");
-    if (!cat) { orgIssues.push(`${org.tenantName}: no active tracking category named "${categoryName}"`); continue; }
+    const cat = org.categories.find((c) => sameCategory(c.Name, categoryName) && String(c.Status ?? "ACTIVE").toUpperCase() === "ACTIVE");
+    if (!cat) { orgIssues.push(`${org.tenantName}: no active tracking category named "${categoryName}" (or its plural)`); continue; }
     for (const op of (Array.isArray(cat.Options) ? cat.Options : []) as Json[]) {
       if (String(op.Status ?? "ACTIVE").toUpperCase() !== "ACTIVE") continue;
-      const tk = tokens(op.Name);
-      if (tk.length) props.push({ tenantId: org.tenantId, tenantName: org.tenantName, category: String(cat.Name), option: String(op.Name), tokens: tk, key: norm(op.Name) });
+      const tk = optionTokens(op.Name);
+      if (tk.length) props.push({ tenantId: org.tenantId, tenantName: org.tenantName, category: String(cat.Name), option: String(op.Name), tokens: tk, key: tk.join("") });
     }
   }
   return { props, orgIssues };
@@ -255,7 +261,8 @@ export function planBill(
       if (m.kind === "match") { target = m.target; via = m.via; }
     }
     const base: PlanLine = { index: li, description: String(l.description ?? ""), serviceDate: ymd(l.service_date), amount, category: String(l.suggested_category ?? ""), jobType: String(l.suggested_job_type ?? "") };
-    if (target) resolved.push({ ...base, tenantId: target.tenantId, tenantName: target.tenantName, option: target.option, trackingCategory: target.category || catName, matchedBy: via });
+    // Written to Xero under that company's own category name ("Property" or "Properties").
+    if (target) resolved.push({ ...base, tenantId: target.tenantId, tenantName: target.tenantName, option: target.option, trackingCategory: props.find((p) => p.tenantId === target!.tenantId)?.category ?? (target.category || catName), matchedBy: via });
     else needs.push({
       ...base,
       key: answerKey.split("@@")[2] ?? "",
@@ -433,7 +440,7 @@ export const dupKey = (supplier: unknown, number: unknown, total: unknown) => `$
 
 // One entry per bill that still needs checking, oldest first.
 export function pickBills(bills: { org: Org; bill: Json }[], state: PickState) {
-  const catName = state.trackingCategory.trim().toLowerCase();
+  const catName = state.trackingCategory;
   const skipped = { duplicate_bill: 0, already_coded: 0, own_or_done: 0, waiting_for_answer: 0, not_in_status: 0 };
   const batchSeen = new Set<string>();
   const found: { org: Org; bill: Json; key: string }[] = [];
@@ -443,7 +450,7 @@ export function pickBills(bills: { org: Org; bill: Json }[], state: PickState) {
     const invoiceId = String(b.InvoiceID).toLowerCase();
     if (state.ownInvoiceIds.has(invoiceId) || String(b.Reference ?? "").startsWith("Part of invoice")) { skipped.own_or_done++; continue; }
     const lines = (Array.isArray(b.LineItems) ? b.LineItems : []) as Json[];
-    const coded = (l: Json) => ((Array.isArray(l.Tracking) ? l.Tracking : []) as Json[]).some((t) => String(t.Name ?? "").trim().toLowerCase() === catName && t.Option);
+    const coded = (l: Json) => ((Array.isArray(l.Tracking) ? l.Tracking : []) as Json[]).some((t) => sameCategory(t.Name, catName) && t.Option);
     if (lines.length && lines.every(coded)) { skipped.already_coded++; continue; }
     const key = `xero::${org.tenantId}::${invoiceId}`;
     const dk = dupKey((b.Contact as Json | undefined)?.Name, b.InvoiceNumber, b.Total);
