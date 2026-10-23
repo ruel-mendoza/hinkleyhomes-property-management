@@ -1467,6 +1467,191 @@ export const SendPresenceHeartbeatResponse = zod.object({
 
 
 /**
+ * @summary Overdue invoices and bills across all five companies, ranked by value, age and risk, with what is new or more urgent since the last daily check
+ */
+export const getOverdueReportResponseItemsItemPriorityMax = 3;
+
+
+
+export const GetOverdueReportResponse = zod.object({
+  "asOf": zod.string(),
+  "complete": zod.boolean(),
+  "trackingAvailable": zod.boolean().describe('False until the tracking table exists'),
+  "lastRunAt": zod.string().nullable(),
+  "problems": zod.array(zod.string()),
+  "items": zod.array(zod.object({
+  "ledger": zod.enum(['receivable', 'payable']),
+  "tenantId": zod.string(),
+  "company": zod.string(),
+  "invoiceId": zod.string(),
+  "number": zod.string().nullable(),
+  "contactName": zod.string(),
+  "dueDate": zod.string().nullable(),
+  "daysOverdue": zod.number().int(),
+  "amountDue": zod.number(),
+  "amountPaid": zod.number(),
+  "valueBand": zod.enum(['High', 'Medium', 'Low']),
+  "ageBucket": zod.string(),
+  "riskScore": zod.number().int(),
+  "riskProfile": zod.enum(['High', 'Medium', 'Low']),
+  "riskReasons": zod.array(zod.string()),
+  "priority": zod.number().int().min(1).max(getOverdueReportResponseItemsItemPriorityMax),
+  "valueAtRisk": zod.number(),
+  "contactExposure": zod.number(),
+  "contactOverdueCount": zod.number().int(),
+  "change": zod.enum(['new', 'escalated', 'ongoing']),
+  "firstSeenOn": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Bill price, bank-detail and spend-trend alerts from the daily checks (the exception queue)
+ */
+export const ListFinanceAlertsQueryParams = zod.object({
+  "status": zod.enum(['open', 'resolved', 'ignored', 'all']).optional()
+})
+
+export const ListFinanceAlertsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "kind": zod.string(),
+  "code": zod.string(),
+  "severity": zod.enum(['high', 'warn', 'info']),
+  "status": zod.enum(['open', 'resolved', 'ignored']),
+  "summary": zod.string(),
+  "tenantId": zod.string().nullable(),
+  "company": zod.string().nullable(),
+  "supplier": zod.string().nullable(),
+  "number": zod.string().nullable(),
+  "billId": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "resolvedBy": zod.string().nullable(),
+  "resolvedAt": zod.string().nullable(),
+  "resolution": zod.string().nullable()
+})),
+  "openCount": zod.number().int(),
+  "openHighCount": zod.number().int()
+})
+
+
+/**
+ * @summary Resolve, ignore or reopen an alert (written to the audit log)
+ */
+export const UpdateFinanceAlertParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateFinanceAlertBodyNoteMax = 1000;
+
+
+
+export const UpdateFinanceAlertBody = zod.object({
+  "status": zod.enum(['open', 'resolved', 'ignored']),
+  "note": zod.string().max(updateFinanceAlertBodyNoteMax).nullish()
+})
+
+export const UpdateFinanceAlertResponse = zod.object({
+  "id": zod.string(),
+  "kind": zod.string(),
+  "code": zod.string(),
+  "severity": zod.enum(['high', 'warn', 'info']),
+  "status": zod.enum(['open', 'resolved', 'ignored']),
+  "summary": zod.string(),
+  "tenantId": zod.string().nullable(),
+  "company": zod.string().nullable(),
+  "supplier": zod.string().nullable(),
+  "number": zod.string().nullable(),
+  "billId": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "resolvedBy": zod.string().nullable(),
+  "resolvedAt": zod.string().nullable(),
+  "resolution": zod.string().nullable()
+})
+
+
+/**
+ * @summary Payment reminders, invoice re-sends and Xero notes the reminders workflow has carried out, newest first
+ */
+export const ListReminderLogResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "tenantId": zod.string(),
+  "company": zod.string(),
+  "invoiceId": zod.string(),
+  "invoiceNumber": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "kind": zod.enum(['auto_reminder', 'manual_reminder', 'xero_resend', 'xero_note']),
+  "stage": zod.number().int().nullable(),
+  "testMode": zod.boolean(),
+  "sentTo": zod.string().nullable(),
+  "status": zod.enum(['sent', 'failed', 'skipped']),
+  "detail": zod.string().nullable(),
+  "requestedBy": zod.string().nullable(),
+  "sentAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Recent Xero daily check runs
+ */
+export const ListCheckRunsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "trigger": zod.enum(['schedule', 'manual']),
+  "status": zod.enum(['running', 'succeeded', 'failed', 'skipped']),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "error": zod.string().nullable(),
+  "summary": zod.union([zod.object({
+  "overdueReceivables": zod.number().int(),
+  "overdueReceivablesTotal": zod.number(),
+  "overduePayables": zod.number().int(),
+  "overduePayablesTotal": zod.number(),
+  "priority1": zod.number().int(),
+  "newOverdue": zod.number().int(),
+  "billsSynced": zod.number().int(),
+  "fullBillSync": zod.boolean(),
+  "billFlags": zod.number().int(),
+  "newBillFlags": zod.number().int(),
+  "spendFlags": zod.number().int(),
+  "newSpendFlags": zod.number().int(),
+  "problems": zod.array(zod.string())
+}),zod.null()])
+}))
+})
+
+
+/**
+ * @summary Run the Xero daily checks now (reads Xero; the first run reads 13 months of bills)
+ */
+export const RunChecksNowResponse = zod.object({
+  "id": zod.string(),
+  "trigger": zod.enum(['schedule', 'manual']),
+  "status": zod.enum(['running', 'succeeded', 'failed', 'skipped']),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "error": zod.string().nullable(),
+  "summary": zod.union([zod.object({
+  "overdueReceivables": zod.number().int(),
+  "overdueReceivablesTotal": zod.number(),
+  "overduePayables": zod.number().int(),
+  "overduePayablesTotal": zod.number(),
+  "priority1": zod.number().int(),
+  "newOverdue": zod.number().int(),
+  "billsSynced": zod.number().int(),
+  "fullBillSync": zod.boolean(),
+  "billFlags": zod.number().int(),
+  "newBillFlags": zod.number().int(),
+  "spendFlags": zod.number().int(),
+  "newSpendFlags": zod.number().int(),
+  "problems": zod.array(zod.string())
+}),zod.null()])
+})
+
+
+/**
  * @summary Available rooms and properties for the website widget (no sign-in; no house numbers)
  */
 export const ListPublicListingsResponse = zod.object({

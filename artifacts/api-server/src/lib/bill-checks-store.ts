@@ -10,11 +10,11 @@ import {
 import {
   DEFAULT_OPTIONS,
   bankFlag,
+  historyLines,
   ibanOnlyFlag,
   isCheckedStatus,
   maskAccount,
   priceFlags,
-  pricedLines,
   supplierKey,
   ukAccount,
   type CheckOptions,
@@ -42,22 +42,62 @@ export type BillFlag = Flag & {
   isNew: boolean;
 };
 
-// Named in the audit log for changes made by the scheduled check.
-const ACTOR = "n8n bill check";
+// Named in the audit log for changes made by the checks.
+const ACTOR = "Xero bill checks";
+const CHUNK = 500;
 
 type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+type Kind = (typeof exceptionQueueTable.$inferInsert)["kind"];
+
+export type ExceptionDraft = { kind: Kind; sourceTable: string; sourceId: string; check: string; summary: string; details: Record<string, unknown> };
+
+// Inserts the drafts not raised before (by source and check, whatever their
+// status, so a resolved exception doesn't come back). Returns the new ones' keys.
+export async function raiseExceptions(tx: Tx, drafts: ExceptionDraft[]): Promise<Set<string>> {
+  const q = exceptionQueueTable;
+  const keyOf = (sourceTable: string, sourceId: string, check: unknown) => `${sourceTable}|${sourceId}|${String(check)}`;
+  const raised = new Set<string>();
+  const bySource = new Map<string, string[]>();
+  for (const draft of drafts) bySource.set(draft.sourceTable, [...(bySource.get(draft.sourceTable) ?? []), draft.sourceId]);
+  for (const [sourceTable, ids] of bySource) {
+    const unique = [...new Set(ids)];
+    for (let i = 0; i < unique.length; i += CHUNK) {
+      const rows = await tx
+        .select({ sourceId: q.sourceId, details: q.details })
+        .from(q)
+        .where(and(eq(q.sourceTable, sourceTable), inArray(q.sourceId, unique.slice(i, i + CHUNK))));
+      for (const row of rows) raised.add(keyOf(sourceTable, row.sourceId, (row.details as { check?: string } | null)?.check));
+    }
+  }
+  const fresh = new Set<string>();
+  const values: (typeof q.$inferInsert)[] = [];
+  for (const draft of drafts) {
+    const key = keyOf(draft.sourceTable, draft.sourceId, draft.check);
+    if (raised.has(key)) continue;
+    raised.add(key);
+    fresh.add(key);
+    values.push({ kind: draft.kind, sourceTable: draft.sourceTable, sourceId: draft.sourceId, summary: draft.summary.slice(0, 1000), details: { ...draft.details, check: draft.check } });
+  }
+  for (let i = 0; i < values.length; i += CHUNK) await tx.insert(q).values(values.slice(i, i + CHUNK));
+  return fresh;
+}
 
 const sameAccount = (a: UkAccount) => (k: KnownAccount) => k.sortCode === a.sortCode && k.accountNumber === a.accountNumber;
 
-export async function checkAndRecordBills(bills: IncomingBill[], opts: CheckOptions = DEFAULT_OPTIONS, requestId: string | null = null): Promise<BillFlag[]> {
+// checkFrom: bills dated before this day are only recorded (used when backfilling
+// a year of history, so old bills don't raise flags).
+export async function checkAndRecordBills(
+  bills: IncomingBill[],
+  opts: CheckOptions = DEFAULT_OPTIONS,
+  requestId: string | null = null,
+  checkFrom: string | null = null,
+): Promise<BillFlag[]> {
   return getDb().transaction(async (tx) => {
     const audit = (action: string, tableName: string, recordId: string, after: unknown) =>
       tx.insert(auditLogTable).values({ actorEmail: ACTOR, action, tableName, recordId, before: null, after, requestId });
     const h = xeroBillHistoryTable;
-    const q = exceptionQueueTable;
     const flagged: BillFlag[] = [];
     const describe = (bill: IncomingBill, flag: Flag) => ({
-      check: flag.check,
       code: flag.code,
       severity: flag.severity,
       tenantId: bill.tenantId,
@@ -68,96 +108,98 @@ export async function checkAndRecordBills(bills: IncomingBill[], opts: CheckOpti
     });
     const summary = (bill: IncomingBill, flag: Flag) => `${bill.supplier} (${bill.company}) bill ${bill.number ?? bill.billId}: ${flag.message}`;
 
-    // 1. Price history for these suppliers, then this run's bills saved into it.
-    const keys = [...new Set(bills.map((bill) => supplierKey(bill.supplier)))];
-    const earliest = bills.reduce((min, bill) => (bill.date && bill.date < min ? bill.date : min), new Date().toISOString().slice(0, 10));
+    // 1. Save this run's bills, then load the history they are compared with.
+    const rowId = new Map<string, string>();
+    for (let i = 0; i < bills.length; i += CHUNK) {
+      const saved = await tx
+        .insert(h)
+        .values(
+          bills.slice(i, i + CHUNK).map((bill) => ({
+            xeroTenantId: bill.tenantId,
+            xeroBillId: bill.billId,
+            company: bill.company,
+            supplierName: bill.supplier,
+            supplierKey: supplierKey(bill.supplier),
+            billNumber: bill.number,
+            billDate: bill.date,
+            total: bill.total === null ? null : bill.total.toFixed(2),
+            subTotal: bill.subTotal === null ? null : bill.subTotal.toFixed(2),
+            currency: bill.currency,
+            status: bill.status,
+            lines: historyLines(bill),
+          })),
+        )
+        .onConflictDoUpdate({
+          target: [h.xeroTenantId, h.xeroBillId],
+          set: {
+            company: sql`excluded.company`,
+            supplierName: sql`excluded.supplier_name`,
+            supplierKey: sql`excluded.supplier_key`,
+            billNumber: sql`excluded.bill_number`,
+            billDate: sql`excluded.bill_date`,
+            total: sql`excluded.total`,
+            subTotal: sql`excluded.sub_total`,
+            currency: sql`excluded.currency`,
+            status: sql`excluded.status`,
+            lines: sql`excluded.lines`,
+            updatedAt: sql`now()`,
+          },
+        })
+        .returning({ id: h.id, tenantId: h.xeroTenantId, billId: h.xeroBillId });
+      for (const row of saved) rowId.set(`${row.tenantId}|${row.billId}`, row.id);
+    }
+
+    const toCheck = bills.filter((bill) => !checkFrom || (bill.date !== null && bill.date >= checkFrom));
+    const keys = [...new Set(toCheck.map((bill) => supplierKey(bill.supplier)))];
+    const earliest = toCheck.reduce((min, bill) => (bill.date && bill.date < min ? bill.date : min), new Date().toISOString().slice(0, 10));
     const since = new Date(Date.parse(`${earliest}T00:00:00Z`) - opts.lookbackDays * 86_400_000).toISOString().slice(0, 10);
-    const history: PastBill[] = (await tx.select().from(h).where(and(inArray(h.supplierKey, keys), gte(h.billDate, since)))).map((row) => ({
-      tenantId: row.xeroTenantId,
-      billId: row.xeroBillId,
-      supplierKey: row.supplierKey,
-      billDate: row.billDate,
-      total: row.total === null ? null : Number(row.total),
-      currency: row.currency,
-      status: row.status,
-      lines: row.lines,
-    }));
-    const billFlags = bills.map((bill) => ({
-      bill,
-      flags: [...priceFlags(bill, history, opts), ...(isCheckedStatus(bill.status) ? [ibanOnlyFlag(bill.bank)] : [])].filter((flag): flag is Flag => flag !== null),
-    }));
-
-    const saved = await tx
-      .insert(h)
-      .values(
-        bills.map((bill) => ({
-          xeroTenantId: bill.tenantId,
-          xeroBillId: bill.billId,
-          company: bill.company,
-          supplierName: bill.supplier,
-          supplierKey: supplierKey(bill.supplier),
-          billNumber: bill.number,
-          billDate: bill.date,
-          total: bill.total === null ? null : bill.total.toFixed(2),
-          currency: bill.currency,
-          status: bill.status,
-          lines: pricedLines(bill),
-        })),
-      )
-      .onConflictDoUpdate({
-        target: [h.xeroTenantId, h.xeroBillId],
-        set: {
-          company: sql`excluded.company`,
-          supplierName: sql`excluded.supplier_name`,
-          supplierKey: sql`excluded.supplier_key`,
-          billNumber: sql`excluded.bill_number`,
-          billDate: sql`excluded.bill_date`,
-          total: sql`excluded.total`,
-          currency: sql`excluded.currency`,
-          status: sql`excluded.status`,
-          lines: sql`excluded.lines`,
-          updatedAt: sql`now()`,
-        },
-      })
-      .returning({ id: h.id, tenantId: h.xeroTenantId, billId: h.xeroBillId });
-    const rowId = new Map(saved.map((row) => [`${row.tenantId}|${row.billId}`, row.id]));
-
-    // 2. Price and IBAN flags: one exception per bill and check.
-    const raised = new Set(
-      (await tx
-        .select({ sourceId: q.sourceId, details: q.details })
-        .from(q)
-        .where(and(eq(q.sourceTable, "xero_bill_history"), inArray(q.sourceId, [...rowId.values()]))))
-        .map((row) => `${row.sourceId}|${(row.details as { check?: string } | null)?.check}`),
-    );
-    const newExceptions: (typeof q.$inferInsert)[] = [];
-    for (const { bill, flags } of billFlags) {
-      const sourceId = rowId.get(`${bill.tenantId}|${bill.billId}`)!;
-      for (const flag of flags) {
-        const isNew = !raised.has(`${sourceId}|${flag.check}`);
-        if (isNew) {
-          raised.add(`${sourceId}|${flag.check}`);
-          newExceptions.push({
-            kind: flag.code === "bank_details_unchecked" ? "bank_detail_change" : "invoice_variance",
-            sourceTable: "xero_bill_history",
-            sourceId,
-            summary: summary(bill, flag),
-            details: describe(bill, flag),
-          });
-        }
-        flagged.push({ ...flag, tenantId: bill.tenantId, billId: bill.billId, company: bill.company, supplier: bill.supplier, number: bill.number, isNew });
+    const history: PastBill[] = [];
+    for (let i = 0; i < keys.length; i += CHUNK) {
+      const rows = await tx.select().from(h).where(and(inArray(h.supplierKey, keys.slice(i, i + CHUNK)), gte(h.billDate, since)));
+      for (const row of rows) {
+        history.push({
+          tenantId: row.xeroTenantId,
+          billId: row.xeroBillId,
+          supplierKey: row.supplierKey,
+          billDate: row.billDate,
+          total: row.total === null ? null : Number(row.total),
+          currency: row.currency,
+          status: row.status,
+          lines: row.lines,
+        });
       }
     }
-    if (newExceptions.length) await tx.insert(q).values(newExceptions);
+
+    // 2. Price and IBAN flags: one exception per bill and check.
+    const drafts: ExceptionDraft[] = [];
+    const pending: { bill: IncomingBill; flag: Flag; sourceId: string }[] = [];
+    for (const bill of toCheck) {
+      const sourceId = rowId.get(`${bill.tenantId}|${bill.billId}`)!;
+      const flags = [...priceFlags(bill, history, opts), ...(isCheckedStatus(bill.status) ? [ibanOnlyFlag(bill.bank)] : [])].filter((flag): flag is Flag => flag !== null);
+      for (const flag of flags) {
+        pending.push({ bill, flag, sourceId });
+        drafts.push({
+          kind: flag.code === "bank_details_unchecked" ? "bank_detail_change" : "invoice_variance",
+          sourceTable: "xero_bill_history",
+          sourceId,
+          check: flag.check,
+          summary: summary(bill, flag),
+          details: describe(bill, flag),
+        });
+      }
+    }
+    const fresh = await raiseExceptions(tx, drafts);
+    for (const { bill, flag, sourceId } of pending) {
+      flagged.push({ ...flag, tenantId: bill.tenantId, billId: bill.billId, company: bill.company, supplier: bill.supplier, number: bill.number, isNew: fresh.has(`xero_bill_history|${sourceId}|${flag.check}`) });
+    }
 
     // 3. UK bank details, checked against what the app holds for the supplier.
-    const banked = bills.filter((bill) => isCheckedStatus(bill.status) && ukAccount(bill.bank));
+    const banked = toCheck.filter((bill) => isCheckedStatus(bill.status) && ukAccount(bill.bank));
     if (!banked.length) return flagged;
     const suppliers = await tx.select({ id: suppliersTable.id, name: suppliersTable.name, xeroContactId: suppliersTable.xeroContactId }).from(suppliersTable);
     const byKey = new Map(suppliers.map((s) => [supplierKey(s.name), s.id]));
     const byContact = new Map(suppliers.filter((s) => s.xeroContactId).map((s) => [s.xeroContactId!.toLowerCase(), s.id]));
     const knownBySupplier = new Map<string, KnownAccount[]>();
-    const raisedForAccount = new Set<string>();
 
     for (const bill of banked) {
       const account = ukAccount(bill.bank)!;
@@ -206,26 +248,15 @@ export async function checkAndRecordBills(bills: IncomingBill[], opts: CheckOpti
       }
       if (!flag) continue;
 
-      let isNew = false;
-      if (!raisedForAccount.has(row.id)) {
-        raisedForAccount.add(row.id);
-        const [existing] = await tx
-          .select({ id: q.id })
-          .from(q)
-          .where(and(eq(q.sourceTable, "supplier_bank_details"), eq(q.sourceId, row.id)))
-          .limit(1);
-        if (!existing) {
-          isNew = true;
-          await tx.insert(q).values({
-            kind: "bank_detail_change",
-            sourceTable: "supplier_bank_details",
-            sourceId: row.id,
-            summary: summary(bill, flag),
-            details: { ...describe(bill, flag), account: maskAccount(account) },
-          });
-        }
-      }
-      flagged.push({ ...flag, tenantId: bill.tenantId, billId: bill.billId, company: bill.company, supplier: bill.supplier, number: bill.number, isNew });
+      const created = await raiseExceptions(tx, [{
+        kind: "bank_detail_change",
+        sourceTable: "supplier_bank_details",
+        sourceId: row.id,
+        check: flag.check,
+        summary: summary(bill, flag),
+        details: { ...describe(bill, flag), account: maskAccount(account) },
+      }]);
+      flagged.push({ ...flag, tenantId: bill.tenantId, billId: bill.billId, company: bill.company, supplier: bill.supplier, number: bill.number, isNew: created.size > 0 });
     }
     return flagged;
   });

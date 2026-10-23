@@ -185,3 +185,16 @@
 .hh-co-chip-name{display:inline-flex;align-items:center;gap:6px}
 .hh-co-chip-name i{width:8px;height:8px;border-radius:50%;flex:none}
 .hh-rem-off{align-self:flex-start;padding:1px 7px;border-radius:999px;background:#25324a;border:1px solid #3a4a62;color:#c6d1de;font-size:11px;font-weight:700}
+/* Finance checks page */
+.hh-inv-tabs button span.hh-chk-count.bad{background:#5a1f3a;color:#f6cfe0}
+.hh-chk-matrix th[scope=row]{white-space:nowrap}
+.hh-chk-cell{font-variant-numeric:tabular-nums;white-space:nowrap}
+.hh-chk-cell.overdue{background:#3a2229;color:#f6cfe0}
+.hh-chk-cell.pending{background:#3a3020;color:#f3dcae}
+.hh-chk-cell.completed{background:#1b3329;color:#bfe7d3}
+.hh-chk-cell.empty{color:#6f7f96}
+.hh-chk-alert-name{display:block;margin:4px 0 2px}
+.hh-chk-summary{max-width:60ch;line-height:1.45}
+.spin{animation:hh-spin 1s linear infinite}
+@keyframes hh-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}

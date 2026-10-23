@@ -1,6 +1,6 @@
-// Price and bank-detail rules for supplier bills sent by the n8n "Xero watcher".
-// Pure functions only: lib/bill-checks-store.ts loads the history and records
-// what these return.
+// Price and bank-detail rules for supplier bills, fetched from Xero by the daily
+// checks (lib/finance-checks.ts) or posted by an n8n watcher. Pure functions
+// only: lib/bill-checks-store.ts loads the history and records what these return.
 
 export type BillLine = {
   description: string | null;
@@ -8,6 +8,7 @@ export type BillLine = {
   unitAmount: number | null;
   lineAmount: number | null;
   taxAmount: number | null;
+  accountCode: string | null;
 };
 
 export type BankDetails = {
@@ -26,6 +27,7 @@ export type IncomingBill = {
   contactId: string | null;
   date: string | null; // YYYY-MM-DD
   total: number | null;
+  subTotal: number | null; // net of VAT
   currency: string; // upper case; GBP when Xero didn't say
   status: string; // Xero status, upper case
   lineAmountTypes: "Exclusive" | "Inclusive" | "NoTax";
@@ -33,7 +35,9 @@ export type IncomingBill = {
   bank: BankDetails | null;
 };
 
-export type PricedLine = { key: string; unitPrice: number };
+// As stored in xero_bill_history.lines. unitPrice is null when it can't be
+// worked out net of VAT; key is "" for lines without a usable description.
+export type HistoryLine = { key: string; unitPrice: number | null; accountCode: string | null; net: number };
 
 export type PastBill = {
   tenantId: string;
@@ -43,7 +47,7 @@ export type PastBill = {
   total: number | null;
   currency: string;
   status: string;
-  lines: PricedLine[];
+  lines: HistoryLine[];
 };
 
 export type FlagCode =
@@ -124,12 +128,23 @@ export function unitNetPrice(line: BillLine, types: IncomingBill["lineAmountType
   return net !== null && Number.isFinite(net) && net > 0 ? round2(net / quantity) : null;
 }
 
-export const pricedLines = (bill: IncomingBill): PricedLine[] =>
+// Line total net of VAT (negative for credit lines).
+export function lineNet(line: BillLine, types: IncomingBill["lineAmountTypes"]): number | null {
+  const gross = line.lineAmount ?? (line.unitAmount !== null ? line.unitAmount * (line.quantity ?? 1) : null);
+  if (gross === null) return null;
+  if (types !== "Inclusive") return round2(gross);
+  return line.taxAmount !== null ? round2(gross - line.taxAmount) : null;
+}
+
+export const historyLines = (bill: IncomingBill): HistoryLine[] =>
   bill.lines.flatMap((line) => {
-    const key = lineKey(line.description);
-    const unitPrice = unitNetPrice(line, bill.lineAmountTypes);
-    return key && unitPrice !== null ? [{ key, unitPrice }] : [];
+    const net = lineNet(line, bill.lineAmountTypes);
+    if (net === null || net === 0 || !Number.isFinite(net)) return [];
+    return [{ key: lineKey(line.description), unitPrice: unitNetPrice(line, bill.lineAmountTypes), accountCode: line.accountCode, net }];
   });
+
+const pricedLines = (lines: HistoryLine[]) =>
+  lines.filter((line): line is HistoryLine & { unitPrice: number } => Boolean(line.key) && line.unitPrice !== null);
 
 const median = (values: number[]) => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -153,10 +168,10 @@ export function priceFlags(bill: IncomingBill, history: PastBill[], opts: CheckO
 
   // 1. The same kind of line from the same supplier, compared with its usual unit price.
   const seen = new Set<string>();
-  for (const line of pricedLines(bill)) {
+  for (const line of pricedLines(historyLines(bill))) {
     if (seen.has(line.key)) continue;
     seen.add(line.key);
-    const prices = past.flatMap((h) => h.lines.filter((l) => l.key === line.key).map((l) => l.unitPrice));
+    const prices = past.flatMap((h) => pricedLines(h.lines).filter((l) => l.key === line.key).map((l) => l.unitPrice));
     if (prices.length < opts.minHistory) continue;
     const usual = median(prices);
     const rise = line.unitPrice - usual;

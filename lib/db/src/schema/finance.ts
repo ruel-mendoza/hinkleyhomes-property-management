@@ -230,9 +230,12 @@ export type XeroReminderSettings = typeof xeroReminderSettingsTable.$inferSelect
 export type XeroInvoiceReminder = typeof xeroInvoiceRemindersTable.$inferSelect;
 
 // --- Supplier bill checks (n8n "Xero watcher") ---------------------------------
-// One row per Xero bill the watcher has sent: the price history later bills are
-// compared with. Line prices are per unit and net of VAT. Bank details seen on
-// bills go to supplier_bank_details, and flags to exception_queue.
+// One row per Xero bill (fetched daily by the app, or sent by an n8n watcher):
+// the history later bills and monthly spend are compared with. Amounts are net
+// of VAT; unitPrice is per unit. Bank details seen on bills go to
+// supplier_bank_details, and flags to exception_queue.
+
+export type BillHistoryLine = { key: string; unitPrice: number | null; accountCode: string | null; net: number };
 
 export const xeroBillHistoryTable = pgTable(
   "xero_bill_history",
@@ -246,15 +249,50 @@ export const xeroBillHistoryTable = pgTable(
     billNumber: text("bill_number"),
     billDate: date("bill_date"),
     total: money("total"),
+    subTotal: money("sub_total"),
     currency: text("currency").notNull().default("GBP"),
     status: text("status").notNull(),
-    lines: jsonb("lines").$type<{ key: string; unitPrice: number }[]>().notNull().default([]),
+    lines: jsonb("lines").$type<BillHistoryLine[]>().notNull().default([]),
     ...timestamps,
   },
   (t) => [
     uniqueIndex("xero_bill_history_bill_idx").on(t.xeroTenantId, t.xeroBillId),
     index("xero_bill_history_supplier_idx").on(t.supplierKey, t.billDate),
+    index("xero_bill_history_date_idx").on(t.billDate),
   ],
 ).enableRLS();
 
 export type XeroBillHistory = typeof xeroBillHistoryTable.$inferSelect;
+
+// --- Overdue tracking (daily checks) -------------------------------------------
+// One row per overdue Xero invoice or bill, so the Finance checks page can say
+// what is new, what got more urgent and what is still unpaid since it was first
+// seen. clearedOn is set when it is no longer overdue (paid, credited, voided).
+
+export const overdueLedgerEnum = pgEnum("overdue_ledger", ["receivable", "payable"]);
+
+export const xeroOverdueTrackingTable = pgTable(
+  "xero_overdue_tracking",
+  {
+    id: id(),
+    xeroTenantId: text("xero_tenant_id").notNull(),
+    xeroInvoiceId: uuid("xero_invoice_id").notNull(),
+    ledger: overdueLedgerEnum("ledger").notNull(),
+    invoiceNumber: text("invoice_number"),
+    contactName: text("contact_name"),
+    amountDue: money("amount_due").notNull(),
+    firstSeenOn: date("first_seen_on").notNull(),
+    lastSeenOn: date("last_seen_on").notNull(),
+    // 1 = act now, 2 = chase this week, 3 = monitor.
+    priority: integer("priority").notNull(),
+    previousPriority: integer("previous_priority"),
+    clearedOn: date("cleared_on"),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("xero_overdue_tracking_invoice_idx").on(t.xeroTenantId, t.xeroInvoiceId),
+    index("xero_overdue_tracking_cleared_idx").on(t.clearedOn),
+  ],
+).enableRLS();
+
+export type XeroOverdueTracking = typeof xeroOverdueTrackingTable.$inferSelect;

@@ -1637,6 +1637,239 @@ export interface CohoViewingCreated {
   reference: string | null;
 }
 
+export type OverdueLedger = typeof OverdueLedger[keyof typeof OverdueLedger];
+
+
+export const OverdueLedger = {
+  receivable: 'receivable',
+  payable: 'payable',
+} as const;
+
+export type OverdueChange = typeof OverdueChange[keyof typeof OverdueChange];
+
+
+export const OverdueChange = {
+  new: 'new',
+  escalated: 'escalated',
+  ongoing: 'ongoing',
+} as const;
+
+export type RiskBand = typeof RiskBand[keyof typeof RiskBand];
+
+
+export const RiskBand = {
+  High: 'High',
+  Medium: 'Medium',
+  Low: 'Low',
+} as const;
+
+export interface OverdueItem {
+  ledger: OverdueLedger;
+  tenantId: string;
+  company: string;
+  invoiceId: string;
+  /** @nullable */
+  number: string | null;
+  contactName: string;
+  /** @nullable */
+  dueDate: string | null;
+  daysOverdue: number;
+  amountDue: number;
+  amountPaid: number;
+  valueBand: RiskBand;
+  ageBucket: string;
+  riskScore: number;
+  riskProfile: RiskBand;
+  riskReasons: string[];
+  /**
+     * @minimum 1
+     * @maximum 3
+     */
+  priority: number;
+  valueAtRisk: number;
+  contactExposure: number;
+  contactOverdueCount: number;
+  change: OverdueChange;
+  /** @nullable */
+  firstSeenOn: string | null;
+}
+
+export interface OverdueReport {
+  asOf: string;
+  complete: boolean;
+  /** False until the tracking table exists */
+  trackingAvailable: boolean;
+  /** @nullable */
+  lastRunAt: string | null;
+  problems: string[];
+  items: OverdueItem[];
+}
+
+export type FinanceAlertFilter = typeof FinanceAlertFilter[keyof typeof FinanceAlertFilter];
+
+
+export const FinanceAlertFilter = {
+  open: 'open',
+  resolved: 'resolved',
+  ignored: 'ignored',
+  all: 'all',
+} as const;
+
+export type FinanceAlertStatus = typeof FinanceAlertStatus[keyof typeof FinanceAlertStatus];
+
+
+export const FinanceAlertStatus = {
+  open: 'open',
+  resolved: 'resolved',
+  ignored: 'ignored',
+} as const;
+
+export type FinanceAlertSeverity = typeof FinanceAlertSeverity[keyof typeof FinanceAlertSeverity];
+
+
+export const FinanceAlertSeverity = {
+  high: 'high',
+  warn: 'warn',
+  info: 'info',
+} as const;
+
+export interface FinanceAlert {
+  id: string;
+  kind: string;
+  code: string;
+  severity: FinanceAlertSeverity;
+  status: FinanceAlertStatus;
+  summary: string;
+  /** @nullable */
+  tenantId: string | null;
+  /** @nullable */
+  company: string | null;
+  /** @nullable */
+  supplier: string | null;
+  /** @nullable */
+  number: string | null;
+  /** @nullable */
+  billId: string | null;
+  createdAt: string;
+  /** @nullable */
+  resolvedBy: string | null;
+  /** @nullable */
+  resolvedAt: string | null;
+  /** @nullable */
+  resolution: string | null;
+}
+
+export interface FinanceAlertList {
+  items: FinanceAlert[];
+  openCount: number;
+  openHighCount: number;
+}
+
+export interface FinanceAlertUpdate {
+  status: FinanceAlertStatus;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  note?: string | null;
+}
+
+export type ReminderLogEntryKind = typeof ReminderLogEntryKind[keyof typeof ReminderLogEntryKind];
+
+
+export const ReminderLogEntryKind = {
+  auto_reminder: 'auto_reminder',
+  manual_reminder: 'manual_reminder',
+  xero_resend: 'xero_resend',
+  xero_note: 'xero_note',
+} as const;
+
+export type ReminderLogEntryStatus = typeof ReminderLogEntryStatus[keyof typeof ReminderLogEntryStatus];
+
+
+export const ReminderLogEntryStatus = {
+  sent: 'sent',
+  failed: 'failed',
+  skipped: 'skipped',
+} as const;
+
+export interface ReminderLogEntry {
+  id: string;
+  tenantId: string;
+  company: string;
+  invoiceId: string;
+  /** @nullable */
+  invoiceNumber: string | null;
+  /** @nullable */
+  contactName: string | null;
+  kind: ReminderLogEntryKind;
+  /** @nullable */
+  stage: number | null;
+  testMode: boolean;
+  /** @nullable */
+  sentTo: string | null;
+  status: ReminderLogEntryStatus;
+  /** @nullable */
+  detail: string | null;
+  /** @nullable */
+  requestedBy: string | null;
+  sentAt: string;
+}
+
+export interface ReminderLogList {
+  items: ReminderLogEntry[];
+}
+
+export interface CheckRunSummary {
+  overdueReceivables: number;
+  overdueReceivablesTotal: number;
+  overduePayables: number;
+  overduePayablesTotal: number;
+  priority1: number;
+  newOverdue: number;
+  billsSynced: number;
+  fullBillSync: boolean;
+  billFlags: number;
+  newBillFlags: number;
+  spendFlags: number;
+  newSpendFlags: number;
+  problems: string[];
+}
+
+export type CheckRunTrigger = typeof CheckRunTrigger[keyof typeof CheckRunTrigger];
+
+
+export const CheckRunTrigger = {
+  schedule: 'schedule',
+  manual: 'manual',
+} as const;
+
+export type CheckRunStatus = typeof CheckRunStatus[keyof typeof CheckRunStatus];
+
+
+export const CheckRunStatus = {
+  running: 'running',
+  succeeded: 'succeeded',
+  failed: 'failed',
+  skipped: 'skipped',
+} as const;
+
+export interface CheckRun {
+  id: string;
+  trigger: CheckRunTrigger;
+  status: CheckRunStatus;
+  startedAt: string;
+  /** @nullable */
+  finishedAt: string | null;
+  /** @nullable */
+  error: string | null;
+  summary: CheckRunSummary | null;
+}
+
+export interface CheckRunList {
+  items: CheckRun[];
+}
+
 export type ListCohoPropertiesParams = {
 /**
  * @minimum 1
@@ -1729,5 +1962,9 @@ propertyReference?: string;
 
 export type GetComplianceParams = {
 status?: ComplianceFilter;
+};
+
+export type ListFinanceAlertsParams = {
+status?: FinanceAlertFilter;
 };
 

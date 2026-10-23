@@ -9,6 +9,7 @@ import { readXeroGatewayEnv } from "../lib/integrations-env";
 import { AUTOMATIC_AUTHOR, getReminderSettings, isWeekend, logReminder } from "../lib/xero-reminders";
 import { DEFAULT_OPTIONS as DEFAULT_BILL_CHECK_OPTIONS, type IncomingBill } from "../lib/bill-checks";
 import { checkAndRecordBills } from "../lib/bill-checks-store";
+import { runDailyChecks } from "../lib/finance-checks";
 import {
   ALL_TENANT_IDS,
   activityFor,
@@ -191,13 +192,28 @@ router.post("/integrations/xero/reminders/result", requireSyncKey, async (req, r
   });
 });
 
+// --- Xero daily checks (n8n "Xero daily checks" workflow, 8am) -------------------------
+// Overdue ranking, bill price and bank checks, and spend trends; see
+// lib/finance-checks.ts. The first run reads 13 months of bills and takes longer.
+router.post("/integrations/xero/daily-checks", requireSyncKey, async (req, res): Promise<void> => {
+  if (!isDatabaseConfigured() || readXeroGatewayEnv().status !== "configured") {
+    res.status(503).json({ error: "The database or the Xero gateway is not configured." });
+    return;
+  }
+  const result = await runDailyChecks("schedule", req.id !== undefined && req.id !== null ? String(req.id) : null);
+  res.status(result.status === "failed" ? 502 : result.status === "skipped" ? 409 : 200).json(result);
+});
+
 // --- Supplier bill checks (n8n "Xero watcher") ----------------------------------------
 // The watcher posts the bills it saw this run; the reply lists price and
 // bank-detail flags for its digest (isNew = raised for the first time). Flags
 // also go to the exception queue; see lib/bill-checks-store.ts. Body, from Xero's bill fields:
 // { bills: [{ tenant_id, company, id (InvoiceID), number, supplier, contact_id, date (YYYY-MM-DD),
-//   total, currency, status, line_amount_types, lines: [{ description, quantity, unit_amount,
-//   line_amount, tax_amount }], bank?: { account_name, sort_code, account_number, iban } }] }
+//   total, sub_total, currency, status, line_amount_types, lines: [{ description, quantity,
+//   unit_amount, line_amount, tax_amount, account_code }], bank?: { account_name, sort_code,
+//   account_number, iban } }] }
+// The daily checks fetch bills from Xero themselves; this endpoint is for bank
+// details read from invoice documents, which Xero doesn't hold.
 const MAX_BILLS = 2000;
 const DAY_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -226,6 +242,7 @@ function parseBill(raw: unknown): IncomingBill | null {
     contactId: contactId && UUID.test(contactId) ? contactId : null,
     date: date && DAY_FORMAT.test(date) && !Number.isNaN(Date.parse(date)) ? date : null,
     total: amount(value.total),
+    subTotal: amount(value.sub_total),
     currency: (text(value.currency, 3) ?? "GBP").toUpperCase(),
     status: (text(value.status, 30) ?? "AUTHORISED").toUpperCase(),
     lineAmountTypes: types === "Inclusive" || types === "NoTax" ? types : "Exclusive",
@@ -237,6 +254,7 @@ function parseBill(raw: unknown): IncomingBill | null {
         unitAmount: amount(line.unit_amount),
         lineAmount: amount(line.line_amount ?? line.amount),
         taxAmount: amount(line.tax_amount),
+        accountCode: text(line.account_code, 20),
       };
     }),
     bank: bank

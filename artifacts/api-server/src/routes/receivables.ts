@@ -148,6 +148,7 @@ async function loadXero() {
         tenantId: company.tenantId,
         company: company.name,
         billId: String(bill.InvoiceID),
+        contactId: str(asRecord(bill.Contact).ContactID),
         number: str(bill.InvoiceNumber),
         contactName: str(asRecord(bill.Contact).Name) ?? "Unknown supplier",
         description: describe(bill),

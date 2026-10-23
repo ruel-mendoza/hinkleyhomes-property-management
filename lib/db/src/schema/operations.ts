@@ -83,6 +83,8 @@ export const integrationSyncRunsTable = pgTable(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
     recordsProcessed: integer("records_processed").notNull().default(0),
     error: text("error"),
+    // What the run found (e.g. the Xero daily checks' counts), for the page that shows runs.
+    details: jsonb("details"),
   },
   (t) => [index("integration_sync_runs_integration_idx").on(t.integration, t.startedAt)],
 ).enableRLS();

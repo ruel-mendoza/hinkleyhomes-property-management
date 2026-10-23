@@ -901,6 +901,116 @@ paths:
                 $ref: "#/components/schemas/PresenceList"
         "503":
           description: Database is not configured
+  /checks/overdue:
+    get:
+      operationId: getOverdueReport
+      tags: [xero]
+      summary: Overdue invoices and bills across all five companies, ranked by value, age and risk, with what is new or more urgent since the last daily check
+      responses:
+        "200":
+          description: Ranked overdue items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OverdueReport"
+        "502":
+          description: Xero could not be read
+        "503":
+          description: Database or Xero gateway is not configured
+  /checks/alerts:
+    get:
+      operationId: listFinanceAlerts
+      tags: [xero]
+      summary: Bill price, bank-detail and spend-trend alerts from the daily checks (the exception queue)
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/FinanceAlertFilter"
+      responses:
+        "200":
+          description: Alerts, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinanceAlertList"
+        "503":
+          description: Database is not configured
+  /checks/alerts/{id}:
+    put:
+      operationId: updateFinanceAlert
+      tags: [xero]
+      summary: Resolve, ignore or reopen an alert (written to the audit log)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinanceAlertUpdate"
+      responses:
+        "200":
+          description: The updated alert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinanceAlert"
+        "400":
+          description: Invalid update
+        "404":
+          description: Alert not found
+        "503":
+          description: Database is not configured
+  /checks/reminders:
+    get:
+      operationId: listReminderLog
+      tags: [xero]
+      summary: Payment reminders, invoice re-sends and Xero notes the reminders workflow has carried out, newest first
+      responses:
+        "200":
+          description: Reminder log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderLogList"
+        "503":
+          description: Database is not configured
+  /checks/runs:
+    get:
+      operationId: listCheckRuns
+      tags: [xero]
+      summary: Recent Xero daily check runs
+      responses:
+        "200":
+          description: Runs, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckRunList"
+        "503":
+          description: Database is not configured
+    post:
+      operationId: runChecksNow
+      tags: [xero]
+      summary: Run the Xero daily checks now (reads Xero; the first run reads 13 months of bills)
+      responses:
+        "200":
+          description: The finished run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckRun"
+        "409":
+          description: A run is already in progress
+        "503":
+          description: Database or Xero gateway is not configured
   /public/listings:
     get:
       operationId: listPublicListings
@@ -2854,3 +2964,251 @@ components:
           type: ["string", "null"]
       required: [guid, reference]
 
+    OverdueLedger:
+      type: string
+      enum: [receivable, payable]
+    OverdueChange:
+      type: string
+      enum: [new, escalated, ongoing]
+    RiskBand:
+      type: string
+      enum: [High, Medium, Low]
+    OverdueItem:
+      type: object
+      properties:
+        ledger:
+          $ref: "#/components/schemas/OverdueLedger"
+        tenantId:
+          type: string
+        company:
+          type: string
+        invoiceId:
+          type: string
+        number:
+          type: ["string", "null"]
+        contactName:
+          type: string
+        dueDate:
+          type: ["string", "null"]
+        daysOverdue:
+          type: integer
+        amountDue:
+          type: number
+        amountPaid:
+          type: number
+        valueBand:
+          $ref: "#/components/schemas/RiskBand"
+        ageBucket:
+          type: string
+        riskScore:
+          type: integer
+        riskProfile:
+          $ref: "#/components/schemas/RiskBand"
+        riskReasons:
+          type: array
+          items:
+            type: string
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 3
+        valueAtRisk:
+          type: number
+        contactExposure:
+          type: number
+        contactOverdueCount:
+          type: integer
+        change:
+          $ref: "#/components/schemas/OverdueChange"
+        firstSeenOn:
+          type: ["string", "null"]
+      required: [ledger, tenantId, company, invoiceId, number, contactName, dueDate, daysOverdue, amountDue, amountPaid, valueBand, ageBucket, riskScore, riskProfile, riskReasons, priority, valueAtRisk, contactExposure, contactOverdueCount, change, firstSeenOn]
+    OverdueReport:
+      type: object
+      properties:
+        asOf:
+          type: string
+        complete:
+          type: boolean
+        trackingAvailable:
+          description: False until the tracking table exists
+          type: boolean
+        lastRunAt:
+          type: ["string", "null"]
+        problems:
+          type: array
+          items:
+            type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OverdueItem"
+      required: [asOf, complete, trackingAvailable, lastRunAt, problems, items]
+    FinanceAlertFilter:
+      type: string
+      enum: [open, resolved, ignored, all]
+    FinanceAlertStatus:
+      type: string
+      enum: [open, resolved, ignored]
+    FinanceAlertSeverity:
+      type: string
+      enum: [high, warn, info]
+    FinanceAlert:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        code:
+          type: string
+        severity:
+          $ref: "#/components/schemas/FinanceAlertSeverity"
+        status:
+          $ref: "#/components/schemas/FinanceAlertStatus"
+        summary:
+          type: string
+        tenantId:
+          type: ["string", "null"]
+        company:
+          type: ["string", "null"]
+        supplier:
+          type: ["string", "null"]
+        number:
+          type: ["string", "null"]
+        billId:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        resolvedBy:
+          type: ["string", "null"]
+        resolvedAt:
+          type: ["string", "null"]
+        resolution:
+          type: ["string", "null"]
+      required: [id, kind, code, severity, status, summary, tenantId, company, supplier, number, billId, createdAt, resolvedBy, resolvedAt, resolution]
+    FinanceAlertList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinanceAlert"
+        openCount:
+          type: integer
+        openHighCount:
+          type: integer
+      required: [items, openCount, openHighCount]
+    FinanceAlertUpdate:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/FinanceAlertStatus"
+        note:
+          type: ["string", "null"]
+          maxLength: 1000
+      required: [status]
+    ReminderLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        company:
+          type: string
+        invoiceId:
+          type: string
+        invoiceNumber:
+          type: ["string", "null"]
+        contactName:
+          type: ["string", "null"]
+        kind:
+          type: string
+          enum: [auto_reminder, manual_reminder, xero_resend, xero_note]
+        stage:
+          type: ["integer", "null"]
+        testMode:
+          type: boolean
+        sentTo:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [sent, failed, skipped]
+        detail:
+          type: ["string", "null"]
+        requestedBy:
+          type: ["string", "null"]
+        sentAt:
+          type: string
+      required: [id, tenantId, company, invoiceId, invoiceNumber, contactName, kind, stage, testMode, sentTo, status, detail, requestedBy, sentAt]
+    ReminderLogList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReminderLogEntry"
+      required: [items]
+    CheckRunSummary:
+      type: object
+      properties:
+        overdueReceivables:
+          type: integer
+        overdueReceivablesTotal:
+          type: number
+        overduePayables:
+          type: integer
+        overduePayablesTotal:
+          type: number
+        priority1:
+          type: integer
+        newOverdue:
+          type: integer
+        billsSynced:
+          type: integer
+        fullBillSync:
+          type: boolean
+        billFlags:
+          type: integer
+        newBillFlags:
+          type: integer
+        spendFlags:
+          type: integer
+        newSpendFlags:
+          type: integer
+        problems:
+          type: array
+          items:
+            type: string
+      required: [overdueReceivables, overdueReceivablesTotal, overduePayables, overduePayablesTotal, priority1, newOverdue, billsSynced, fullBillSync, billFlags, newBillFlags, spendFlags, newSpendFlags, problems]
+    CheckRun:
+      type: object
+      properties:
+        id:
+          type: string
+        trigger:
+          type: string
+          enum: [schedule, manual]
+        status:
+          type: string
+          enum: [running, succeeded, failed, skipped]
+        startedAt:
+          type: string
+        finishedAt:
+          type: ["string", "null"]
+        error:
+          type: ["string", "null"]
+        summary:
+          oneOf:
+            - $ref: "#/components/schemas/CheckRunSummary"
+            - type: "null"
+      required: [id, trigger, status, startedAt, finishedAt, error, summary]
+    CheckRunList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CheckRun"
+      required: [items]

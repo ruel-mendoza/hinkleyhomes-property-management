@@ -22,6 +22,8 @@ import type {
 import type {
   BuildingCreate,
   BuildingSummary,
+  CheckRun,
+  CheckRunList,
   CohoActionAssign,
   CohoActionAssigneeList,
   CohoActionCreate,
@@ -45,6 +47,9 @@ import type {
   CohoViewingInput,
   ComplianceList,
   EntityList,
+  FinanceAlert,
+  FinanceAlertList,
+  FinanceAlertUpdate,
   FinanceBankFeed,
   FinanceIncome,
   GetComplianceParams,
@@ -59,8 +64,10 @@ import type {
   ListCohoCalendarParams,
   ListCohoMaintenanceParams,
   ListCohoPropertiesParams,
+  ListFinanceAlertsParams,
   MoneyOverview,
   Occupancy,
+  OverdueReport,
   Performance,
   PresenceHeartbeat,
   PresenceList,
@@ -70,6 +77,7 @@ import type {
   PropertySummary,
   PublicListingList,
   Receivables,
+  ReminderLogList,
   ReminderSettings,
   ReminderSettingsUpdate,
   SignupEmailCheckRequest,
@@ -3342,6 +3350,484 @@ export const useSendPresenceHeartbeat = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getSendPresenceHeartbeatMutationOptions(options));
+    }
+
+export const getGetOverdueReportUrl = () => {
+
+
+
+
+  return `/api/checks/overdue`
+}
+
+/**
+ * @summary Overdue invoices and bills across all five companies, ranked by value, age and risk, with what is new or more urgent since the last daily check
+ */
+export const getOverdueReport = async ( options?: Parameters<typeof customFetch>[1]): Promise<OverdueReport> => {
+
+  return customFetch<OverdueReport>(getGetOverdueReportUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOverdueReportQueryKey = () => {
+    return [
+    `/api/checks/overdue`
+    ] as const;
+    }
+
+
+export const getGetOverdueReportQueryOptions = <TData = Awaited<ReturnType<typeof getOverdueReport>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOverdueReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOverdueReportQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOverdueReport>>> = ({ signal }) => getOverdueReport({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOverdueReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOverdueReportQueryResult = NonNullable<Awaited<ReturnType<typeof getOverdueReport>>>
+export type GetOverdueReportQueryError = ErrorType<void>
+
+
+/**
+ * @summary Overdue invoices and bills across all five companies, ranked by value, age and risk, with what is new or more urgent since the last daily check
+ */
+
+export function useGetOverdueReport<TData = Awaited<ReturnType<typeof getOverdueReport>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOverdueReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOverdueReportQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListFinanceAlertsUrl = (params?: ListFinanceAlertsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/checks/alerts?${stringifiedParams}` : `/api/checks/alerts`
+}
+
+/**
+ * @summary Bill price, bank-detail and spend-trend alerts from the daily checks (the exception queue)
+ */
+export const listFinanceAlerts = async (params?: ListFinanceAlertsParams, options?: Parameters<typeof customFetch>[1]): Promise<FinanceAlertList> => {
+
+  return customFetch<FinanceAlertList>(getListFinanceAlertsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFinanceAlertsQueryKey = (params?: ListFinanceAlertsParams,) => {
+    return [
+    `/api/checks/alerts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListFinanceAlertsQueryOptions = <TData = Awaited<ReturnType<typeof listFinanceAlerts>>, TError = ErrorType<void>>(params?: ListFinanceAlertsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinanceAlerts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFinanceAlertsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFinanceAlerts>>> = ({ signal }) => listFinanceAlerts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFinanceAlerts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFinanceAlertsQueryResult = NonNullable<Awaited<ReturnType<typeof listFinanceAlerts>>>
+export type ListFinanceAlertsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Bill price, bank-detail and spend-trend alerts from the daily checks (the exception queue)
+ */
+
+export function useListFinanceAlerts<TData = Awaited<ReturnType<typeof listFinanceAlerts>>, TError = ErrorType<void>>(
+ params?: ListFinanceAlertsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinanceAlerts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFinanceAlertsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateFinanceAlertUrl = (id: string,) => {
+
+
+
+
+  return `/api/checks/alerts/${id}`
+}
+
+/**
+ * @summary Resolve, ignore or reopen an alert (written to the audit log)
+ */
+export const updateFinanceAlert = async (id: string,
+    financeAlertUpdate: FinanceAlertUpdate, options?: Parameters<typeof customFetch>[1]): Promise<FinanceAlert> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FinanceAlert>(getUpdateFinanceAlertUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(financeAlertUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateFinanceAlertMutationKey = () => ['updateFinanceAlert'] as const;
+
+export const getUpdateFinanceAlertMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFinanceAlert>>, TError,UpdateFinanceAlertMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateFinanceAlert>>, TError,UpdateFinanceAlertMutationVariables, TContext> => {
+
+const mutationKey = getUpdateFinanceAlertMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateFinanceAlert>>, UpdateFinanceAlertMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateFinanceAlert(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateFinanceAlertMutationResult = NonNullable<Awaited<ReturnType<typeof updateFinanceAlert>>>
+    export type UpdateFinanceAlertMutationBody = BodyType<FinanceAlertUpdate>
+    export type UpdateFinanceAlertMutationError = ErrorType<void>
+    export type UpdateFinanceAlertMutationVariables = {id: string;data: BodyType<FinanceAlertUpdate>}
+
+    /**
+ * @summary Resolve, ignore or reopen an alert (written to the audit log)
+ */
+export const useUpdateFinanceAlert = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFinanceAlert>>, TError,UpdateFinanceAlertMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateFinanceAlert>>,
+        TError,
+        UpdateFinanceAlertMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateFinanceAlertMutationOptions(options));
+    }
+
+export const getListReminderLogUrl = () => {
+
+
+
+
+  return `/api/checks/reminders`
+}
+
+/**
+ * @summary Payment reminders, invoice re-sends and Xero notes the reminders workflow has carried out, newest first
+ */
+export const listReminderLog = async ( options?: Parameters<typeof customFetch>[1]): Promise<ReminderLogList> => {
+
+  return customFetch<ReminderLogList>(getListReminderLogUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListReminderLogQueryKey = () => {
+    return [
+    `/api/checks/reminders`
+    ] as const;
+    }
+
+
+export const getListReminderLogQueryOptions = <TData = Awaited<ReturnType<typeof listReminderLog>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReminderLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListReminderLogQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listReminderLog>>> = ({ signal }) => listReminderLog({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listReminderLog>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListReminderLogQueryResult = NonNullable<Awaited<ReturnType<typeof listReminderLog>>>
+export type ListReminderLogQueryError = ErrorType<void>
+
+
+/**
+ * @summary Payment reminders, invoice re-sends and Xero notes the reminders workflow has carried out, newest first
+ */
+
+export function useListReminderLog<TData = Awaited<ReturnType<typeof listReminderLog>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReminderLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListReminderLogQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCheckRunsUrl = () => {
+
+
+
+
+  return `/api/checks/runs`
+}
+
+/**
+ * @summary Recent Xero daily check runs
+ */
+export const listCheckRuns = async ( options?: Parameters<typeof customFetch>[1]): Promise<CheckRunList> => {
+
+  return customFetch<CheckRunList>(getListCheckRunsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCheckRunsQueryKey = () => {
+    return [
+    `/api/checks/runs`
+    ] as const;
+    }
+
+
+export const getListCheckRunsQueryOptions = <TData = Awaited<ReturnType<typeof listCheckRuns>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCheckRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCheckRunsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCheckRuns>>> = ({ signal }) => listCheckRuns({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCheckRuns>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCheckRunsQueryResult = NonNullable<Awaited<ReturnType<typeof listCheckRuns>>>
+export type ListCheckRunsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Recent Xero daily check runs
+ */
+
+export function useListCheckRuns<TData = Awaited<ReturnType<typeof listCheckRuns>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCheckRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCheckRunsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRunChecksNowUrl = () => {
+
+
+
+
+  return `/api/checks/runs`
+}
+
+/**
+ * @summary Run the Xero daily checks now (reads Xero; the first run reads 13 months of bills)
+ */
+export const runChecksNow = async ( options?: Parameters<typeof customFetch>[1]): Promise<CheckRun> => {
+
+  return customFetch<CheckRun>(getRunChecksNowUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRunChecksNowMutationKey = () => ['runChecksNow'] as const;
+
+export const getRunChecksNowMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runChecksNow>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runChecksNow>>, TError,void, TContext> => {
+
+const mutationKey = getRunChecksNowMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runChecksNow>>, void> = () => {
+
+
+          return  runChecksNow(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunChecksNowMutationResult = NonNullable<Awaited<ReturnType<typeof runChecksNow>>>
+
+    export type RunChecksNowMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Run the Xero daily checks now (reads Xero; the first run reads 13 months of bills)
+ */
+export const useRunChecksNow = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runChecksNow>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runChecksNow>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRunChecksNowMutationOptions(options));
     }
 
 export const getListPublicListingsUrl = () => {
