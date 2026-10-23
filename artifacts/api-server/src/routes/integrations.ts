@@ -7,6 +7,8 @@ import { recordUnitSnapshot, ukToday } from "../lib/performance";
 import { performanceData } from "./performance";
 import { readXeroGatewayEnv } from "../lib/integrations-env";
 import { AUTOMATIC_AUTHOR, getReminderSettings, isWeekend, logReminder } from "../lib/xero-reminders";
+import { DEFAULT_OPTIONS as DEFAULT_BILL_CHECK_OPTIONS, type IncomingBill } from "../lib/bill-checks";
+import { checkAndRecordBills } from "../lib/bill-checks-store";
 import {
   ALL_TENANT_IDS,
   activityFor,
@@ -187,6 +189,97 @@ router.post("/integrations/xero/reminders/result", requireSyncKey, async (req, r
     sentTo: result.sentTo ?? null,
     testMode: result.testMode,
   });
+});
+
+// --- Supplier bill checks (n8n "Xero watcher") ----------------------------------------
+// The watcher posts the bills it saw this run; the reply lists price and
+// bank-detail flags for its digest (isNew = raised for the first time). Flags
+// also go to the exception queue; see lib/bill-checks-store.ts. Body, from Xero's bill fields:
+// { bills: [{ tenant_id, company, id (InvoiceID), number, supplier, contact_id, date (YYYY-MM-DD),
+//   total, currency, status, line_amount_types, lines: [{ description, quantity, unit_amount,
+//   line_amount, tax_amount }], bank?: { account_name, sort_code, account_number, iban } }] }
+const MAX_BILLS = 2000;
+const DAY_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseBill(raw: unknown): IncomingBill | null {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const text = (input: unknown, max: number) =>
+    typeof input === "string" && input.trim() ? input.trim().slice(0, max) : typeof input === "number" ? String(input) : null;
+  const amount = (input: unknown) => {
+    const n = typeof input === "number" ? input : typeof input === "string" && input.trim() ? Number(input) : NaN;
+    return Number.isFinite(n) ? n : null;
+  };
+  const tenantId = text(value.tenant_id, 64)?.toLowerCase();
+  const billId = text(value.id, 64)?.toLowerCase();
+  const supplier = text(value.supplier, 300);
+  if (!tenantId || !ALL_TENANT_IDS.includes(tenantId) || !billId || !UUID.test(billId) || !supplier) return null;
+  const date = text(value.date, 10);
+  const contactId = text(value.contact_id, 64)?.toLowerCase() ?? null;
+  const types = text(value.line_amount_types, 20);
+  const bank = value.bank && typeof value.bank === "object" ? (value.bank as Record<string, unknown>) : null;
+  return {
+    tenantId,
+    company: text(value.company, 200) ?? "",
+    billId,
+    number: text(value.number, 100),
+    supplier,
+    contactId: contactId && UUID.test(contactId) ? contactId : null,
+    date: date && DAY_FORMAT.test(date) && !Number.isNaN(Date.parse(date)) ? date : null,
+    total: amount(value.total),
+    currency: (text(value.currency, 3) ?? "GBP").toUpperCase(),
+    status: (text(value.status, 30) ?? "AUTHORISED").toUpperCase(),
+    lineAmountTypes: types === "Inclusive" || types === "NoTax" ? types : "Exclusive",
+    lines: (Array.isArray(value.lines) ? value.lines : []).slice(0, 500).map((item) => {
+      const line = (item ?? {}) as Record<string, unknown>;
+      return {
+        description: text(line.description, 500),
+        quantity: amount(line.quantity),
+        unitAmount: amount(line.unit_amount),
+        lineAmount: amount(line.line_amount ?? line.amount),
+        taxAmount: amount(line.tax_amount),
+      };
+    }),
+    bank: bank
+      ? { accountName: text(bank.account_name, 200), sortCode: text(bank.sort_code, 20), accountNumber: text(bank.account_number, 30), iban: text(bank.iban, 40) }
+      : null,
+  };
+}
+
+router.post("/integrations/xero/bills/check", requireSyncKey, async (req, res): Promise<void> => {
+  if (!isDatabaseConfigured()) {
+    res.status(503).json({ error: "The database is not configured." });
+    return;
+  }
+  const raw: unknown[] = Array.isArray(req.body?.bills) ? req.body.bills : [];
+  if (raw.length > MAX_BILLS) {
+    res.status(413).json({ error: `Too many bills in one request (max ${MAX_BILLS}).` });
+    return;
+  }
+  // The last copy wins when the same bill is sent twice.
+  const bills = new Map<string, IncomingBill>();
+  let rejected = 0;
+  for (const item of raw) {
+    const bill = parseBill(item);
+    if (bill) bills.set(`${bill.tenantId}|${bill.billId}`, bill);
+    else rejected++;
+  }
+  if (!bills.size) {
+    res.json({ checked: 0, rejected, flags: [], summary: { high: 0, warn: 0, info: 0, new: 0 } });
+    return;
+  }
+  try {
+    const flags = await checkAndRecordBills([...bills.values()], DEFAULT_BILL_CHECK_OPTIONS, req.id !== undefined && req.id !== null ? String(req.id) : null);
+    const count = (severity: string) => flags.filter((flag) => flag.severity === severity).length;
+    res.json({
+      checked: bills.size,
+      rejected,
+      flags,
+      summary: { high: count("high"), warn: count("warn"), info: count("info"), new: flags.filter((flag) => flag.isNew).length },
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "Bill checks failed");
+    res.status(500).json({ error: "The bill checks could not be run." });
+  }
 });
 
 export default router;

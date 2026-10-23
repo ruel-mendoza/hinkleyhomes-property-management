@@ -228,3 +228,33 @@ export const xeroInvoiceRemindersTable = pgTable(
 
 export type XeroReminderSettings = typeof xeroReminderSettingsTable.$inferSelect;
 export type XeroInvoiceReminder = typeof xeroInvoiceRemindersTable.$inferSelect;
+
+// --- Supplier bill checks (n8n "Xero watcher") ---------------------------------
+// One row per Xero bill the watcher has sent: the price history later bills are
+// compared with. Line prices are per unit and net of VAT. Bank details seen on
+// bills go to supplier_bank_details, and flags to exception_queue.
+
+export const xeroBillHistoryTable = pgTable(
+  "xero_bill_history",
+  {
+    id: id(),
+    xeroTenantId: text("xero_tenant_id").notNull(),
+    xeroBillId: uuid("xero_bill_id").notNull(),
+    company: text("company").notNull(),
+    supplierName: text("supplier_name").notNull(),
+    supplierKey: text("supplier_key").notNull(),
+    billNumber: text("bill_number"),
+    billDate: date("bill_date"),
+    total: money("total"),
+    currency: text("currency").notNull().default("GBP"),
+    status: text("status").notNull(),
+    lines: jsonb("lines").$type<{ key: string; unitPrice: number }[]>().notNull().default([]),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("xero_bill_history_bill_idx").on(t.xeroTenantId, t.xeroBillId),
+    index("xero_bill_history_supplier_idx").on(t.supplierKey, t.billDate),
+  ],
+).enableRLS();
+
+export type XeroBillHistory = typeof xeroBillHistoryTable.$inferSelect;
