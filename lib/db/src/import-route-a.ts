@@ -5,7 +5,8 @@
 //   invoice_runs.csv     -> bill_coding_reviews (only rows for Xero bills)
 //   reading_cache.csv    -> document_readings
 // Run after the database push, from the repo root, with the folder holding the files:
-//   pnpm --filter @workspace/db run import:route-a -- import/route-a
+//   pnpm --filter @workspace/db run import:route-a          (files in import/route-a)
+//   pnpm --filter @workspace/db run import:route-a other/folder
 // The files hold supplier bank details: keep them out of git (import/ is ignored).
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -66,7 +67,13 @@ const num = (text: string) => (text !== "" && Number.isFinite(Number(text)) ? Nu
 const day = (text: string) => (/^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : null);
 const when = (text: string) => { const t = Date.parse(text); return Number.isNaN(t) ? new Date() : new Date(t); };
 
-const folder = resolve(process.env.INIT_CWD ?? process.cwd(), process.argv[2] ?? "import/route-a");
+// pnpm passes a separating "--" through to the script; it isn't the folder.
+const folderArg = process.argv.slice(2).find((arg) => arg !== "--");
+const folder = resolve(process.env.INIT_CWD ?? process.cwd(), folderArg ?? "import/route-a");
+if (!existsSync(folder)) {
+  console.error(`Folder not found: ${folder}. Put the CSV files in import/route-a at the repo root, or pass the folder.`);
+  process.exit(1);
+}
 const read = (name: string) => { const path = join(folder, name); return existsSync(path) ? parseCsv(readFileSync(path, "utf8")) : null; };
 const db = getDb();
 const report: string[] = [];
