@@ -181,7 +181,8 @@ async function loadXero() {
     complete: results.every((result) => !result.error),
     asOf: today,
     companies,
-    invoices: invoices.sort((a, b) => b.daysOverdue - a.daysOverdue || b.amountDue - a.amountDue),
+    // Newest invoice first; ISO dates compare as strings.
+    invoices: invoices.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "") || (b.number ?? "").localeCompare(a.number ?? "", undefined, { numeric: true })),
     bills: bills.sort((a, b) => b.daysOverdue - a.daysOverdue || b.amountDue - a.amountDue),
   };
 }
