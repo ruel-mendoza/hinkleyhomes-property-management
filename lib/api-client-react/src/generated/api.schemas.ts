@@ -1870,6 +1870,312 @@ export interface CheckRunList {
   items: CheckRun[];
 }
 
+export interface OkResult {
+  ok: boolean;
+}
+
+export type BillReviewView = typeof BillReviewView[keyof typeof BillReviewView];
+
+
+export const BillReviewView = {
+  action: 'action',
+  planned: 'planned',
+  done: 'done',
+  ignored: 'ignored',
+  all: 'all',
+} as const;
+
+export type BillReviewStatus = typeof BillReviewStatus[keyof typeof BillReviewStatus];
+
+
+export const BillReviewStatus = {
+  held: 'held',
+  shadow_planned: 'shadow_planned',
+  pending_xero: 'pending_xero',
+  created_draft: 'created_draft',
+  updated_draft: 'updated_draft',
+  create_failed: 'create_failed',
+  not_invoice: 'not_invoice',
+  read_failed: 'read_failed',
+} as const;
+
+export interface BillReviewReason {
+  code: string;
+  severity: string;
+  message: string;
+}
+
+export interface BillReviewSuggestion {
+  tenantId: string;
+  tenantName: string;
+  option: string;
+}
+
+export interface BillReviewNeed {
+  answerKey: string;
+  description: string;
+  serviceDate: string;
+  /** @nullable */
+  amount: number | null;
+  reason: string;
+  referenceText: string;
+  aliasKey: string;
+  suggestions: BillReviewSuggestion[];
+}
+
+export interface BillReviewAllocation {
+  tenantName: string;
+  lineCount: number;
+  amount: number;
+  pays: string;
+}
+
+export interface BillReviewPlan {
+  tenantName: string;
+  total: number;
+  sourceUpdate: boolean;
+  /** @nullable */
+  ok: boolean | null;
+  /** @nullable */
+  error: string | null;
+}
+
+export interface BillReview {
+  id: string;
+  tenantId: string;
+  company: string;
+  billId: string;
+  status: BillReviewStatus;
+  /** @nullable */
+  supplierName: string | null;
+  /** @nullable */
+  invoiceNumber: string | null;
+  /** @nullable */
+  invoiceDate: string | null;
+  /** @nullable */
+  total: number | null;
+  /** @nullable */
+  documentType: string | null;
+  /** @nullable */
+  filename: string | null;
+  /** @nullable */
+  sourceType: string | null;
+  shadowMode: boolean;
+  reasons: BillReviewReason[];
+  needs: BillReviewNeed[];
+  allocation: BillReviewAllocation[];
+  plans: BillReviewPlan[];
+  xeroUrl: string;
+  /** @nullable */
+  error: string | null;
+  /** @nullable */
+  answeredAt: string | null;
+  /** @nullable */
+  answeredBy: string | null;
+  createdAt: string;
+}
+
+export interface BillReviewCounts {
+  action: number;
+  planned: number;
+  done: number;
+  ignored: number;
+}
+
+export interface BillReviewList {
+  items: BillReview[];
+  counts: BillReviewCounts;
+  shadowMode: boolean;
+}
+
+export interface BillReviewAnswer {
+  /** @maxLength 600 */
+  answerKey: string;
+  tenantId: string;
+  /**
+     * The Property tracking option, or null for a company cost with no property
+     * @maxLength 200
+     * @nullable
+     */
+  option: string | null;
+  /** Also remember the property text written on the invoice for future bills */
+  remember: boolean;
+}
+
+export interface BillReviewAnswers {
+  /**
+     * @minItems 1
+     * @maxItems 200
+     */
+  answers: BillReviewAnswer[];
+}
+
+export type BillCodingSettingsCategoryAccountMap = {[key: string]: string};
+
+export interface BillCodingSettings {
+  shadowMode: boolean;
+  autoSplit: boolean;
+  maxBillsPerRun: number;
+  checkStatuses: string[];
+  trackingCategory: string;
+  payingCompanyName: string;
+  defaultAccountCode: string;
+  categoryAccountMap: BillCodingSettingsCategoryAccountMap;
+  legibilityMin: number;
+  dateOutlierDays: number;
+  dupLineMinAmount: number;
+  reprocessHeld: boolean;
+  /** @nullable */
+  updatedBy: string | null;
+  updatedAt: string;
+}
+
+export type BillCodingSettingsUpdateCheckStatusesItem = typeof BillCodingSettingsUpdateCheckStatusesItem[keyof typeof BillCodingSettingsUpdateCheckStatusesItem];
+
+
+export const BillCodingSettingsUpdateCheckStatusesItem = {
+  DRAFT: 'DRAFT',
+  SUBMITTED: 'SUBMITTED',
+  AUTHORISED: 'AUTHORISED',
+} as const;
+
+export type BillCodingSettingsUpdateCategoryAccountMap = {[key: string]: string};
+
+export interface BillCodingSettingsUpdate {
+  shadowMode?: boolean;
+  autoSplit?: boolean;
+  /**
+     * @minimum 1
+     * @maximum 50
+     */
+  maxBillsPerRun?: number;
+  /** @minItems 1 */
+  checkStatuses?: BillCodingSettingsUpdateCheckStatusesItem[];
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  trackingCategory?: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  payingCompanyName?: string;
+  /** @maxLength 20 */
+  defaultAccountCode?: string;
+  categoryAccountMap?: BillCodingSettingsUpdateCategoryAccountMap;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  legibilityMin?: number;
+  /**
+     * @minimum 1
+     * @maximum 365
+     */
+  dateOutlierDays?: number;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  dupLineMinAmount?: number;
+  reprocessHeld?: boolean;
+}
+
+export interface TrackingCompany {
+  tenantId: string;
+  name: string;
+  options: string[];
+}
+
+export interface TrackingOptions {
+  trackingCategory: string;
+  problems: string[];
+  companies: TrackingCompany[];
+}
+
+export type PropertyAliasKind = typeof PropertyAliasKind[keyof typeof PropertyAliasKind];
+
+
+export const PropertyAliasKind = {
+  text: 'text',
+  line: 'line',
+} as const;
+
+export interface PropertyAlias {
+  id: string;
+  kind: PropertyAliasKind;
+  alias: string;
+  normalizedAlias: string;
+  /** @nullable */
+  tenantId: string | null;
+  /** @nullable */
+  company: string | null;
+  /** @nullable */
+  option: string | null;
+  overhead: boolean;
+  /**
+     * Set when the alias points to a property in the app's register
+     * @nullable
+     */
+  propertyName: string | null;
+  source: string;
+  /** @nullable */
+  createdBy: string | null;
+  updatedAt: string;
+}
+
+export interface PropertyAliasList {
+  items: PropertyAlias[];
+}
+
+export interface PropertyAliasInput {
+  /**
+     * How the property is written (ignored when changing a bill line answer)
+     * @maxLength 300
+     */
+  alias: string;
+  tenantId: string;
+  /**
+     * The Property tracking option, or null for a company cost with no property
+     * @maxLength 200
+     * @nullable
+     */
+  option: string | null;
+}
+
+export interface CompanyAlias {
+  id: string;
+  alias: string;
+  normalizedAlias: string;
+  tenantId: string;
+  /** @nullable */
+  company: string | null;
+  /** @nullable */
+  notes: string | null;
+  /** @nullable */
+  createdBy: string | null;
+  updatedAt: string;
+}
+
+export interface CompanyAliasList {
+  items: CompanyAlias[];
+}
+
+export interface CompanyAliasInput {
+  /**
+     * The company name as written on invoices
+     * @maxLength 300
+     */
+  alias: string;
+  tenantId: string;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  notes: string | null;
+}
+
 export type ListCohoPropertiesParams = {
 /**
  * @minimum 1
@@ -1966,5 +2272,9 @@ status?: ComplianceFilter;
 
 export type ListFinanceAlertsParams = {
 status?: FinanceAlertFilter;
+};
+
+export type ListBillReviewsParams = {
+view?: BillReviewView;
 };
 

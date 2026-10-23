@@ -9,7 +9,7 @@ import { shadcn } from '@clerk/themes';
 import NotFound from '@/pages/not-found';
 import { Link, Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import {
-  AlertTriangle, ArrowUpRight, Building2, CalendarDays, ClipboardList, FileSearch, FileText, House, Landmark, LayoutDashboard, LogOut, Menu, PlugZap, PoundSterling, Search, ShieldCheck, TrendingUp, Users, Wallet, Wrench, X,
+  AlertTriangle, ArrowUpRight, Building2, CalendarDays, ClipboardList, FileSearch, FileText, House, Landmark, LayoutDashboard, LogOut, Menu, PlugZap, PoundSterling, Search, ShieldCheck, Tags, TrendingUp, Users, Wallet, Wrench, X,
 } from 'lucide-react';
 import {
   getGetCohoStatusQueryKey,
@@ -36,6 +36,7 @@ import BankFeedPage from '@/pages/finance/BankFeedPage';
 import { MoneyTrend } from '@/pages/finance/MoneyTrend';
 import InvoicesPage, { ReceivablesStrip } from '@/pages/finance/InvoicesPage';
 import ChecksPage from '@/pages/finance/ChecksPage';
+import PropertyAliasesPage from '@/pages/properties/PropertyAliasesPage';
 import ListingsWidget from '@/pages/listings-widget';
 import { AccountsNotices, MoneyPanels, formatPounds } from '@/components/overview/MoneyPanels';
 import { PresenceIndicator, usePresenceHeartbeat } from '@/components/presence/PresenceIndicator';
@@ -51,7 +52,7 @@ import { isAllowedStaffEmail } from '@/lib/staff-email';
 // Browsers that used the old prototype still hold its demo records under this key.
 const LEGACY_DEMO_STORAGE = 'hinkley-pms-demo-v1';
 const navGroups = [
-  { label: 'CORE', items: [['/dashboard', 'Overview', LayoutDashboard], ['/properties', 'Properties', Building2]] },
+  { label: 'CORE', items: [['/dashboard', 'Overview', LayoutDashboard], ['/properties', 'Properties', Building2], ['/property-aliases', 'Property aliases', Tags]] },
   { label: 'OPERATIONS', items: [['/calendar', 'Calendar', CalendarDays], ['/occupancy', 'Occupancy', Users], ['/performance', 'Performance', TrendingUp], ['/compliance', 'Compliance', ShieldCheck], ['/actions', 'Actions', ClipboardList], ['/maintenance', 'Maintenance', Wrench]] },
   { label: 'FINANCE', items: [['/finance', 'Rent & fees', Wallet], ['/bank-feed', 'Rent bank feed', Landmark], ['/invoices', 'Invoices', FileText], ['/checks', 'Finance checks', FileSearch]] },
 ] as const;
@@ -135,6 +136,7 @@ function AppShell() {
           <Route path="/bank-feed" component={BankFeedPage} />
           <Route path="/invoices" component={InvoicesPage} />
           <Route path="/checks" component={ChecksPage} />
+          <Route path="/property-aliases" component={PropertyAliasesPage} />
           <Route path="/maintenance" component={CohoMaintenancePage} />
           <Route path="/properties"><PropertiesPage /></Route>
           <Route path="/properties/:id">{(params) => <PropertyDetailPage id={decodeURIComponent(params.id)} />}</Route>
@@ -213,7 +215,7 @@ function SignedOutOnly({ children }: { children: ReactNode }) { const { isLoaded
 function ProtectedCRM() { const { isLoaded, isSignedIn } = useAuth(); const { user, isLoaded: userLoaded } = useUser(); const { signOut } = useClerk(); if (!isLoaded || !userLoaded) return <AuthLoadingPage />; if (!isSignedIn) return <Redirect to="/sign-in" />; const email = user?.primaryEmailAddress?.emailAddress ?? ''; if (!isAllowedStaffEmail(email)) return <AccessRestrictedPage onSignOut={() => void signOut({ redirectUrl: basePath || '/' })} />; return <AppShell />; }
 function ClerkQueryClientCacheInvalidator() { const { addListener } = useClerk(); const client = useRef<string | null | undefined>(undefined); useEffect(() => addListener(({ user }) => { const userId = user?.id ?? null; if (client.current !== undefined && client.current !== userId) queryClient.clear(); client.current = userId; }), []); return null; }
 function RoutedErrorBoundary({ children }: { children: ReactNode }) { const [location] = useLocation(); return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>; }
-function Router() { return <RoutedErrorBoundary><Switch><Route path="/" component={HomeRedirect} /><Route path="/sign-in/*?" component={() => <SignedOutOnly><SignInPage /></SignedOutOnly>} /><Route path="/sign-up/*?" component={() => <SignedOutOnly><SignUpPage /></SignedOutOnly>} /><Route path="/dashboard" component={ProtectedCRM} /><Route path="/calendar" component={ProtectedCRM} /><Route path="/actions" component={ProtectedCRM} /><Route path="/occupancy" component={ProtectedCRM} /><Route path="/performance" component={ProtectedCRM} /><Route path="/compliance" component={ProtectedCRM} /><Route path="/finance" component={ProtectedCRM} /><Route path="/bank-feed" component={ProtectedCRM} /><Route path="/invoices" component={ProtectedCRM} /><Route path="/checks" component={ProtectedCRM} /><Route path="/maintenance" component={ProtectedCRM} /><Route path="/properties" component={ProtectedCRM} /><Route path="/properties/:id" component={ProtectedCRM} /><Route path="/widget" component={ListingsWidget} /><Route component={NotFound} /></Switch></RoutedErrorBoundary>; }
+function Router() { return <RoutedErrorBoundary><Switch><Route path="/" component={HomeRedirect} /><Route path="/sign-in/*?" component={() => <SignedOutOnly><SignInPage /></SignedOutOnly>} /><Route path="/sign-up/*?" component={() => <SignedOutOnly><SignUpPage /></SignedOutOnly>} /><Route path="/dashboard" component={ProtectedCRM} /><Route path="/calendar" component={ProtectedCRM} /><Route path="/actions" component={ProtectedCRM} /><Route path="/occupancy" component={ProtectedCRM} /><Route path="/performance" component={ProtectedCRM} /><Route path="/compliance" component={ProtectedCRM} /><Route path="/finance" component={ProtectedCRM} /><Route path="/bank-feed" component={ProtectedCRM} /><Route path="/invoices" component={ProtectedCRM} /><Route path="/checks" component={ProtectedCRM} /><Route path="/property-aliases" component={ProtectedCRM} /><Route path="/maintenance" component={ProtectedCRM} /><Route path="/properties" component={ProtectedCRM} /><Route path="/properties/:id" component={ProtectedCRM} /><Route path="/widget" component={ListingsWidget} /><Route component={NotFound} /></Switch></RoutedErrorBoundary>; }
 function ClerkApp() { const [, setLocation] = useLocation(); function stripBase(path: string) { return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || '/' : path; } return <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={clerkAppearance} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} localization={{ signIn: { start: { title: 'Welcome back', subtitle: 'Sign in to access your Hinkley Homes staff account' } }, signUp: { start: { title: 'Create your account', subtitle: 'Use your Hinkley Homes company email to register' } } }} routerPush={to => setLocation(stripBase(to))} routerReplace={to => setLocation(stripBase(to), { replace: true })}><QueryClientProvider client={queryClient}><TooltipProvider><ClerkQueryClientCacheInvalidator /><Router /><Toaster /></TooltipProvider></QueryClientProvider></ClerkProvider>; }
 function App() { return <WouterRouter base={basePath}><ClerkApp /></WouterRouter>; }
 export default App;

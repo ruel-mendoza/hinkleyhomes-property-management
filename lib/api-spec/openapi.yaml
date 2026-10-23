@@ -1011,6 +1011,290 @@ paths:
           description: A run is already in progress
         "503":
           description: Database or Xero gateway is not configured
+  /bill-coding/reviews:
+    get:
+      operationId: listBillReviews
+      tags: [xero]
+      summary: Supplier bills the bill coding workflow has read, latest review per bill
+      parameters:
+        - name: view
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/BillReviewView"
+      responses:
+        "200":
+          description: Reviews, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillReviewList"
+        "503":
+          description: Database is not configured
+  /bill-coding/reviews/{id}/answers:
+    post:
+      operationId: answerBillReview
+      tags: [xero]
+      summary: Say which property (or company overhead) each held line belongs to; the next hourly run checks the bill again
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillReviewAnswers"
+      responses:
+        "200":
+          description: Answers saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResult"
+        "400":
+          description: Invalid answers
+        "404":
+          description: Review not found
+        "503":
+          description: Database is not configured
+  /bill-coding/settings:
+    get:
+      operationId: getBillCodingSettings
+      tags: [xero]
+      summary: Bill coding settings (shadow mode, automatic splitting, account codes)
+      responses:
+        "200":
+          description: Current settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillCodingSettings"
+        "503":
+          description: Database is not configured
+    put:
+      operationId: updateBillCodingSettings
+      tags: [xero]
+      summary: Change bill coding settings (written to the audit log)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillCodingSettingsUpdate"
+      responses:
+        "200":
+          description: Saved settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillCodingSettings"
+        "400":
+          description: Invalid settings
+        "503":
+          description: Database is not configured
+  /bill-coding/tracking-options:
+    get:
+      operationId: getTrackingOptions
+      tags: [xero]
+      summary: Property tracking options in each company's Xero (for choosing a property)
+      responses:
+        "200":
+          description: Options per company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackingOptions"
+        "503":
+          description: Xero gateway or database is not configured
+  /property-aliases:
+    get:
+      operationId: listPropertyAliases
+      tags: [properties]
+      summary: Property aliases (spellings and bill line answers) and the property each points to
+      responses:
+        "200":
+          description: Aliases
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertyAliasList"
+        "503":
+          description: Database is not configured
+    post:
+      operationId: createPropertyAlias
+      tags: [properties]
+      summary: Add a property alias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PropertyAliasInput"
+      responses:
+        "201":
+          description: The new alias
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertyAlias"
+        "400":
+          description: Invalid alias
+        "409":
+          description: The alias already exists
+        "503":
+          description: Database is not configured
+  /property-aliases/{id}:
+    put:
+      operationId: updatePropertyAlias
+      tags: [properties]
+      summary: Change a property alias
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PropertyAliasInput"
+      responses:
+        "200":
+          description: The changed alias
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertyAlias"
+        "400":
+          description: Invalid alias
+        "404":
+          description: Alias not found
+        "409":
+          description: Another alias already has this spelling
+        "503":
+          description: Database is not configured
+    delete:
+      operationId: deletePropertyAlias
+      tags: [properties]
+      summary: Delete a property alias
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResult"
+        "404":
+          description: Alias not found
+        "503":
+          description: Database is not configured
+  /company-aliases:
+    get:
+      operationId: listCompanyAliases
+      tags: [properties]
+      summary: How company names are written on supplier invoices, and the Xero organisation each means
+      responses:
+        "200":
+          description: Company aliases
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyAliasList"
+        "503":
+          description: Database is not configured
+    post:
+      operationId: createCompanyAlias
+      tags: [properties]
+      summary: Add a company alias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyAliasInput"
+      responses:
+        "201":
+          description: The new alias
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyAlias"
+        "400":
+          description: Invalid alias
+        "409":
+          description: The alias already exists
+        "503":
+          description: Database is not configured
+  /company-aliases/{id}:
+    put:
+      operationId: updateCompanyAlias
+      tags: [properties]
+      summary: Change a company alias
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyAliasInput"
+      responses:
+        "200":
+          description: The changed alias
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyAlias"
+        "400":
+          description: Invalid alias
+        "404":
+          description: Alias not found
+        "409":
+          description: Another alias already has this spelling
+        "503":
+          description: Database is not configured
+    delete:
+      operationId: deleteCompanyAlias
+      tags: [properties]
+      summary: Delete a company alias
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResult"
+        "404":
+          description: Alias not found
+        "503":
+          description: Database is not configured
   /public/listings:
     get:
       operationId: listPublicListings
@@ -3212,3 +3496,393 @@ components:
           items:
             $ref: "#/components/schemas/CheckRun"
       required: [items]
+    OkResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
+    BillReviewView:
+      type: string
+      enum: [action, planned, done, ignored, all]
+    BillReviewStatus:
+      type: string
+      enum: [held, shadow_planned, pending_xero, created_draft, updated_draft, create_failed, not_invoice, read_failed]
+    BillReviewReason:
+      type: object
+      properties:
+        code:
+          type: string
+        severity:
+          type: string
+        message:
+          type: string
+      required: [code, severity, message]
+    BillReviewSuggestion:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        tenantName:
+          type: string
+        option:
+          type: string
+      required: [tenantId, tenantName, option]
+    BillReviewNeed:
+      type: object
+      properties:
+        answerKey:
+          type: string
+        description:
+          type: string
+        serviceDate:
+          type: string
+        amount:
+          type: ["number", "null"]
+        reason:
+          type: string
+        referenceText:
+          type: string
+        aliasKey:
+          type: string
+        suggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillReviewSuggestion"
+      required: [answerKey, description, serviceDate, amount, reason, referenceText, aliasKey, suggestions]
+    BillReviewAllocation:
+      type: object
+      properties:
+        tenantName:
+          type: string
+        lineCount:
+          type: integer
+        amount:
+          type: number
+        pays:
+          type: string
+      required: [tenantName, lineCount, amount, pays]
+    BillReviewPlan:
+      type: object
+      properties:
+        tenantName:
+          type: string
+        total:
+          type: number
+        sourceUpdate:
+          type: boolean
+        ok:
+          type: ["boolean", "null"]
+        error:
+          type: ["string", "null"]
+      required: [tenantName, total, sourceUpdate, ok, error]
+    BillReview:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        company:
+          type: string
+        billId:
+          type: string
+        status:
+          $ref: "#/components/schemas/BillReviewStatus"
+        supplierName:
+          type: ["string", "null"]
+        invoiceNumber:
+          type: ["string", "null"]
+        invoiceDate:
+          type: ["string", "null"]
+        total:
+          type: ["number", "null"]
+        documentType:
+          type: ["string", "null"]
+        filename:
+          type: ["string", "null"]
+        sourceType:
+          type: ["string", "null"]
+        shadowMode:
+          type: boolean
+        reasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillReviewReason"
+        needs:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillReviewNeed"
+        allocation:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillReviewAllocation"
+        plans:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillReviewPlan"
+        xeroUrl:
+          type: string
+        error:
+          type: ["string", "null"]
+        answeredAt:
+          type: ["string", "null"]
+        answeredBy:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, tenantId, company, billId, status, supplierName, invoiceNumber, invoiceDate, total, documentType, filename, sourceType, shadowMode, reasons, needs, allocation, plans, xeroUrl, error, answeredAt, answeredBy, createdAt]
+    BillReviewCounts:
+      type: object
+      properties:
+        action:
+          type: integer
+        planned:
+          type: integer
+        done:
+          type: integer
+        ignored:
+          type: integer
+      required: [action, planned, done, ignored]
+    BillReviewList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillReview"
+        counts:
+          $ref: "#/components/schemas/BillReviewCounts"
+        shadowMode:
+          type: boolean
+      required: [items, counts, shadowMode]
+    BillReviewAnswer:
+      type: object
+      properties:
+        answerKey:
+          type: string
+          maxLength: 600
+        tenantId:
+          type: string
+        option:
+          description: The Property tracking option, or null for a company cost with no property
+          type: ["string", "null"]
+          maxLength: 200
+        remember:
+          description: Also remember the property text written on the invoice for future bills
+          type: boolean
+      required: [answerKey, tenantId, option, remember]
+    BillReviewAnswers:
+      type: object
+      properties:
+        answers:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/BillReviewAnswer"
+      required: [answers]
+    BillCodingSettings:
+      type: object
+      properties:
+        shadowMode:
+          type: boolean
+        autoSplit:
+          type: boolean
+        maxBillsPerRun:
+          type: integer
+        checkStatuses:
+          type: array
+          items:
+            type: string
+        trackingCategory:
+          type: string
+        payingCompanyName:
+          type: string
+        defaultAccountCode:
+          type: string
+        categoryAccountMap:
+          type: object
+          additionalProperties:
+            type: string
+        legibilityMin:
+          type: number
+        dateOutlierDays:
+          type: integer
+        dupLineMinAmount:
+          type: integer
+        reprocessHeld:
+          type: boolean
+        updatedBy:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+      required: [shadowMode, autoSplit, maxBillsPerRun, checkStatuses, trackingCategory, payingCompanyName, defaultAccountCode, categoryAccountMap, legibilityMin, dateOutlierDays, dupLineMinAmount, reprocessHeld, updatedBy, updatedAt]
+    BillCodingSettingsUpdate:
+      type: object
+      properties:
+        shadowMode:
+          type: boolean
+        autoSplit:
+          type: boolean
+        maxBillsPerRun:
+          type: integer
+          minimum: 1
+          maximum: 50
+        checkStatuses:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum: [DRAFT, SUBMITTED, AUTHORISED]
+        trackingCategory:
+          type: string
+          minLength: 1
+          maxLength: 100
+        payingCompanyName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        defaultAccountCode:
+          type: string
+          maxLength: 20
+        categoryAccountMap:
+          type: object
+          additionalProperties:
+            type: string
+            maxLength: 20
+        legibilityMin:
+          type: number
+          minimum: 0
+          maximum: 1
+        dateOutlierDays:
+          type: integer
+          minimum: 1
+          maximum: 365
+        dupLineMinAmount:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        reprocessHeld:
+          type: boolean
+    TrackingCompany:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        name:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+      required: [tenantId, name, options]
+    TrackingOptions:
+      type: object
+      properties:
+        trackingCategory:
+          type: string
+        problems:
+          type: array
+          items:
+            type: string
+        companies:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrackingCompany"
+      required: [trackingCategory, problems, companies]
+    PropertyAliasKind:
+      type: string
+      enum: [text, line]
+    PropertyAlias:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: "#/components/schemas/PropertyAliasKind"
+        alias:
+          type: string
+        normalizedAlias:
+          type: string
+        tenantId:
+          type: ["string", "null"]
+        company:
+          type: ["string", "null"]
+        option:
+          type: ["string", "null"]
+        overhead:
+          type: boolean
+        propertyName:
+          description: Set when the alias points to a property in the app's register
+          type: ["string", "null"]
+        source:
+          type: string
+        createdBy:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+      required: [id, kind, alias, normalizedAlias, tenantId, company, option, overhead, propertyName, source, createdBy, updatedAt]
+    PropertyAliasList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyAlias"
+      required: [items]
+    PropertyAliasInput:
+      type: object
+      properties:
+        alias:
+          description: How the property is written (ignored when changing a bill line answer)
+          type: string
+          maxLength: 300
+        tenantId:
+          type: string
+        option:
+          description: The Property tracking option, or null for a company cost with no property
+          type: ["string", "null"]
+          maxLength: 200
+      required: [alias, tenantId, option]
+    CompanyAlias:
+      type: object
+      properties:
+        id:
+          type: string
+        alias:
+          type: string
+        normalizedAlias:
+          type: string
+        tenantId:
+          type: string
+        company:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdBy:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+      required: [id, alias, normalizedAlias, tenantId, company, notes, createdBy, updatedAt]
+    CompanyAliasList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyAlias"
+      required: [items]
+    CompanyAliasInput:
+      type: object
+      properties:
+        alias:
+          description: The company name as written on invoices
+          type: string
+          maxLength: 300
+        tenantId:
+          type: string
+        notes:
+          type: ["string", "null"]
+          maxLength: 500
+      required: [alias, tenantId, notes]

@@ -1,0 +1,887 @@
+{
+  "name": "Hinkley Route A: Xero-first (v11, PMS-controlled)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "43f2c4c8-f30f-4348-9dc4-7ffc87a21256",
+      "name": "Manual test",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 200]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "35c42193-26da-4e69-b064-f5d9745a5976",
+      "name": "Every hour (check Xero)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0480254e-f927-4553-9fc2-37a03dfb5b50",
+              "name": "replit_base_url",
+              "value": "https://hinkley-homes-property-management--ruelrmendoza.replit.app",
+              "type": "string"
+            },
+            {
+              "id": "4307379b-4597-4b85-946f-8301c386fb76",
+              "name": "model",
+              "value": "gpt-5.4",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "9ed814ab-6d2e-4838-aa78-56b728b35278",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [224, 96]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Config').first().json.replit_base_url + '/api/integrations/bill-coding/plan' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "b7e1c0a2-3d4f-4a5b-8c6d-7e8f9a0b1c21",
+      "name": "Get bills to check (PMS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [448, 96],
+      "executeOnce": true,
+      "notes": "The PMS reads draft and submitted supplier bills in all five companies through the Xero gateway, and skips bills already coded, handled, duplicated or waiting for an answer. Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret."
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per bill the PMS picked to check this run.\nconst r = $input.first().json || {};\nconst bills = Array.isArray(r.bills) ? r.bills : [];\nreturn bills.map(b => {\n  const x = b.xero || {};\n  const j = {\n    from: b.from || '', from_email: '', subject: b.subject || '', received_at: b.received_at || '',\n    message_id: b.message_id, outlook_message_id: '', outlook_categories: [],\n    filename: b.filename, mime_type: 'text/plain', source_type: 'xero_bill_text',\n    has_document: true, want_file: !!b.want_file, xero_text: b.xero_text,\n    // Later steps use xero.tenant_id and xero.invoice_id; the PMS reads xero.tenantId and xero.invoiceId.\n    xero: Object.assign({}, x, { tenant_id: x.tenantId, invoice_id: x.invoiceId, tenant_name: x.tenantName })\n  };\n  if (!b.want_file) j.body_text = b.xero_text;\n  return { json: j };\n});\n"
+      },
+      "id": "c8f2d1b3-4e5a-4b6c-9d7e-8f9a0b1c2d32",
+      "name": "Bills to check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [672, 96]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1633ddeb-d912-43bd-a4f3-da3a13d9dc1f",
+              "leftValue": "={{ $json.want_file }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "289a4b45-00f6-475d-a98c-33ee359bda4e",
+      "name": "Bill has a file?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [896, 96]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.xero.com/api.xro/2.0/Invoices/' + $json.xero.invoice_id + '/Attachments' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xeroOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xero-tenant-id",
+              "value": "={{ $json.xero.tenant_id }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b80ae645-3480-4a30-8121-e89aad8e9f11",
+      "name": "List bill attachments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 32],
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pick the invoice file (PDF preferred, else image) from the bill's attachment list.\nconst items = $input.all();\nconst out = [];\nconst EXT = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' };\nfor (let i = 0; i < items.length; i++) {\n  const src = $('Bill has a file?').itemMatching(i).json;\n  const r = items[i].json || {};\n  const list = (Array.isArray(r.Attachments) ? r.Attachments : []).map(a => {\n    const ext = String(a.FileName || '').split('.').pop().toLowerCase();\n    return { name: a.FileName, mime: EXT[ext] || '', size: Number(a.ContentLength || 0) };\n  }).filter(a => a.name && a.mime);\n  list.sort((a, b) => (b.mime === 'application/pdf') - (a.mime === 'application/pdf') || b.size - a.size);\n  const j = Object.assign({}, src);\n  if (list.length) { j.found_file = true; j.attach_file = list[0].name; j.attach_mime = list[0].mime; }\n  else { j.found_file = false; j.body_text = src.xero_text; j.source_type = 'xero_bill_text'; j.mime_type = 'text/plain'; }\n  out.push({ json: j, pairedItem: { item: i } });\n}\nreturn out;\n"
+      },
+      "id": "8fc9a55b-edb8-4519-b339-8cbe58ad978d",
+      "name": "Choose invoice file",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1344, 32]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "01c6ecfb-1c5f-4d08-891f-02753bf4c164",
+              "leftValue": "={{ $json.found_file }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8643d067-04ad-4399-b543-fd8aed6c2fc8",
+      "name": "Found a file?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1568, 32]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.xero.com/api.xro/2.0/Invoices/' + $json.xero.invoice_id + '/Attachments/' + encodeURIComponent($json.attach_file) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xeroOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xero-tenant-id",
+              "value": "={{ $json.xero.tenant_id }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 90000
+        }
+      },
+      "id": "a3690423-8a36-4682-bc04-211b43f41a4e",
+      "name": "Download invoice file from Xero",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1792, -48],
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Put the downloaded invoice file on the item. If the download failed, read the bill's own Xero data instead.\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const it = items[i];\n  const src = $('Found a file?').itemMatching(i).json;\n  const bin = it.binary ? (it.binary.data || Object.values(it.binary)[0]) : null;\n  const j = Object.assign({}, src);\n  if (bin && !(it.json && it.json.error)) {\n    j.source_type = 'attachment'; j.filename = src.attach_file; j.mime_type = src.attach_mime; delete j.body_text;\n    out.push({ json: j, binary: { data: Object.assign({}, bin, { fileName: src.attach_file, mimeType: src.attach_mime }) }, pairedItem: { item: i } });\n  } else {\n    j.source_type = 'xero_bill_text'; j.body_text = src.xero_text; j.mime_type = 'text/plain'; j.found_file = false;\n    out.push({ json: j, pairedItem: { item: i } });\n  }\n}\nreturn out;\n"
+      },
+      "id": "097fb25b-70a4-44a3-b9d1-367de9c6365c",
+      "name": "Put file on bill item",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2016, -48]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.source_type }}",
+              "rightValue": "office_document",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c461967f-5b41-472c-820b-934b24d3b96f",
+      "name": "Word or ODT document?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2240, 96]
+    },
+    {
+      "parameters": {},
+      "id": "7122d5d7-a721-4991-a46d-77424028cb9a",
+      "name": "Unpack Word/ODT file",
+      "type": "n8n-nodes-base.compression",
+      "typeVersion": 1.1,
+      "position": [2464, 16]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pull the readable text out of an unpacked .odt (content.xml) or .docx (word/document.xml).\nconst NL = String.fromCharCode(10);\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const src = $('Word or ODT document?').itemMatching(i);\n  const bins = items[i].binary || {};\n  let xml = '';\n  for (const key of Object.keys(bins)) {\n    const name = String(bins[key].fileName || key).toLowerCase();\n    if (name.endsWith('content.xml') || name.endsWith('document.xml')) {\n      const buf = await this.helpers.getBinaryDataBuffer(i, key);\n      xml = buf.toString('utf8');\n      break;\n    }\n  }\n  const text = xml\n    .replace(new RegExp('<(text:tab|w:tab)[^>]*>', 'g'), ' ')\n    .replace(new RegExp('<(text:line-break|w:br)[^>]*>', 'g'), NL)\n    .replace(new RegExp('</(text:p|text:h|w:p)>', 'g'), NL)\n    .replace(new RegExp('</(table:table-cell|w:tc)>', 'g'), ' | ')\n    .replace(new RegExp('<[^>]+>', 'g'), '')\n    .replace(new RegExp('&lt;', 'g'), '<').replace(new RegExp('&gt;', 'g'), '>')\n    .replace(new RegExp('&quot;', 'g'), '\"').replace(new RegExp('&apos;', 'g'), \"'\")\n    .replace(new RegExp('&amp;', 'g'), '&')\n    .trim()\n    .slice(0, 60000);\n  out.push({\n    json: { ...src.json, source_type: 'document_text', body_text: text, document_text_found: text.length > 0 },\n    pairedItem: { item: i }\n  });\n}\nreturn out;"
+      },
+      "id": "a6b83681-d6fe-4736-8589-2c74ce8fe660",
+      "name": "Word/ODT to text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2688, 16]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build the extraction request (instructions + document) for each attachment. The OpenAI nodes read requestBody.system and the text in requestBody.messages.\nconst cfg = $('Config').first().json;\nconst SYSTEM = \"You extract data from supplier invoices for a UK property management business. Return ONLY one JSON object. No markdown fences, no commentary.\\n\\nRules:\\n- Copy values exactly as printed. Never guess or infer a missing value; use null instead.\\n- Do NOT decide whether an invoice should be paid or approved.\\n- Do NOT work out which property a line belongs to. Copy any property reference (address, house name, flat or unit) exactly as written next to the line, or at invoice level if it is given only once.\\n- Dates as YYYY-MM-DD. Amounts as plain numbers (no currency symbols). Currency as a 3-letter code.\\n- suggested_category must be one of: Cleaning, Maintenance and repairs, Compliance and safety, Pest control, Waste removal, Furniture and setup, Utilities and broadband, Build and refurbishment, Professional fees, Software and subscriptions, Other.\\n- suggested_job_type must be one of: Changeover, Midstay, Deep clean, Call-out, Other, or null if unclear.\\n- Invoice decision (be explicit): set is_invoice to true ONLY for a supplier invoice or a supplier credit note. Set document_type to \\\"invoice\\\" for an invoice (including a VAT invoice or pro-forma that requests payment) and \\\"credit_note\\\" for a credit note (a document titled credit note, credit memo or credit, or one that reduces or refunds an earlier invoice).\\n- For a credit note: put the credit note number in invoice_number and its date in invoice_date, copy amounts as positive numbers exactly as printed (do not add minus signs), and put the number of the invoice it credits in credited_invoice_reference (null if not shown).\\n- Everything else (a logo, signature image, quote, estimate, statement of account, payment receipt or remittance, order confirmation, reminder letter, or other) is NOT an invoice: set is_invoice to false, set document_type to quote, statement, receipt or other, and fill only document_type and legibility_confidence.\\n- If you cannot tell whether the document is an invoice or credit note, set is_invoice to false and explain why in extraction_notes.\\n\\nSchema:\\n{\\n  \\\"is_invoice\\\": true,\\n  \\\"document_type\\\": \\\"invoice | credit_note | quote | statement | receipt | other\\\",\\n  \\\"credited_invoice_reference\\\": null,\\n  \\\"legibility_confidence\\\": 0.0,\\n  \\\"supplier\\\": {\\n    \\\"name\\\": null, \\\"address\\\": null, \\\"email\\\": null, \\\"phone\\\": null,\\n    \\\"vat_number\\\": null, \\\"company_number\\\": null,\\n    \\\"bank\\\": {\\\"account_name\\\": null, \\\"sort_code\\\": null, \\\"account_number\\\": null, \\\"iban\\\": null}\\n  },\\n  \\\"invoice_number\\\": null,\\n  \\\"invoice_date\\\": null,\\n  \\\"due_date\\\": null,\\n  \\\"quote_or_po_reference\\\": null,\\n  \\\"addressed_to\\\": {\\\"name\\\": null, \\\"address\\\": null},\\n  \\\"currency\\\": \\\"GBP\\\",\\n  \\\"lines\\\": [\\n    {\\n      \\\"description\\\": null,\\n      \\\"property_reference_as_written\\\": null,\\n      \\\"service_date\\\": null,\\n      \\\"quantity\\\": null,\\n      \\\"net\\\": null, \\\"vat\\\": null, \\\"gross\\\": null,\\n      \\\"suggested_category\\\": null,\\n      \\\"suggested_job_type\\\": null\\n    }\\n  ],\\n  \\\"totals\\\": {\\\"net\\\": null, \\\"vat\\\": null, \\\"gross\\\": null},\\n  \\\"payment_terms\\\": null,\\n  \\\"extraction_notes\\\": []\\n}\\nlegibility_confidence is your own 0 to 1 estimate of how clearly the whole document could be read. Put anything unclear, cut off, handwritten or ambiguous into extraction_notes.\";\nconst hash53 = (str, seed = 0) => { let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed; for (let i = 0; i < str.length; i++) { const ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); } h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909); return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36); };\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const it = items[i];\n  let b64, block;\n  if (typeof it.json.body_text === 'string') {\n    const doc = 'From: ' + it.json.from + '\\nSubject: ' + it.json.subject + '\\nReceived: ' + it.json.received_at + '\\n\\n' + it.json.body_text;\n    b64 = Buffer.from(doc, 'utf8').toString('base64');\n    const intro = it.json.source_type === 'xero_bill_text'\n      ? 'This supplier bill is already recorded in Xero and has no file attached. Treat the details below as the invoice. The amounts are as entered in Xero:'\n      : it.json.source_type === 'document_text'\n      ? 'The invoice (if any) is in the attached document ' + it.json.filename + ', converted to plain text below together with the email details:'\n      : 'The invoice (if any) is in the body of this email, not an attachment. Email content:';\n    block = { type: 'text', text: intro + String.fromCharCode(10, 10) + doc };\n  } else {\n    const buf = await this.helpers.getBinaryDataBuffer(i, 'data');\n    b64 = buf.toString('base64');\n    block = it.json.mime_type === 'application/pdf'\n      ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }\n      : { type: 'image', source: { type: 'base64', media_type: it.json.mime_type, data: b64 } };\n  }\n  out.push({\n    json: {\n      ...it.json,\n      document_base64: b64,\n      doc_hash: hash53(b64) + '-' + b64.length,\n      requestBody: {\n        model: cfg.model,\n        max_tokens: 3000,\n        temperature: 0,\n        system: SYSTEM,\n        messages: [{ role: 'user', content: [block, { type: 'text', text: 'Extract the invoice fields as specified. Return JSON only.' }] }]\n      }\n    },\n    binary: it.binary\n  });\n}\nreturn out;"
+      },
+      "id": "54e0f081-b566-4975-beea-87cd45ec4c92",
+      "name": "Build AI request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2912, 96]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Config').first().json.replit_base_url + '/api/integrations/bill-coding/readings/' + encodeURIComponent($json.doc_hash) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "d9a3e2c4-5f6b-4c7d-8e9f-0a1b2c3d4e43",
+      "name": "Look up saved reading (PMS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3136, 96],
+      "onError": "continueRegularOutput",
+      "notes": "Same Header Auth credential (X-Hinkley-Sync-Key). The PMS keeps every reading by file fingerprint, so the same file is never read twice."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Has this exact document been read before? Same file bytes (or same bill text) = same reading, no AI call.\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const src = $('Build AI request').itemMatching(i);\n  const r = items[i].json || {};\n  const ex = (r.found === true && r.extraction && typeof r.extraction === 'object') ? r.extraction : null;\n  out.push({ json: Object.assign({}, src.json, { cache_hit: !!ex, cached_extraction: ex }), binary: src.binary, pairedItem: { item: i } });\n}\nreturn out;\n"
+      },
+      "id": "e853f262-1431-40f0-a42a-adf6aaf7ebe5",
+      "name": "Check reading cache",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3360, 96]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6d78c181-e4d2-4c6d-8d8e-ed8f64b188f4",
+              "leftValue": "={{ $json.cache_hit }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7f17c5e4-2de4-456d-a5f6-61bc126a6d3e",
+      "name": "Already read?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [3584, 96]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cache hit: hand the saved reading straight to the parser. No file, no LLM call.\nconst items = $input.all();\nreturn items.map((it, i) => ({ json: { cached_extraction: it.json.cached_extraction }, pairedItem: { item: i } }));\n"
+      },
+      "id": "68e34ac4-f42b-42d8-8376-09056606716e",
+      "name": "Use cached reading",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4032, -160]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ typeof $json.body_text === 'string' }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mime_type }}",
+                    "rightValue": "application/pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pdf"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mime_type }}",
+                    "rightValue": "image/",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "image"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "unsupported file"
+        }
+      },
+      "id": "836a4398-ccf9-40df-8841-4f2d6386e3a0",
+      "name": "Route by document type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [3808, 160]
+    },
+    {
+      "parameters": {
+        "images": {
+          "values": [
+            {}
+          ]
+        },
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.model }}"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.requestBody.messages[0].content[0].text + '\\n\\nExtract the invoice fields as specified. Return JSON only.' }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "instructions": "={{ $json.requestBody.system }}",
+          "maxTokens": 8000,
+          "reasoning": {
+            "reasoningOptions": {
+              "effort": "low",
+              "summary": "none"
+            }
+          },
+          "store": false,
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          }
+        }
+      },
+      "id": "d2f2278c-649f-4ebf-a161-2ca58ae60466",
+      "name": "Extract invoice fields from text (OpenAI)",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [4032, 0],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "openAiApi": {
+          "id": "hun6V5HnflyarVNp",
+          "name": "OpenAI account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "images": {
+          "values": [
+            {}
+          ]
+        },
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.model }}"
+        },
+        "responses": {
+          "values": [
+            {
+              "type": "file",
+              "fileType": "base64",
+              "fileName": "={{ $json.filename }}"
+            },
+            {
+              "content": "Extract the invoice fields as specified. Return JSON only."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "instructions": "={{ $json.requestBody.system }}",
+          "maxTokens": 8000,
+          "reasoning": {
+            "reasoningOptions": {
+              "effort": "low",
+              "summary": "none"
+            }
+          },
+          "store": false,
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          }
+        }
+      },
+      "id": "e03cce81-e134-49b2-81ec-3a7b80c81750",
+      "name": "Extract invoice fields from PDF (OpenAI)",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [4032, 160],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "openAiApi": {
+          "id": "hun6V5HnflyarVNp",
+          "name": "OpenAI account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "images": {
+          "values": [
+            {}
+          ]
+        },
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.model }}"
+        },
+        "responses": {
+          "values": [
+            {
+              "type": "image",
+              "imageType": "base64",
+              "imageDetail": "high"
+            },
+            {
+              "content": "Extract the invoice fields as specified. Return JSON only."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "instructions": "={{ $json.requestBody.system }}",
+          "maxTokens": 8000,
+          "reasoning": {
+            "reasoningOptions": {
+              "effort": "low",
+              "summary": "none"
+            }
+          },
+          "store": false,
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          }
+        }
+      },
+      "id": "8a9e82b7-3fb2-4819-af5c-f7b47f0de96d",
+      "name": "Extract invoice fields from image (OpenAI)",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [4032, 320],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "openAiApi": {
+          "id": "hun6V5HnflyarVNp",
+          "name": "OpenAI account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the model reply and build the reading to send to the PMS, with the bill it belongs to.\nconst cfg = $('Config').first().json;\n// Reads the OpenAI reply. (The older Claude reply format is still understood, for readings saved before the switch.)\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const resp = items[i].json || {};\n  const src = $('Build AI request').itemMatching(i).json;\n  const isOpenAI = Array.isArray(resp.output);\n  let extraction = null, extraction_error = null;\n  try {\n    if (resp.cached_extraction) { extraction = resp.cached_extraction; } else {\n    if (!isOpenAI && !Array.isArray(resp.content) && !resp.error) throw new Error('File type not supported for reading: ' + (src.mime_type || 'unknown'));\n    if (resp.error) throw new Error(typeof resp.error === 'string' ? resp.error : JSON.stringify(resp.error));\n    if (isOpenAI) {\n      const parts = [];\n      for (const o of resp.output) for (const c of (o.content || [])) parts.push(c.text);\n      const first = parts.find(p => p !== undefined && p !== null);\n      extraction = (first && typeof first === 'object') ? first : JSON.parse(String(parts.join('')).replace(/```json|```/g, '').trim());\n    } else {\n      const text = (resp.content || []).filter(b => b.type === 'text').map(b => b.text).join('');\n      extraction = JSON.parse(text.replace(/```json|```/g, '').trim());\n    }\n    }\n  } catch (e) {\n    extraction_error = String(e.message || e).slice(0, 500);\n  }\n  out.push({\n    json: {\n      xero: src.xero,\n      doc_hash: src.doc_hash || '',\n      from_cache: !!resp.cached_extraction,\n      provider: resp.cached_extraction ? 'cache' : 'openai',\n      model: resp.cached_extraction ? 'cache' : cfg.model,\n      extraction,\n      extraction_error,\n      source: { filename: src.filename, mime_type: src.mime_type, source_type: src.source_type }\n    },\n    pairedItem: { item: i }\n  });\n}\nreturn out;"
+      },
+      "id": "6d52415a-12e7-4ac0-80d6-1232640f8e69",
+      "name": "Parse extraction",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4256, 96]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.replit_base_url + '/api/integrations/bill-coding/review' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "f0b4c3d5-6a7c-4d8e-9f0a-1b2c3d4e5f54",
+      "name": "Send reading to PMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4480, 96],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "notes": "The PMS keeps the reading, checks the supplier's bank details and prices, matches every line to a property and decides: held (answered on Finance checks > Bill coding), planned (shadow mode) or write to Xero. Same Header Auth credential (X-Hinkley-Sync-Key)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per draft bill (or property update) the PMS asked for. Nothing here in shadow mode or for held bills.\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const r = items[i].json || {};\n  if (r.action !== 'write' || !Array.isArray(r.plans)) continue;\n  const src = $('Build AI request').itemMatching(i).json;\n  for (const p of r.plans) {\n    out.push({\n      json: Object.assign({}, p, {\n        review_id: r.review_id,\n        filename: src.filename, mime_type: src.mime_type, source_type: src.source_type,\n        document_base64: p.attach ? src.document_base64 : ''\n      }),\n      pairedItem: { item: i }\n    });\n  }\n}\nreturn out;\n"
+      },
+      "id": "a1c5d4e6-7b8d-4e9f-0a1b-2c3d4e5f6a65",
+      "name": "Drafts to write",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4704, 96]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.xero.com/api.xro/2.0/Invoices' + ($json.update_id ? '/' + $json.update_id : '') }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xeroOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "summarizeErrors",
+              "value": "false"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xero-tenant-id",
+              "value": "={{ $json.tenant_id }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ $json.idem_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.xero_body) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "14c0aaf0-18f4-4dbc-9b69-2edc3676844d",
+      "name": "Create or update draft bill in Xero",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4928, 96],
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Read Xero's reply, then prepare the invoice file (PDF or image) to attach to a new draft bill.\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const r = items[i].json || {};\n  const src = $('Drafts to write').itemMatching(i).json;\n  const inv = (r.Invoices && r.Invoices[0]) || null;\n  const errs = inv && inv.ValidationErrors ? inv.ValidationErrors.map(e => e.Message).join('; ') : '';\n  const ok = !!(inv && inv.InvoiceID && !errs && !r.error);\n  let warn = '';\n  if (ok && inv.Total !== undefined && src.plan_total !== undefined && Math.abs(Number(inv.Total) - Number(src.plan_total)) > 0.02) warn = 'Xero total ' + inv.Total + ' differs from the planned ' + src.plan_total + ': check the tax setting on the bill.';\n  const errMsg = errs || (r.error ? (r.error.message || JSON.stringify(r.error)) : '') || 'No bill was returned by Xero';\n  const j = {\n    review_id: src.review_id, plan_index: src.plan_index, tenant_id: src.tenant_id, mime_type: src.mime_type,\n    ok, xero_invoice_id: ok ? inv.InvoiceID : '', xero_status: ok ? inv.Status : '', error: ok ? warn : String(errMsg).slice(0, 500),\n    attachment: '', can_attach: false\n  };\n  const item = { json: j, pairedItem: { item: i } };\n  if (ok && src.attach && src.document_base64) {\n    const name = String(src.filename || 'invoice').replace(/[^\\w.\\- ]+/g, '_').slice(0, 120) || 'invoice';\n    item.binary = { data: await this.helpers.prepareBinaryData(Buffer.from(src.document_base64, 'base64'), name, src.mime_type || 'application/octet-stream') };\n    j.can_attach = true; j.attach_name = name;\n  }\n  out.push(item);\n}\nreturn out;"
+      },
+      "id": "9c0abaab-79fc-4b4f-a87d-136649d1f9ef",
+      "name": "Prepare attachment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5152, 96]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "aba07eca-2cc5-4fae-aab7-7949accdb880",
+              "leftValue": "={{ $json.can_attach === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b1f178e4-1b5f-4ee6-868f-88aae6c3e942",
+      "name": "File to attach?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [5376, 96]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ 'https://api.xero.com/api.xro/2.0/Invoices/' + $json.xero_invoice_id + '/Attachments/' + encodeURIComponent($json.attach_name) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xeroOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xero-tenant-id",
+              "value": "={{ $json.tenant_id }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "={{ $json.mime_type }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "id": "72dfcdd5-7dc2-4759-8e98-5976310e636f",
+      "name": "Attach invoice file to bill",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [5600, 16],
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// What happened in Xero for each draft, in the shape the PMS expects.\nconst items = $input.all();\nreturn items.map((it, i) => {\n  let j = it.json || {};\n  let attachment = '';\n  if (j.review_id === undefined) {\n    // Came from \"Attach invoice file to bill\": the draft's result is on Prepare attachment.\n    const prep = $('Prepare attachment').itemMatching(i).json;\n    attachment = j.error ? 'Attachment failed: ' + String(j.error.message || JSON.stringify(j.error)).slice(0, 200) : 'Attached to bill';\n    j = prep;\n  }\n  return { json: { review_id: j.review_id, plan_index: j.plan_index, ok: j.ok === true, xero_invoice_id: j.xero_invoice_id || '', xero_status: j.xero_status || '', error: j.error || '', attachment: attachment || j.attachment || '' }, pairedItem: { item: i } };\n});\n"
+      },
+      "id": "c2d6e5f7-8a9b-4c0d-1e2f-3a4b5c6d7e76",
+      "name": "Result to report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5824, 96]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.replit_base_url + '/api/integrations/bill-coding/result' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "d3e7f6a8-9b0c-4d1e-2f3a-4b5c6d7e8f87",
+      "name": "Report result to PMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [6048, 96],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "content": "## Route A v11: Xero-first, PMS-controlled\n**Trigger:** every hour (or run by hand). No mailbox is read.\n\n**The PMS decides, n8n does the work:**\n1. **Get bills to check (PMS):** the app reads draft and submitted supplier bills in all five companies and skips bills already coded, handled, duplicated or waiting for an answer.\n2. n8n downloads each bill's invoice file from Xero and asks the app for a saved reading of the same file; only new files are read by OpenAI (model in **Config**).\n3. **Send reading to PMS:** the app keeps the reading, checks the supplier's bank details and prices (alerts on Finance checks), matches every line to a property and records the review.\n4. When the app says *write* (shadow mode off, bill ready): n8n adds the property to the bill or creates DRAFT bills in other companies, attaches the file, and reports back. Nothing is approved or paid.\n\n**Settings** (shadow mode, automatic splitting, account codes, bills per run): app > Finance checks > Bill coding > Settings.\n**Held bills** are answered in the app (Finance checks > Bill coding). **Property spellings**: app > Property aliases.\n\nNo emails, no OneDrive CSV files, no Xero bill lists in n8n. The three PMS steps use the Header Auth credential X-Hinkley-Sync-Key (PMS_SYNC_KEY). Replaces v10; deactivate v10 before activating this one.",
+        "height": 520,
+        "width": 560,
+        "color": 5
+      },
+      "id": "a9019d03-4553-4518-822d-6507bd684e44",
+      "name": "Setup notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, -640]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual test": { "main": [[{ "node": "Config", "type": "main", "index": 0 }]] },
+    "Every hour (check Xero)": { "main": [[{ "node": "Config", "type": "main", "index": 0 }]] },
+    "Config": { "main": [[{ "node": "Get bills to check (PMS)", "type": "main", "index": 0 }]] },
+    "Get bills to check (PMS)": { "main": [[{ "node": "Bills to check", "type": "main", "index": 0 }]] },
+    "Bills to check": { "main": [[{ "node": "Bill has a file?", "type": "main", "index": 0 }]] },
+    "Bill has a file?": { "main": [[{ "node": "List bill attachments", "type": "main", "index": 0 }], [{ "node": "Word or ODT document?", "type": "main", "index": 0 }]] },
+    "List bill attachments": { "main": [[{ "node": "Choose invoice file", "type": "main", "index": 0 }]] },
+    "Choose invoice file": { "main": [[{ "node": "Found a file?", "type": "main", "index": 0 }]] },
+    "Found a file?": { "main": [[{ "node": "Download invoice file from Xero", "type": "main", "index": 0 }], [{ "node": "Word or ODT document?", "type": "main", "index": 0 }]] },
+    "Download invoice file from Xero": { "main": [[{ "node": "Put file on bill item", "type": "main", "index": 0 }]] },
+    "Put file on bill item": { "main": [[{ "node": "Word or ODT document?", "type": "main", "index": 0 }]] },
+    "Word or ODT document?": { "main": [[{ "node": "Unpack Word/ODT file", "type": "main", "index": 0 }], [{ "node": "Build AI request", "type": "main", "index": 0 }]] },
+    "Unpack Word/ODT file": { "main": [[{ "node": "Word/ODT to text", "type": "main", "index": 0 }]] },
+    "Word/ODT to text": { "main": [[{ "node": "Build AI request", "type": "main", "index": 0 }]] },
+    "Build AI request": { "main": [[{ "node": "Look up saved reading (PMS)", "type": "main", "index": 0 }]] },
+    "Look up saved reading (PMS)": { "main": [[{ "node": "Check reading cache", "type": "main", "index": 0 }]] },
+    "Check reading cache": { "main": [[{ "node": "Already read?", "type": "main", "index": 0 }]] },
+    "Already read?": { "main": [[{ "node": "Use cached reading", "type": "main", "index": 0 }], [{ "node": "Route by document type", "type": "main", "index": 0 }]] },
+    "Use cached reading": { "main": [[{ "node": "Parse extraction", "type": "main", "index": 0 }]] },
+    "Route by document type": {
+      "main": [
+        [{ "node": "Extract invoice fields from text (OpenAI)", "type": "main", "index": 0 }],
+        [{ "node": "Extract invoice fields from PDF (OpenAI)", "type": "main", "index": 0 }],
+        [{ "node": "Extract invoice fields from image (OpenAI)", "type": "main", "index": 0 }],
+        [{ "node": "Parse extraction", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract invoice fields from text (OpenAI)": { "main": [[{ "node": "Parse extraction", "type": "main", "index": 0 }]] },
+    "Extract invoice fields from PDF (OpenAI)": { "main": [[{ "node": "Parse extraction", "type": "main", "index": 0 }]] },
+    "Extract invoice fields from image (OpenAI)": { "main": [[{ "node": "Parse extraction", "type": "main", "index": 0 }]] },
+    "Parse extraction": { "main": [[{ "node": "Send reading to PMS", "type": "main", "index": 0 }]] },
+    "Send reading to PMS": { "main": [[{ "node": "Drafts to write", "type": "main", "index": 0 }]] },
+    "Drafts to write": { "main": [[{ "node": "Create or update draft bill in Xero", "type": "main", "index": 0 }]] },
+    "Create or update draft bill in Xero": { "main": [[{ "node": "Prepare attachment", "type": "main", "index": 0 }]] },
+    "Prepare attachment": { "main": [[{ "node": "File to attach?", "type": "main", "index": 0 }]] },
+    "File to attach?": { "main": [[{ "node": "Attach invoice file to bill", "type": "main", "index": 0 }], [{ "node": "Result to report", "type": "main", "index": 0 }]] },
+    "Attach invoice file to bill": { "main": [[{ "node": "Result to report", "type": "main", "index": 0 }]] },
+    "Result to report": { "main": [[{ "node": "Report result to PMS", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timezone": "Europe/London"
+  }
+}

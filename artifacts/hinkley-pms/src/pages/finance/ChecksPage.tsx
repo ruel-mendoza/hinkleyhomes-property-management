@@ -22,6 +22,7 @@ import { errorText } from "@/components/action-modals";
 import { ModalShell } from "@/components/properties/ModalShell";
 import { formatDate } from "@/services/properties";
 import { CompanyTag } from "./InvoicesPage";
+import { BillCodingTab } from "./BillCodingTab";
 import "./finance.css";
 
 // Finance checks: what the Xero daily checks found. Overdue invoices and bills
@@ -33,7 +34,7 @@ const pence = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP
 const pounds = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 });
 const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
-type Tab = "overdue" | "alerts" | "reminders";
+type Tab = "overdue" | "alerts" | "coding" | "reminders";
 
 const PRIORITY: Record<number, [string, string]> = {
   1: ["Act now", "overdue"],
@@ -52,6 +53,7 @@ const ALERT_CODES: Record<string, string> = {
   bank_details_changed: "Bank details changed",
   bank_details_replaced: "Older bank account used",
   bank_details_unchecked: "Bank details not checked",
+  bank_check_failed: "Bank check could not run",
 };
 const REMINDER_KINDS: Record<string, string> = {
   auto_reminder: "Automatic reminder",
@@ -70,7 +72,7 @@ export default function ChecksPage() {
     for (const [key, value] of Object.entries(change)) value ? next.set(key, value) : next.delete(key);
     navigate(`/checks${next.size ? `?${next}` : ""}`, { replace: true });
   };
-  const tab: Tab = get("tab") === "alerts" ? "alerts" : get("tab") === "reminders" ? "reminders" : "overdue";
+  const tab: Tab = (["alerts", "coding", "reminders"] as const).find((key) => key === get("tab")) ?? "overdue";
 
   const queryClient = useQueryClient();
   const runs = useListCheckRuns({ query: { queryKey: getListCheckRunsQueryKey(), staleTime: 60_000 } });
@@ -97,7 +99,7 @@ export default function ChecksPage() {
           <div className="eyebrow">Hinkley Homes · Xero</div>
           <h1 className="page-title">Finance checks</h1>
           <p className="page-sub">
-            Overdue ranking, bill and spend alerts, and reminders sent, for all five companies
+            Overdue ranking, bill and spend alerts, bill coding and reminders sent, for all five companies
             {lastRun ? ` · last checked ${when(lastRun.startedAt)}` : ""}
           </p>
         </div>
@@ -115,11 +117,13 @@ export default function ChecksPage() {
         <button type="button" role="tab" aria-selected={tab === "alerts"} className={tab === "alerts" ? "active" : ""} onClick={() => setParams({ tab: "alerts" })}>
           Bill &amp; spend alerts {alertCounts.data ? <span className={alertCounts.data.openHighCount ? "hh-chk-count bad" : ""}>{alertCounts.data.openCount}</span> : null}
         </button>
+        <button type="button" role="tab" aria-selected={tab === "coding"} className={tab === "coding" ? "active" : ""} onClick={() => setParams({ tab: "coding" })}>Bill coding</button>
         <button type="button" role="tab" aria-selected={tab === "reminders"} className={tab === "reminders" ? "active" : ""} onClick={() => setParams({ tab: "reminders" })}>Reminders sent</button>
       </div>
 
       {tab === "overdue" && <OverdueTab get={get} setParams={setParams} />}
       {tab === "alerts" && <AlertsTab get={get} setParams={setParams} flash={flash} />}
+      {tab === "coding" && <BillCodingTab get={get} setParams={setParams} flash={flash} />}
       {tab === "reminders" && <RemindersTab />}
 
       {toast && <div className="toast-msg" role="status">{toast}</div>}

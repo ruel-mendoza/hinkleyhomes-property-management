@@ -10,7 +10,8 @@
   "scripts": {
     "push": "drizzle-kit push --config ./drizzle.config.ts",
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
-    "seed:entities": "pnpm dlx tsx@4.21.0 ./src/seed-entities.ts"
+    "seed:entities": "pnpm dlx tsx@4.21.0 ./src/seed-entities.ts",
+    "import:route-a": "pnpm dlx tsx@4.21.0 ./src/import-route-a.ts"
   },
   "dependencies": {
     "drizzle-orm": "catalog:",

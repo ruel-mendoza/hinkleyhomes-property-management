@@ -52,3 +52,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# CSV exports to import (they hold supplier bank details)
+/import/

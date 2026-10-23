@@ -296,3 +296,99 @@ export const xeroOverdueTrackingTable = pgTable(
 ).enableRLS();
 
 export type XeroOverdueTracking = typeof xeroOverdueTrackingTable.$inferSelect;
+
+// --- Bill coding (n8n "Route A: Xero-first") ------------------------------------
+// The app picks the draft and submitted supplier bills to check, applies the
+// property rules and decides what to write to Xero; n8n downloads each bill's
+// file, reads it with the AI, writes the draft bills and reports back.
+
+export const billReviewStatusEnum = pgEnum("bill_review_status", [
+  "held",
+  "shadow_planned",
+  "pending_xero",
+  "created_draft",
+  "updated_draft",
+  "create_failed",
+  "not_invoice",
+  "read_failed",
+]);
+
+// One row per bill per run (the latest row is the bill's current state).
+export const billCodingReviewsTable = pgTable(
+  "bill_coding_reviews",
+  {
+    id: id(),
+    // xero::<tenant id>::<bill id>
+    idempotencyKey: text("idempotency_key").notNull(),
+    xeroTenantId: text("xero_tenant_id").notNull(),
+    xeroBillId: uuid("xero_bill_id").notNull(),
+    company: text("company").notNull(),
+    status: billReviewStatusEnum("status").notNull(),
+    fingerprint: text("fingerprint"),
+    supplierName: text("supplier_name"),
+    invoiceNumber: text("invoice_number"),
+    invoiceDate: date("invoice_date"),
+    currency: text("currency"),
+    total: money("total"),
+    documentType: text("document_type"),
+    legibility: numeric("legibility", { precision: 4, scale: 3 }),
+    sourceType: text("source_type"),
+    filename: text("filename"),
+    docHash: text("doc_hash"),
+    provider: text("provider"),
+    model: text("model"),
+    extractionError: text("extraction_error"),
+    shadowMode: boolean("shadow_mode").notNull(),
+    // Hold reasons and other flags: { code, severity, message }.
+    reasons: jsonb("reasons").$type<Record<string, unknown>[]>().notNull().default([]),
+    // Lines that need a property: description, amount, answerKey, suggestions.
+    needs: jsonb("needs").$type<Record<string, unknown>[]>().notNull().default([]),
+    allocation: jsonb("allocation").$type<Record<string, unknown>[]>().notNull().default([]),
+    // Planned Xero writes (one per company) and what n8n reported for each.
+    plans: jsonb("plans").$type<Record<string, unknown>[]>().notNull().default([]),
+    xeroInvoiceIds: text("xero_invoice_ids").array().notNull().default(sql`'{}'::text[]`),
+    error: text("error"),
+    answeredAt: timestamp("answered_at", { withTimezone: true }),
+    answeredBy: text("answered_by"),
+    ...timestamps,
+  },
+  (t) => [
+    index("bill_coding_reviews_bill_idx").on(t.xeroTenantId, t.xeroBillId, t.createdAt),
+    index("bill_coding_reviews_fingerprint_idx").on(t.fingerprint),
+    index("bill_coding_reviews_status_idx").on(t.status),
+  ],
+).enableRLS();
+
+// Each document is read by the AI once: the reading is kept by file fingerprint.
+export const documentReadingsTable = pgTable("document_readings", {
+  docHash: text("doc_hash").primaryKey(),
+  extraction: jsonb("extraction").$type<Record<string, unknown>>().notNull(),
+  model: text("model"),
+  provider: text("provider"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}).enableRLS();
+
+// One settings row, id "default". Shadow mode on: nothing is written to Xero.
+export const billCodingSettingsTable = pgTable("bill_coding_settings", {
+  id: text("id").primaryKey(),
+  shadowMode: boolean("shadow_mode").notNull().default(true),
+  // Split a bill whose lines belong to several companies into draft bills in each.
+  autoSplit: boolean("auto_split").notNull().default(false),
+  maxBillsPerRun: integer("max_bills_per_run").notNull().default(10),
+  checkStatuses: text("check_statuses").array().notNull().default(sql`'{DRAFT,SUBMITTED}'::text[]`),
+  trackingCategory: text("tracking_category").notNull().default("Property"),
+  payingCompanyName: text("paying_company_name").notNull().default("Hinkley Homes Ltd"),
+  defaultAccountCode: text("default_account_code").notNull().default(""),
+  // Line category (e.g. "Cleaning") -> Xero account code.
+  categoryAccountMap: jsonb("category_account_map").$type<Record<string, string>>().notNull().default({}),
+  legibilityMin: numeric("legibility_min", { precision: 3, scale: 2 }).notNull().default("0.80"),
+  dateOutlierDays: integer("date_outlier_days").notNull().default(21),
+  dupLineMinAmount: integer("dup_line_min_amount").notNull().default(100),
+  // Check held bills again every run, not only after an answer or a Xero edit.
+  reprocessHeld: boolean("reprocess_held").notNull().default(false),
+  updatedBy: text("updated_by"),
+  ...timestamps,
+}).enableRLS();
+
+export type BillCodingReview = typeof billCodingReviewsTable.$inferSelect;
+export type BillCodingSettings = typeof billCodingSettingsTable.$inferSelect;

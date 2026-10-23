@@ -1652,6 +1652,383 @@ export const RunChecksNowResponse = zod.object({
 
 
 /**
+ * @summary Supplier bills the bill coding workflow has read, latest review per bill
+ */
+export const ListBillReviewsQueryParams = zod.object({
+  "view": zod.enum(['action', 'planned', 'done', 'ignored', 'all']).optional()
+})
+
+export const ListBillReviewsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "tenantId": zod.string(),
+  "company": zod.string(),
+  "billId": zod.string(),
+  "status": zod.enum(['held', 'shadow_planned', 'pending_xero', 'created_draft', 'updated_draft', 'create_failed', 'not_invoice', 'read_failed']),
+  "supplierName": zod.string().nullable(),
+  "invoiceNumber": zod.string().nullable(),
+  "invoiceDate": zod.string().nullable(),
+  "total": zod.number().nullable(),
+  "documentType": zod.string().nullable(),
+  "filename": zod.string().nullable(),
+  "sourceType": zod.string().nullable(),
+  "shadowMode": zod.boolean(),
+  "reasons": zod.array(zod.object({
+  "code": zod.string(),
+  "severity": zod.string(),
+  "message": zod.string()
+})),
+  "needs": zod.array(zod.object({
+  "answerKey": zod.string(),
+  "description": zod.string(),
+  "serviceDate": zod.string(),
+  "amount": zod.number().nullable(),
+  "reason": zod.string(),
+  "referenceText": zod.string(),
+  "aliasKey": zod.string(),
+  "suggestions": zod.array(zod.object({
+  "tenantId": zod.string(),
+  "tenantName": zod.string(),
+  "option": zod.string()
+}))
+})),
+  "allocation": zod.array(zod.object({
+  "tenantName": zod.string(),
+  "lineCount": zod.number().int(),
+  "amount": zod.number(),
+  "pays": zod.string()
+})),
+  "plans": zod.array(zod.object({
+  "tenantName": zod.string(),
+  "total": zod.number(),
+  "sourceUpdate": zod.boolean(),
+  "ok": zod.boolean().nullable(),
+  "error": zod.string().nullable()
+})),
+  "xeroUrl": zod.string(),
+  "error": zod.string().nullable(),
+  "answeredAt": zod.string().nullable(),
+  "answeredBy": zod.string().nullable(),
+  "createdAt": zod.string()
+})),
+  "counts": zod.object({
+  "action": zod.number().int(),
+  "planned": zod.number().int(),
+  "done": zod.number().int(),
+  "ignored": zod.number().int()
+}),
+  "shadowMode": zod.boolean()
+})
+
+
+/**
+ * @summary Say which property (or company overhead) each held line belongs to; the next hourly run checks the bill again
+ */
+export const AnswerBillReviewParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const answerBillReviewBodyAnswersItemAnswerKeyMax = 600;
+
+export const answerBillReviewBodyAnswersItemOptionMax = 200;
+
+export const answerBillReviewBodyAnswersMax = 200;
+
+
+
+export const AnswerBillReviewBody = zod.object({
+  "answers": zod.array(zod.object({
+  "answerKey": zod.string().max(answerBillReviewBodyAnswersItemAnswerKeyMax),
+  "tenantId": zod.string(),
+  "option": zod.string().max(answerBillReviewBodyAnswersItemOptionMax).nullable().describe('The Property tracking option, or null for a company cost with no property'),
+  "remember": zod.boolean().describe('Also remember the property text written on the invoice for future bills')
+})).min(1).max(answerBillReviewBodyAnswersMax)
+})
+
+export const AnswerBillReviewResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Bill coding settings (shadow mode, automatic splitting, account codes)
+ */
+export const GetBillCodingSettingsResponse = zod.object({
+  "shadowMode": zod.boolean(),
+  "autoSplit": zod.boolean(),
+  "maxBillsPerRun": zod.number().int(),
+  "checkStatuses": zod.array(zod.string()),
+  "trackingCategory": zod.string(),
+  "payingCompanyName": zod.string(),
+  "defaultAccountCode": zod.string(),
+  "categoryAccountMap": zod.record(zod.string(), zod.string()),
+  "legibilityMin": zod.number(),
+  "dateOutlierDays": zod.number().int(),
+  "dupLineMinAmount": zod.number().int(),
+  "reprocessHeld": zod.boolean(),
+  "updatedBy": zod.string().nullable(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Change bill coding settings (written to the audit log)
+ */
+export const updateBillCodingSettingsBodyMaxBillsPerRunMax = 50;
+
+
+export const updateBillCodingSettingsBodyTrackingCategoryMax = 100;
+
+export const updateBillCodingSettingsBodyPayingCompanyNameMax = 200;
+
+export const updateBillCodingSettingsBodyDefaultAccountCodeMax = 20;
+
+export const updateBillCodingSettingsBodyCategoryAccountMapMaxOne = 20;
+
+export const updateBillCodingSettingsBodyLegibilityMinMin = 0;
+export const updateBillCodingSettingsBodyLegibilityMinMax = 1;
+
+export const updateBillCodingSettingsBodyDateOutlierDaysMax = 365;
+
+export const updateBillCodingSettingsBodyDupLineMinAmountMin = 0;
+export const updateBillCodingSettingsBodyDupLineMinAmountMax = 100000;
+
+
+
+export const UpdateBillCodingSettingsBody = zod.object({
+  "shadowMode": zod.boolean().optional(),
+  "autoSplit": zod.boolean().optional(),
+  "maxBillsPerRun": zod.number().int().min(1).max(updateBillCodingSettingsBodyMaxBillsPerRunMax).optional(),
+  "checkStatuses": zod.array(zod.enum(['DRAFT', 'SUBMITTED', 'AUTHORISED'])).min(1).optional(),
+  "trackingCategory": zod.string().min(1).max(updateBillCodingSettingsBodyTrackingCategoryMax).optional(),
+  "payingCompanyName": zod.string().min(1).max(updateBillCodingSettingsBodyPayingCompanyNameMax).optional(),
+  "defaultAccountCode": zod.string().max(updateBillCodingSettingsBodyDefaultAccountCodeMax).optional(),
+  "categoryAccountMap": zod.record(zod.string(), zod.string().max(updateBillCodingSettingsBodyCategoryAccountMapMaxOne)).optional(),
+  "legibilityMin": zod.number().min(updateBillCodingSettingsBodyLegibilityMinMin).max(updateBillCodingSettingsBodyLegibilityMinMax).optional(),
+  "dateOutlierDays": zod.number().int().min(1).max(updateBillCodingSettingsBodyDateOutlierDaysMax).optional(),
+  "dupLineMinAmount": zod.number().int().min(updateBillCodingSettingsBodyDupLineMinAmountMin).max(updateBillCodingSettingsBodyDupLineMinAmountMax).optional(),
+  "reprocessHeld": zod.boolean().optional()
+})
+
+export const UpdateBillCodingSettingsResponse = zod.object({
+  "shadowMode": zod.boolean(),
+  "autoSplit": zod.boolean(),
+  "maxBillsPerRun": zod.number().int(),
+  "checkStatuses": zod.array(zod.string()),
+  "trackingCategory": zod.string(),
+  "payingCompanyName": zod.string(),
+  "defaultAccountCode": zod.string(),
+  "categoryAccountMap": zod.record(zod.string(), zod.string()),
+  "legibilityMin": zod.number(),
+  "dateOutlierDays": zod.number().int(),
+  "dupLineMinAmount": zod.number().int(),
+  "reprocessHeld": zod.boolean(),
+  "updatedBy": zod.string().nullable(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Property tracking options in each company's Xero (for choosing a property)
+ */
+export const GetTrackingOptionsResponse = zod.object({
+  "trackingCategory": zod.string(),
+  "problems": zod.array(zod.string()),
+  "companies": zod.array(zod.object({
+  "tenantId": zod.string(),
+  "name": zod.string(),
+  "options": zod.array(zod.string())
+}))
+})
+
+
+/**
+ * @summary Property aliases (spellings and bill line answers) and the property each points to
+ */
+export const ListPropertyAliasesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['text', 'line']),
+  "alias": zod.string(),
+  "normalizedAlias": zod.string(),
+  "tenantId": zod.string().nullable(),
+  "company": zod.string().nullable(),
+  "option": zod.string().nullable(),
+  "overhead": zod.boolean(),
+  "propertyName": zod.string().nullable().describe('Set when the alias points to a property in the app\'s register'),
+  "source": zod.string(),
+  "createdBy": zod.string().nullable(),
+  "updatedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Add a property alias
+ */
+export const createPropertyAliasBodyAliasMax = 300;
+
+export const createPropertyAliasBodyOptionMax = 200;
+
+
+
+export const CreatePropertyAliasBody = zod.object({
+  "alias": zod.string().max(createPropertyAliasBodyAliasMax).describe('How the property is written (ignored when changing a bill line answer)'),
+  "tenantId": zod.string(),
+  "option": zod.string().max(createPropertyAliasBodyOptionMax).nullable().describe('The Property tracking option, or null for a company cost with no property')
+})
+
+export const CreatePropertyAliasResponse = zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['text', 'line']),
+  "alias": zod.string(),
+  "normalizedAlias": zod.string(),
+  "tenantId": zod.string().nullable(),
+  "company": zod.string().nullable(),
+  "option": zod.string().nullable(),
+  "overhead": zod.boolean(),
+  "propertyName": zod.string().nullable().describe('Set when the alias points to a property in the app\'s register'),
+  "source": zod.string(),
+  "createdBy": zod.string().nullable(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Change a property alias
+ */
+export const UpdatePropertyAliasParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updatePropertyAliasBodyAliasMax = 300;
+
+export const updatePropertyAliasBodyOptionMax = 200;
+
+
+
+export const UpdatePropertyAliasBody = zod.object({
+  "alias": zod.string().max(updatePropertyAliasBodyAliasMax).describe('How the property is written (ignored when changing a bill line answer)'),
+  "tenantId": zod.string(),
+  "option": zod.string().max(updatePropertyAliasBodyOptionMax).nullable().describe('The Property tracking option, or null for a company cost with no property')
+})
+
+export const UpdatePropertyAliasResponse = zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['text', 'line']),
+  "alias": zod.string(),
+  "normalizedAlias": zod.string(),
+  "tenantId": zod.string().nullable(),
+  "company": zod.string().nullable(),
+  "option": zod.string().nullable(),
+  "overhead": zod.boolean(),
+  "propertyName": zod.string().nullable().describe('Set when the alias points to a property in the app\'s register'),
+  "source": zod.string(),
+  "createdBy": zod.string().nullable(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a property alias
+ */
+export const DeletePropertyAliasParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeletePropertyAliasResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary How company names are written on supplier invoices, and the Xero organisation each means
+ */
+export const ListCompanyAliasesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "alias": zod.string(),
+  "normalizedAlias": zod.string(),
+  "tenantId": zod.string(),
+  "company": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdBy": zod.string().nullable(),
+  "updatedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Add a company alias
+ */
+export const createCompanyAliasBodyAliasMax = 300;
+
+export const createCompanyAliasBodyNotesMax = 500;
+
+
+
+export const CreateCompanyAliasBody = zod.object({
+  "alias": zod.string().max(createCompanyAliasBodyAliasMax).describe('The company name as written on invoices'),
+  "tenantId": zod.string(),
+  "notes": zod.string().max(createCompanyAliasBodyNotesMax).nullable()
+})
+
+export const CreateCompanyAliasResponse = zod.object({
+  "id": zod.string(),
+  "alias": zod.string(),
+  "normalizedAlias": zod.string(),
+  "tenantId": zod.string(),
+  "company": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdBy": zod.string().nullable(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Change a company alias
+ */
+export const UpdateCompanyAliasParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateCompanyAliasBodyAliasMax = 300;
+
+export const updateCompanyAliasBodyNotesMax = 500;
+
+
+
+export const UpdateCompanyAliasBody = zod.object({
+  "alias": zod.string().max(updateCompanyAliasBodyAliasMax).describe('The company name as written on invoices'),
+  "tenantId": zod.string(),
+  "notes": zod.string().max(updateCompanyAliasBodyNotesMax).nullable()
+})
+
+export const UpdateCompanyAliasResponse = zod.object({
+  "id": zod.string(),
+  "alias": zod.string(),
+  "normalizedAlias": zod.string(),
+  "tenantId": zod.string(),
+  "company": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdBy": zod.string().nullable(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a company alias
+ */
+export const DeleteCompanyAliasParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteCompanyAliasResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
  * @summary Available rooms and properties for the website widget (no sign-in; no house numbers)
  */
 export const ListPublicListingsResponse = zod.object({

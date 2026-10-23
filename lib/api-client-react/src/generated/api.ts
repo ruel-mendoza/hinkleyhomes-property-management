@@ -20,6 +20,10 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BillCodingSettings,
+  BillCodingSettingsUpdate,
+  BillReviewAnswers,
+  BillReviewList,
   BuildingCreate,
   BuildingSummary,
   CheckRun,
@@ -45,6 +49,9 @@ import type {
   CohoStatus,
   CohoViewingCreated,
   CohoViewingInput,
+  CompanyAlias,
+  CompanyAliasInput,
+  CompanyAliasList,
   ComplianceList,
   EntityList,
   FinanceAlert,
@@ -60,6 +67,7 @@ import type {
   InvoiceFollowUp,
   InvoiceFollowUpUpdate,
   InvoicePaymentLink,
+  ListBillReviewsParams,
   ListCohoActionsParams,
   ListCohoCalendarParams,
   ListCohoMaintenanceParams,
@@ -67,10 +75,14 @@ import type {
   ListFinanceAlertsParams,
   MoneyOverview,
   Occupancy,
+  OkResult,
   OverdueReport,
   Performance,
   PresenceHeartbeat,
   PresenceList,
+  PropertyAlias,
+  PropertyAliasInput,
+  PropertyAliasList,
   PropertyCreate,
   PropertyDetails,
   PropertyRegister,
@@ -82,7 +94,8 @@ import type {
   ReminderSettingsUpdate,
   SignupEmailCheckRequest,
   SignupEmailCheckResult,
-  SyncCohoActionsParams
+  SyncCohoActionsParams,
+  TrackingOptions
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -3828,6 +3841,1077 @@ export const useRunChecksNow = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getRunChecksNowMutationOptions(options));
+    }
+
+export const getListBillReviewsUrl = (params?: ListBillReviewsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/bill-coding/reviews?${stringifiedParams}` : `/api/bill-coding/reviews`
+}
+
+/**
+ * @summary Supplier bills the bill coding workflow has read, latest review per bill
+ */
+export const listBillReviews = async (params?: ListBillReviewsParams, options?: Parameters<typeof customFetch>[1]): Promise<BillReviewList> => {
+
+  return customFetch<BillReviewList>(getListBillReviewsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBillReviewsQueryKey = (params?: ListBillReviewsParams,) => {
+    return [
+    `/api/bill-coding/reviews`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListBillReviewsQueryOptions = <TData = Awaited<ReturnType<typeof listBillReviews>>, TError = ErrorType<void>>(params?: ListBillReviewsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBillReviews>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBillReviewsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBillReviews>>> = ({ signal }) => listBillReviews(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBillReviews>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBillReviewsQueryResult = NonNullable<Awaited<ReturnType<typeof listBillReviews>>>
+export type ListBillReviewsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Supplier bills the bill coding workflow has read, latest review per bill
+ */
+
+export function useListBillReviews<TData = Awaited<ReturnType<typeof listBillReviews>>, TError = ErrorType<void>>(
+ params?: ListBillReviewsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBillReviews>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBillReviewsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAnswerBillReviewUrl = (id: string,) => {
+
+
+
+
+  return `/api/bill-coding/reviews/${id}/answers`
+}
+
+/**
+ * @summary Say which property (or company overhead) each held line belongs to; the next hourly run checks the bill again
+ */
+export const answerBillReview = async (id: string,
+    billReviewAnswers: BillReviewAnswers, options?: Parameters<typeof customFetch>[1]): Promise<OkResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<OkResult>(getAnswerBillReviewUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(billReviewAnswers)
+  }
+);}
+
+
+
+
+
+export const getAnswerBillReviewMutationKey = () => ['answerBillReview'] as const;
+
+export const getAnswerBillReviewMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof answerBillReview>>, TError,AnswerBillReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof answerBillReview>>, TError,AnswerBillReviewMutationVariables, TContext> => {
+
+const mutationKey = getAnswerBillReviewMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof answerBillReview>>, AnswerBillReviewMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  answerBillReview(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AnswerBillReviewMutationResult = NonNullable<Awaited<ReturnType<typeof answerBillReview>>>
+    export type AnswerBillReviewMutationBody = BodyType<BillReviewAnswers>
+    export type AnswerBillReviewMutationError = ErrorType<void>
+    export type AnswerBillReviewMutationVariables = {id: string;data: BodyType<BillReviewAnswers>}
+
+    /**
+ * @summary Say which property (or company overhead) each held line belongs to; the next hourly run checks the bill again
+ */
+export const useAnswerBillReview = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof answerBillReview>>, TError,AnswerBillReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof answerBillReview>>,
+        TError,
+        AnswerBillReviewMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAnswerBillReviewMutationOptions(options));
+    }
+
+export const getGetBillCodingSettingsUrl = () => {
+
+
+
+
+  return `/api/bill-coding/settings`
+}
+
+/**
+ * @summary Bill coding settings (shadow mode, automatic splitting, account codes)
+ */
+export const getBillCodingSettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<BillCodingSettings> => {
+
+  return customFetch<BillCodingSettings>(getGetBillCodingSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBillCodingSettingsQueryKey = () => {
+    return [
+    `/api/bill-coding/settings`
+    ] as const;
+    }
+
+
+export const getGetBillCodingSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getBillCodingSettings>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBillCodingSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBillCodingSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBillCodingSettings>>> = ({ signal }) => getBillCodingSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBillCodingSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBillCodingSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getBillCodingSettings>>>
+export type GetBillCodingSettingsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Bill coding settings (shadow mode, automatic splitting, account codes)
+ */
+
+export function useGetBillCodingSettings<TData = Awaited<ReturnType<typeof getBillCodingSettings>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBillCodingSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBillCodingSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateBillCodingSettingsUrl = () => {
+
+
+
+
+  return `/api/bill-coding/settings`
+}
+
+/**
+ * @summary Change bill coding settings (written to the audit log)
+ */
+export const updateBillCodingSettings = async (billCodingSettingsUpdate: BillCodingSettingsUpdate, options?: Parameters<typeof customFetch>[1]): Promise<BillCodingSettings> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BillCodingSettings>(getUpdateBillCodingSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(billCodingSettingsUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateBillCodingSettingsMutationKey = () => ['updateBillCodingSettings'] as const;
+
+export const getUpdateBillCodingSettingsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBillCodingSettings>>, TError,UpdateBillCodingSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBillCodingSettings>>, TError,UpdateBillCodingSettingsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateBillCodingSettingsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBillCodingSettings>>, UpdateBillCodingSettingsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateBillCodingSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateBillCodingSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateBillCodingSettings>>>
+    export type UpdateBillCodingSettingsMutationBody = BodyType<BillCodingSettingsUpdate>
+    export type UpdateBillCodingSettingsMutationError = ErrorType<void>
+    export type UpdateBillCodingSettingsMutationVariables = {data: BodyType<BillCodingSettingsUpdate>}
+
+    /**
+ * @summary Change bill coding settings (written to the audit log)
+ */
+export const useUpdateBillCodingSettings = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBillCodingSettings>>, TError,UpdateBillCodingSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateBillCodingSettings>>,
+        TError,
+        UpdateBillCodingSettingsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateBillCodingSettingsMutationOptions(options));
+    }
+
+export const getGetTrackingOptionsUrl = () => {
+
+
+
+
+  return `/api/bill-coding/tracking-options`
+}
+
+/**
+ * @summary Property tracking options in each company's Xero (for choosing a property)
+ */
+export const getTrackingOptions = async ( options?: Parameters<typeof customFetch>[1]): Promise<TrackingOptions> => {
+
+  return customFetch<TrackingOptions>(getGetTrackingOptionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTrackingOptionsQueryKey = () => {
+    return [
+    `/api/bill-coding/tracking-options`
+    ] as const;
+    }
+
+
+export const getGetTrackingOptionsQueryOptions = <TData = Awaited<ReturnType<typeof getTrackingOptions>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTrackingOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTrackingOptionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTrackingOptions>>> = ({ signal }) => getTrackingOptions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTrackingOptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTrackingOptionsQueryResult = NonNullable<Awaited<ReturnType<typeof getTrackingOptions>>>
+export type GetTrackingOptionsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Property tracking options in each company's Xero (for choosing a property)
+ */
+
+export function useGetTrackingOptions<TData = Awaited<ReturnType<typeof getTrackingOptions>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTrackingOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTrackingOptionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListPropertyAliasesUrl = () => {
+
+
+
+
+  return `/api/property-aliases`
+}
+
+/**
+ * @summary Property aliases (spellings and bill line answers) and the property each points to
+ */
+export const listPropertyAliases = async ( options?: Parameters<typeof customFetch>[1]): Promise<PropertyAliasList> => {
+
+  return customFetch<PropertyAliasList>(getListPropertyAliasesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPropertyAliasesQueryKey = () => {
+    return [
+    `/api/property-aliases`
+    ] as const;
+    }
+
+
+export const getListPropertyAliasesQueryOptions = <TData = Awaited<ReturnType<typeof listPropertyAliases>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPropertyAliases>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPropertyAliasesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPropertyAliases>>> = ({ signal }) => listPropertyAliases({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPropertyAliases>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPropertyAliasesQueryResult = NonNullable<Awaited<ReturnType<typeof listPropertyAliases>>>
+export type ListPropertyAliasesQueryError = ErrorType<void>
+
+
+/**
+ * @summary Property aliases (spellings and bill line answers) and the property each points to
+ */
+
+export function useListPropertyAliases<TData = Awaited<ReturnType<typeof listPropertyAliases>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPropertyAliases>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPropertyAliasesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePropertyAliasUrl = () => {
+
+
+
+
+  return `/api/property-aliases`
+}
+
+/**
+ * @summary Add a property alias
+ */
+export const createPropertyAlias = async (propertyAliasInput: PropertyAliasInput, options?: Parameters<typeof customFetch>[1]): Promise<PropertyAlias> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PropertyAlias>(getCreatePropertyAliasUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(propertyAliasInput)
+  }
+);}
+
+
+
+
+
+export const getCreatePropertyAliasMutationKey = () => ['createPropertyAlias'] as const;
+
+export const getCreatePropertyAliasMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPropertyAlias>>, TError,CreatePropertyAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPropertyAlias>>, TError,CreatePropertyAliasMutationVariables, TContext> => {
+
+const mutationKey = getCreatePropertyAliasMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPropertyAlias>>, CreatePropertyAliasMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPropertyAlias(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePropertyAliasMutationResult = NonNullable<Awaited<ReturnType<typeof createPropertyAlias>>>
+    export type CreatePropertyAliasMutationBody = BodyType<PropertyAliasInput>
+    export type CreatePropertyAliasMutationError = ErrorType<void>
+    export type CreatePropertyAliasMutationVariables = {data: BodyType<PropertyAliasInput>}
+
+    /**
+ * @summary Add a property alias
+ */
+export const useCreatePropertyAlias = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPropertyAlias>>, TError,CreatePropertyAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPropertyAlias>>,
+        TError,
+        CreatePropertyAliasMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreatePropertyAliasMutationOptions(options));
+    }
+
+export const getUpdatePropertyAliasUrl = (id: string,) => {
+
+
+
+
+  return `/api/property-aliases/${id}`
+}
+
+/**
+ * @summary Change a property alias
+ */
+export const updatePropertyAlias = async (id: string,
+    propertyAliasInput: PropertyAliasInput, options?: Parameters<typeof customFetch>[1]): Promise<PropertyAlias> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PropertyAlias>(getUpdatePropertyAliasUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(propertyAliasInput)
+  }
+);}
+
+
+
+
+
+export const getUpdatePropertyAliasMutationKey = () => ['updatePropertyAlias'] as const;
+
+export const getUpdatePropertyAliasMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePropertyAlias>>, TError,UpdatePropertyAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePropertyAlias>>, TError,UpdatePropertyAliasMutationVariables, TContext> => {
+
+const mutationKey = getUpdatePropertyAliasMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePropertyAlias>>, UpdatePropertyAliasMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updatePropertyAlias(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePropertyAliasMutationResult = NonNullable<Awaited<ReturnType<typeof updatePropertyAlias>>>
+    export type UpdatePropertyAliasMutationBody = BodyType<PropertyAliasInput>
+    export type UpdatePropertyAliasMutationError = ErrorType<void>
+    export type UpdatePropertyAliasMutationVariables = {id: string;data: BodyType<PropertyAliasInput>}
+
+    /**
+ * @summary Change a property alias
+ */
+export const useUpdatePropertyAlias = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePropertyAlias>>, TError,UpdatePropertyAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePropertyAlias>>,
+        TError,
+        UpdatePropertyAliasMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdatePropertyAliasMutationOptions(options));
+    }
+
+export const getDeletePropertyAliasUrl = (id: string,) => {
+
+
+
+
+  return `/api/property-aliases/${id}`
+}
+
+/**
+ * @summary Delete a property alias
+ */
+export const deletePropertyAlias = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<OkResult> => {
+
+  return customFetch<OkResult>(getDeletePropertyAliasUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeletePropertyAliasMutationKey = () => ['deletePropertyAlias'] as const;
+
+export const getDeletePropertyAliasMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePropertyAlias>>, TError,DeletePropertyAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePropertyAlias>>, TError,DeletePropertyAliasMutationVariables, TContext> => {
+
+const mutationKey = getDeletePropertyAliasMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePropertyAlias>>, DeletePropertyAliasMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deletePropertyAlias(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePropertyAliasMutationResult = NonNullable<Awaited<ReturnType<typeof deletePropertyAlias>>>
+
+    export type DeletePropertyAliasMutationError = ErrorType<void>
+    export type DeletePropertyAliasMutationVariables = {id: string}
+
+    /**
+ * @summary Delete a property alias
+ */
+export const useDeletePropertyAlias = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePropertyAlias>>, TError,DeletePropertyAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deletePropertyAlias>>,
+        TError,
+        DeletePropertyAliasMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeletePropertyAliasMutationOptions(options));
+    }
+
+export const getListCompanyAliasesUrl = () => {
+
+
+
+
+  return `/api/company-aliases`
+}
+
+/**
+ * @summary How company names are written on supplier invoices, and the Xero organisation each means
+ */
+export const listCompanyAliases = async ( options?: Parameters<typeof customFetch>[1]): Promise<CompanyAliasList> => {
+
+  return customFetch<CompanyAliasList>(getListCompanyAliasesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCompanyAliasesQueryKey = () => {
+    return [
+    `/api/company-aliases`
+    ] as const;
+    }
+
+
+export const getListCompanyAliasesQueryOptions = <TData = Awaited<ReturnType<typeof listCompanyAliases>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyAliases>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCompanyAliasesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyAliases>>> = ({ signal }) => listCompanyAliases({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanyAliases>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCompanyAliasesQueryResult = NonNullable<Awaited<ReturnType<typeof listCompanyAliases>>>
+export type ListCompanyAliasesQueryError = ErrorType<void>
+
+
+/**
+ * @summary How company names are written on supplier invoices, and the Xero organisation each means
+ */
+
+export function useListCompanyAliases<TData = Awaited<ReturnType<typeof listCompanyAliases>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyAliases>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCompanyAliasesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCompanyAliasUrl = () => {
+
+
+
+
+  return `/api/company-aliases`
+}
+
+/**
+ * @summary Add a company alias
+ */
+export const createCompanyAlias = async (companyAliasInput: CompanyAliasInput, options?: Parameters<typeof customFetch>[1]): Promise<CompanyAlias> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CompanyAlias>(getCreateCompanyAliasUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(companyAliasInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCompanyAliasMutationKey = () => ['createCompanyAlias'] as const;
+
+export const getCreateCompanyAliasMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCompanyAlias>>, TError,CreateCompanyAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCompanyAlias>>, TError,CreateCompanyAliasMutationVariables, TContext> => {
+
+const mutationKey = getCreateCompanyAliasMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCompanyAlias>>, CreateCompanyAliasMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCompanyAlias(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCompanyAliasMutationResult = NonNullable<Awaited<ReturnType<typeof createCompanyAlias>>>
+    export type CreateCompanyAliasMutationBody = BodyType<CompanyAliasInput>
+    export type CreateCompanyAliasMutationError = ErrorType<void>
+    export type CreateCompanyAliasMutationVariables = {data: BodyType<CompanyAliasInput>}
+
+    /**
+ * @summary Add a company alias
+ */
+export const useCreateCompanyAlias = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCompanyAlias>>, TError,CreateCompanyAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCompanyAlias>>,
+        TError,
+        CreateCompanyAliasMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateCompanyAliasMutationOptions(options));
+    }
+
+export const getUpdateCompanyAliasUrl = (id: string,) => {
+
+
+
+
+  return `/api/company-aliases/${id}`
+}
+
+/**
+ * @summary Change a company alias
+ */
+export const updateCompanyAlias = async (id: string,
+    companyAliasInput: CompanyAliasInput, options?: Parameters<typeof customFetch>[1]): Promise<CompanyAlias> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CompanyAlias>(getUpdateCompanyAliasUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(companyAliasInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateCompanyAliasMutationKey = () => ['updateCompanyAlias'] as const;
+
+export const getUpdateCompanyAliasMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCompanyAlias>>, TError,UpdateCompanyAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCompanyAlias>>, TError,UpdateCompanyAliasMutationVariables, TContext> => {
+
+const mutationKey = getUpdateCompanyAliasMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCompanyAlias>>, UpdateCompanyAliasMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCompanyAlias(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCompanyAliasMutationResult = NonNullable<Awaited<ReturnType<typeof updateCompanyAlias>>>
+    export type UpdateCompanyAliasMutationBody = BodyType<CompanyAliasInput>
+    export type UpdateCompanyAliasMutationError = ErrorType<void>
+    export type UpdateCompanyAliasMutationVariables = {id: string;data: BodyType<CompanyAliasInput>}
+
+    /**
+ * @summary Change a company alias
+ */
+export const useUpdateCompanyAlias = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCompanyAlias>>, TError,UpdateCompanyAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCompanyAlias>>,
+        TError,
+        UpdateCompanyAliasMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateCompanyAliasMutationOptions(options));
+    }
+
+export const getDeleteCompanyAliasUrl = (id: string,) => {
+
+
+
+
+  return `/api/company-aliases/${id}`
+}
+
+/**
+ * @summary Delete a company alias
+ */
+export const deleteCompanyAlias = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<OkResult> => {
+
+  return customFetch<OkResult>(getDeleteCompanyAliasUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteCompanyAliasMutationKey = () => ['deleteCompanyAlias'] as const;
+
+export const getDeleteCompanyAliasMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCompanyAlias>>, TError,DeleteCompanyAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCompanyAlias>>, TError,DeleteCompanyAliasMutationVariables, TContext> => {
+
+const mutationKey = getDeleteCompanyAliasMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCompanyAlias>>, DeleteCompanyAliasMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCompanyAlias(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCompanyAliasMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCompanyAlias>>>
+
+    export type DeleteCompanyAliasMutationError = ErrorType<void>
+    export type DeleteCompanyAliasMutationVariables = {id: string}
+
+    /**
+ * @summary Delete a company alias
+ */
+export const useDeleteCompanyAlias = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCompanyAlias>>, TError,DeleteCompanyAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCompanyAlias>>,
+        TError,
+        DeleteCompanyAliasMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteCompanyAliasMutationOptions(options));
     }
 
 export const getListPublicListingsUrl = () => {

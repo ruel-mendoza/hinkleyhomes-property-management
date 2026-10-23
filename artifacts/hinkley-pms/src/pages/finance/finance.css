@@ -198,3 +198,15 @@
 .spin{animation:hh-spin 1s linear infinite}
 @keyframes hh-spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.spin{animation:none}}
+/* Bill coding and property aliases */
+.hh-chk-banner{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.hh-chk-banner>span{flex:1 1 320px;min-width:0}
+.hh-chk-live{border-color:#7a5a1e}
+.hh-chk-needs{display:grid;gap:12px;margin-bottom:12px}
+.hh-chk-need{display:grid;gap:8px;padding:12px;border:1px solid #2a3a52;border-radius:8px}
+.hh-chk-need strong{display:block}
+.hh-chk-suggest{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.hh-chk-suggest .button{height:auto;padding:4px 10px;font-size:12px}
+.hh-chk-suggest .hh-fin-sub{display:inline;margin-left:4px}
+.button.danger{background:#5a1f2a;border-color:#7a2c3a;color:#f6cfd6}
+.button.danger:hover{background:#6c2533}

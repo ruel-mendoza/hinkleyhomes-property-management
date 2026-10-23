@@ -15,6 +15,20 @@ export const entitiesTable = pgTable("entities", {
   ...timestamps,
 }).enableRLS();
 
+// How a company's name is written on supplier invoices ("EDJ Investments Ltd",
+// "Hinckley Homes") and the Xero organisation it means. Bill coding uses it to
+// check who an invoice is addressed to.
+export const companyAliasesTable = pgTable("company_aliases", {
+  id: id(),
+  alias: text("alias").notNull(),
+  // Lower case, "&" as "and", Ltd / Limited / PLC dropped, words joined by single spaces.
+  normalizedAlias: text("normalized_alias").notNull().unique(),
+  xeroTenantId: text("xero_tenant_id").notNull(),
+  notes: text("notes"),
+  createdBy: text("created_by"),
+  ...timestamps,
+}).enableRLS();
+
 export const propertyTypeEnum = pgEnum("property_type", [
   "hmo",
   "short_stay",
@@ -108,27 +122,39 @@ export const aliasSourceEnum = pgEnum("alias_source", [
   "invoice",
 ]);
 
+// text: a spelling of a property ("51 Bridgwater Rd"); line: a staff answer
+// for one line of one supplier bill (bill coding), keyed by bill and line.
+export const aliasKindEnum = pgEnum("alias_kind", ["text", "line"]);
+
 // Every spelling seen in the wild ("51 Bridgwater Rd", "51 A", ...) mapped to
-// its canonical property, and optionally to a specific room.
+// its canonical property (and optionally a room), or to a Xero company and its
+// Property tracking option (used to code supplier bills). xeroTrackingOption
+// null with overhead true = a company cost with no property.
 export const propertyAliasesTable = pgTable(
   "property_aliases",
   {
     id: id(),
-    propertyId: uuid("property_id")
-      .notNull()
-      .references(() => propertiesTable.id, { onDelete: "cascade" }),
+    propertyId: uuid("property_id").references(() => propertiesTable.id, { onDelete: "cascade" }),
     roomId: uuid("room_id").references(() => roomsTable.id, { onDelete: "cascade" }),
+    kind: aliasKindEnum("kind").notNull().default("text"),
     alias: text("alias").notNull(),
-    // Lower-cased, punctuation-stripped, whitespace-collapsed form used for matching.
+    // Matching form: lower case, common abbreviations expanded (rd -> road),
+    // street-type words dropped, words joined by single spaces. Line answers
+    // keep their bill-and-line key.
     normalizedAlias: text("normalized_alias").notNull(),
+    xeroTenantId: text("xero_tenant_id"),
+    xeroTrackingOption: text("xero_tracking_option"),
+    overhead: boolean("overhead").notNull().default(false),
     source: aliasSourceEnum("source").notNull().default("manual"),
     verified: boolean("verified").notNull().default(false),
+    createdBy: text("created_by"),
     ...timestamps,
   },
   (t) => [
     uniqueIndex("property_aliases_normalized_uq").on(t.normalizedAlias),
     index("property_aliases_property_id_idx").on(t.propertyId),
     index("property_aliases_room_id_idx").on(t.roomId).where(sql`${t.roomId} is not null`),
+    check("property_aliases_has_target", sql`${t.propertyId} is not null or ${t.xeroTenantId} is not null`),
   ],
 ).enableRLS();
 
