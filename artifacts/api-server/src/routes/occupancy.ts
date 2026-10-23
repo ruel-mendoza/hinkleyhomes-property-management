@@ -92,7 +92,7 @@ occupancyRouter.get("/occupancy", async (req, res): Promise<void> => {
       const unitReference = str(room.reference) ?? "";
       const unit = { propertyReference, propertyName, unitReference, unitName: str(room.name) ?? "Unit", unitsInProperty: rooms.length };
       const unitTenancies = (tenanciesFor.get(`${propertyReference}/${unitReference}`) ?? [])
-        .sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)));
+        .sort((a, b) => String(b.startDate).localeCompare(String(a.startDate)));
       if (!unitTenancies.some((tenancy) => tenancy.status === "active")) {
         unitTenancies.unshift({});
       }

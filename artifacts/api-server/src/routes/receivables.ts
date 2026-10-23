@@ -183,7 +183,7 @@ async function loadXero() {
     companies,
     // Newest invoice first; ISO dates compare as strings.
     invoices: invoices.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "") || (b.number ?? "").localeCompare(a.number ?? "", undefined, { numeric: true })),
-    bills: bills.sort((a, b) => b.daysOverdue - a.daysOverdue || b.amountDue - a.amountDue),
+    bills: bills.sort((a, b) => (b.dueDate ?? "").localeCompare(a.dueDate ?? "") || (b.number ?? "").localeCompare(a.number ?? "", undefined, { numeric: true })),
   };
 }
 

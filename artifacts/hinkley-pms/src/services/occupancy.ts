@@ -61,7 +61,7 @@ export function groupByProperty(rows: OccupancyRow[]): { reference: string; name
   }
   return [...groups.values()]
     .sort((a, b) => byName(a.name, b.name))
-    .map((group) => ({ ...group, rows: group.rows.sort((a, b) => byName(a.unitName, b.unitName) || String(a.startDate).localeCompare(String(b.startDate))) }));
+    .map((group) => ({ ...group, rows: group.rows.sort((a, b) => byName(a.unitName, b.unitName) || String(b.startDate).localeCompare(String(a.startDate))) }));
 }
 
 const csvCell = (value: string | number | null) => {
