@@ -38,13 +38,10 @@ export function InvoiceFileLinks({ files }: { files: IntakeFile[] }) {
       {files.map((file) => {
         let host = "";
         try { host = new URL(file.url).hostname.replace(/^www\./, ""); } catch { /* shown without a host */ }
-        return file.kind === "file" ? (
-          <a key={file.url} href={file.url} target="_blank" rel="noreferrer" title={`Open the saved copy in SharePoint${file.name ? `: ${file.name}` : ""}`}>
-            <FileText size={13} aria-hidden="true" /> {file.name ?? "Invoice file"}
-          </a>
-        ) : (
-          <a key={file.url} href={file.url} target="_blank" rel="noreferrer noopener" title={`Invoice link in the email: ${file.url}`}>
-            <Link2 size={13} aria-hidden="true" /> Invoice link{host ? ` (${host})` : ""}
+        const label = file.kind === "file" ? `Open the saved invoice${file.name ? `: ${file.name}` : ""}` : `Open the invoice link${host ? ` on ${host}` : ""}`;
+        return (
+          <a key={file.url} className="icon-btn" href={file.url} target="_blank" rel="noreferrer noopener" title={label} aria-label={label}>
+            {file.kind === "file" ? <FileText size={15} aria-hidden="true" /> : <Link2 size={15} aria-hidden="true" />}
           </a>
         );
       })}
