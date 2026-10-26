@@ -18,6 +18,7 @@
 --   Database: postgres
 --   User:     n8n_intake_writer.<project ref>
 --   SSL:      require, with "Ignore SSL Issues" on
+--   ****
 
 create role n8n_intake_writer with login password 'CHANGE-ME-to-a-long-random-password' nobypassrls;
 
