@@ -968,6 +968,57 @@ paths:
           description: Alert not found
         "503":
           description: Database is not configured
+  /invoices/intake-reviews:
+    get:
+      operationId: listIntakeReviews
+      tags: [xero]
+      summary: Emails to the accounts inbox the intake check sent for a person to review
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/IntakeReviewFilter"
+      responses:
+        "200":
+          description: Reviews, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntakeReviewList"
+        "503":
+          description: Database is not configured
+  /invoices/intake-reviews/{id}:
+    put:
+      operationId: updateIntakeReview
+      tags: [xero]
+      summary: Mark an intake review done or dismissed, or reopen it (written to the audit log)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IntakeReviewUpdate"
+      responses:
+        "200":
+          description: The updated review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntakeReview"
+        "400":
+          description: Invalid update
+        "404":
+          description: Review not found
+        "503":
+          description: Database is not configured
   /checks/reminders:
     get:
       operationId: listReminderLog
@@ -3388,6 +3439,107 @@ components:
       properties:
         status:
           $ref: "#/components/schemas/FinanceAlertStatus"
+        note:
+          type: ["string", "null"]
+          maxLength: 1000
+      required: [status]
+    IntakeReviewFilter:
+      type: string
+      enum: [open, done, dismissed, all]
+    IntakeReviewStatus:
+      type: string
+      enum: [open, done, dismissed]
+    IntakeReviewReason:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required: [code, message]
+    IntakeReviewIssueLine:
+      type: object
+      properties:
+        text:
+          type: string
+        amount:
+          type: ["number", "null"]
+      required: [text, amount]
+    IntakeReviewIssue:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/IntakeReviewIssueLine"
+      required: [code, message, lines]
+    IntakeReview:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          $ref: "#/components/schemas/IntakeReviewStatus"
+        receivedAt:
+          type: ["string", "null"]
+        senderEmail:
+          type: ["string", "null"]
+        senderName:
+          type: ["string", "null"]
+        subject:
+          type: ["string", "null"]
+        webLink:
+          type: ["string", "null"]
+        supplierName:
+          type: ["string", "null"]
+        invoiceNumber:
+          type: ["string", "null"]
+        invoiceDate:
+          type: ["string", "null"]
+        total:
+          type: ["number", "null"]
+        currency:
+          type: ["string", "null"]
+        billTo:
+          type: ["string", "null"]
+        billToCompany:
+          type: ["string", "null"]
+        reasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/IntakeReviewReason"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/IntakeReviewIssue"
+        createdAt:
+          type: string
+        resolvedBy:
+          type: ["string", "null"]
+        resolvedAt:
+          type: ["string", "null"]
+        resolution:
+          type: ["string", "null"]
+      required: [id, status, receivedAt, senderEmail, senderName, subject, webLink, supplierName, invoiceNumber, invoiceDate, total, currency, billTo, billToCompany, reasons, issues, createdAt, resolvedBy, resolvedAt, resolution]
+    IntakeReviewList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/IntakeReview"
+        openCount:
+          type: integer
+      required: [items, openCount]
+    IntakeReviewUpdate:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/IntakeReviewStatus"
         note:
           type: ["string", "null"]
           maxLength: 1000

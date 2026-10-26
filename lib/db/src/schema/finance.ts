@@ -392,3 +392,47 @@ export const billCodingSettingsTable = pgTable("bill_coding_settings", {
 
 export type BillCodingReview = typeof billCodingReviewsTable.$inferSelect;
 export type BillCodingSettings = typeof billCodingSettingsTable.$inferSelect;
+
+// --- Inbox intake check (n8n "Hinkley Intake check") ---------------------------
+// Emails to accounts@ the intake check could not pass or bounce on its own
+// (verdict "review"): a person looks at them on the Invoices page. One row per
+// email; the supplier is never contacted from here.
+
+export const intakeReviewStatusEnum = pgEnum("intake_review_status", ["open", "done", "dismissed"]);
+
+export const invoiceIntakeReviewsTable = pgTable(
+  "invoice_intake_reviews",
+  {
+    id: id(),
+    internetMessageId: text("internet_message_id").notNull(),
+    outlookMessageId: text("outlook_message_id"),
+    webLink: text("web_link"),
+    receivedAt: timestamp("received_at", { withTimezone: true }),
+    senderEmail: text("sender_email"),
+    senderName: text("sender_name"),
+    subject: text("subject"),
+    supplierName: text("supplier_name"),
+    invoiceNumber: text("invoice_number"),
+    invoiceDate: date("invoice_date"),
+    total: money("total"),
+    currency: text("currency"),
+    billTo: text("bill_to"),
+    // The company the bill-to matched (Xero organisation name), if any.
+    billToCompany: text("bill_to_company"),
+    // Why a person must look: { code, message }.
+    reasons: jsonb("reasons").$type<{ code: string; message: string }[]>().notNull().default([]),
+    // What is missing on the invoice itself (would have been bounced): { code, message, lines? }.
+    issues: jsonb("issues").$type<Record<string, unknown>[]>().notNull().default([]),
+    status: intakeReviewStatusEnum("status").notNull().default("open"),
+    resolvedBy: text("resolved_by"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolution: text("resolution"),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("invoice_intake_reviews_message_uq").on(t.internetMessageId),
+    index("invoice_intake_reviews_status_idx").on(t.status, t.createdAt),
+  ],
+).enableRLS();
+
+export type InvoiceIntakeReview = typeof invoiceIntakeReviewsTable.$inferSelect;

@@ -1774,6 +1774,94 @@ export interface FinanceAlertUpdate {
   note?: string | null;
 }
 
+export type IntakeReviewFilter = typeof IntakeReviewFilter[keyof typeof IntakeReviewFilter];
+
+
+export const IntakeReviewFilter = {
+  open: 'open',
+  done: 'done',
+  dismissed: 'dismissed',
+  all: 'all',
+} as const;
+
+export type IntakeReviewStatus = typeof IntakeReviewStatus[keyof typeof IntakeReviewStatus];
+
+
+export const IntakeReviewStatus = {
+  open: 'open',
+  done: 'done',
+  dismissed: 'dismissed',
+} as const;
+
+export interface IntakeReviewReason {
+  code: string;
+  message: string;
+}
+
+export interface IntakeReviewIssueLine {
+  text: string;
+  /** @nullable */
+  amount: number | null;
+}
+
+export interface IntakeReviewIssue {
+  code: string;
+  message: string;
+  lines: IntakeReviewIssueLine[];
+}
+
+export interface IntakeReview {
+  id: string;
+  status: IntakeReviewStatus;
+  /** @nullable */
+  receivedAt: string | null;
+  /** @nullable */
+  senderEmail: string | null;
+  /** @nullable */
+  senderName: string | null;
+  /** @nullable */
+  subject: string | null;
+  /** @nullable */
+  webLink: string | null;
+  /** @nullable */
+  supplierName: string | null;
+  /** @nullable */
+  invoiceNumber: string | null;
+  /** @nullable */
+  invoiceDate: string | null;
+  /** @nullable */
+  total: number | null;
+  /** @nullable */
+  currency: string | null;
+  /** @nullable */
+  billTo: string | null;
+  /** @nullable */
+  billToCompany: string | null;
+  reasons: IntakeReviewReason[];
+  issues: IntakeReviewIssue[];
+  createdAt: string;
+  /** @nullable */
+  resolvedBy: string | null;
+  /** @nullable */
+  resolvedAt: string | null;
+  /** @nullable */
+  resolution: string | null;
+}
+
+export interface IntakeReviewList {
+  items: IntakeReview[];
+  openCount: number;
+}
+
+export interface IntakeReviewUpdate {
+  status: IntakeReviewStatus;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  note?: string | null;
+}
+
 export type ReminderLogEntryKind = typeof ReminderLogEntryKind[keyof typeof ReminderLogEntryKind];
 
 
@@ -2272,6 +2360,10 @@ status?: ComplianceFilter;
 
 export type ListFinanceAlertsParams = {
 status?: FinanceAlertFilter;
+};
+
+export type ListIntakeReviewsParams = {
+status?: IntakeReviewFilter;
 };
 
 export type ListBillReviewsParams = {

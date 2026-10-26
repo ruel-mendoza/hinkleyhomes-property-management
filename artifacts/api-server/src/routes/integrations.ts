@@ -12,6 +12,7 @@ import { checkAndRecordBills } from "../lib/bill-checks-store";
 import { runDailyChecks } from "../lib/finance-checks";
 import { codingPlan, recordResult, recordReview, savedReading } from "../lib/bill-coding";
 import type { XeroBill } from "../lib/bill-coding-rules";
+import { parseIntakeReview, recordIntakeReview } from "../lib/intake-reviews";
 import { COMPANIES } from "./money";
 import {
   ALL_TENANT_IDS,
@@ -315,6 +316,29 @@ router.post("/integrations/bill-coding/result", requireSyncKey, async (req, res)
     return;
   }
   res.json({ status: updated.status });
+});
+
+// --- Inbox intake check (n8n "Hinkley Intake check", every minute) ---------------------
+// Emails the check sent for review (see lib/intake-reviews.ts). Body: { internet_message_id,
+//   outlook_message_id, web_link, received_at, sender_email, sender_name, subject, supplier_name,
+//   invoice_number, invoice_date, total, currency, bill_to, bill_to_company,
+//   reasons: [{ code, message }], issues: [{ code, message, lines: [{ text, amount }] }] }
+router.post("/integrations/intake/review", requireSyncKey, async (req, res): Promise<void> => {
+  if (!isDatabaseConfigured()) {
+    res.status(503).json({ error: "The database is not configured." });
+    return;
+  }
+  const review = parseIntakeReview(req.body);
+  if (!review) {
+    res.status(400).json({ error: "Send internet_message_id (or outlook_message_id) with the review." });
+    return;
+  }
+  try {
+    res.json(await recordIntakeReview(review));
+  } catch (error) {
+    req.log.error({ err: error }, "Intake review could not be saved");
+    res.status(500).json({ error: "The review could not be saved." });
+  }
 });
 
 // --- Xero daily checks (n8n "Xero daily checks" workflow, 8am) -------------------------

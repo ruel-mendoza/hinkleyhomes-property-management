@@ -6,6 +6,7 @@ import {
   getGetReceivablesQueryKey,
   getInvoicePaymentLink,
   useGetReceivables,
+  useListIntakeReviews,
   useRunInvoiceAction,
   useUpdateInvoiceFollowUp,
   type InvoiceFollowUpOutcome,
@@ -17,6 +18,7 @@ import { errorText } from "@/components/action-modals";
 import { ModalShell } from "@/components/properties/ModalShell";
 import { downloadText, formatDate } from "@/services/properties";
 import { ReminderBanner, ReminderCell, ReminderSettingsModal, SendReminderModal } from "./ReminderControls";
+import { IntakeReviewsTab, intakeReviewsQueryOptions } from "./IntakeReviewsTab";
 import "./finance.css";
 
 // Invoices (Xero, Phase 1): what each company is owed and owes, with our own
@@ -35,7 +37,7 @@ export const OUTCOMES: Record<InvoiceFollowUpOutcome, [string, string]> = {
   write_off_review: ["Write-off review", "overdue"],
 };
 
-type Tab = "receivables" | "bills";
+type Tab = "receivables" | "bills" | "review";
 type Bucket = "all" | "not_due" | "1_30" | "31_60" | "61_90" | "90_plus";
 const BUCKETS: { key: Bucket; label: string; test: (days: number) => boolean }[] = [
   { key: "not_due", label: "Not yet due", test: (days) => days <= 0 },
@@ -75,7 +77,7 @@ export default function InvoicesPage() {
     for (const [key, value] of Object.entries(change)) value ? next.set(key, value) : next.delete(key);
     navigate(`/invoices${next.size ? `?${next}` : ""}`, { replace: true });
   };
-  const tab: Tab = get("tab") === "bills" ? "bills" : "receivables";
+  const tab: Tab = get("tab") === "bills" ? "bills" : get("tab") === "review" ? "review" : "receivables";
   const bucket = (BUCKETS.some((item) => item.key === get("age")) ? get("age") : "all") as Bucket;
   const company = get("company");
   const term = get("q");
@@ -83,6 +85,7 @@ export default function InvoicesPage() {
 
   const query = useGetReceivables(receivablesQueryOptions);
   const data = query.data;
+  const reviewOpen = useListIntakeReviews({ status: "open" }, intakeReviewsQueryOptions("open")).data?.openCount;
   const [editing, setEditing] = useState<ReceivableInvoice | null>(null);
   const [sending, setSending] = useState<ReceivableInvoice | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -122,19 +125,39 @@ export default function InvoicesPage() {
     downloadText(`hinkley-${tab}-${data.asOf}.csv`, lines.join("\r\n"));
   };
 
+  const tabBar = (
+    <div className="hh-inv-tabs" role="tablist" aria-label="Invoices, bills or invoices for review">
+      <button type="button" role="tab" aria-selected={tab === "receivables"} className={tab === "receivables" ? "active" : ""} onClick={() => setParams({ tab: "", age: "", chase: "", status: "" })}>
+        Owed to us {data && <span>{data.invoices.length}</span>}
+      </button>
+      <button type="button" role="tab" aria-selected={tab === "bills"} className={tab === "bills" ? "active" : ""} onClick={() => setParams({ tab: "bills", age: "", chase: "", status: "" })}>
+        Bills to pay {data && <span>{data.bills.length}</span>}
+      </button>
+      <button type="button" role="tab" aria-selected={tab === "review"} className={tab === "review" ? "active" : ""} onClick={() => setParams({ tab: "review", age: "", chase: "", q: "" })}>
+        For review {reviewOpen !== undefined && <span className={reviewOpen ? "hh-chk-count bad" : ""}>{reviewOpen}</span>}
+      </button>
+    </div>
+  );
+
   return (
     <>
       <div className="page-head">
         <div>
           <div className="eyebrow">Hinkley Homes · Xero</div>
           <h1 className="page-title">Invoices</h1>
-          <p className="page-sub">What each company is owed and owes in Xero, with follow-ups{data ? ` · as of ${formatDate(data.asOf)}` : ""}</p>
+          <p className="page-sub">{tab === "review" ? "Invoices emailed to accounts@ that the intake check sent for a person to look at" : <>What each company is owed and owes in Xero, with follow-ups{data ? ` · as of ${formatDate(data.asOf)}` : ""}</>}</p>
         </div>
         <div className="head-actions">
-          <button type="button" className="button" onClick={exportCsv} disabled={!visible.length} data-testid="button-invoices-export"><Download size={14} /> Export (CSV)</button>
+          {tab !== "review" && <button type="button" className="button" onClick={exportCsv} disabled={!visible.length} data-testid="button-invoices-export"><Download size={14} /> Export (CSV)</button>}
         </div>
       </div>
 
+      {tab === "review" ? (
+        <>
+          {tabBar}
+          <IntakeReviewsTab get={get} setParams={setParams} flash={flash} />
+        </>
+      ) : <>
       {query.isLoading && <section className="panel hh-fin-note">Loading invoices from Xero for all five companies…</section>}
       {query.isError && <p className="hh-props-alert" role="alert"><AlertTriangle size={14} /> Invoices could not be loaded: {errorText(query.error)}</p>}
       {data?.companies.filter((item) => item.error).map((item) => <p key={item.tenantId} className="hh-props-alert" role="alert"><AlertTriangle size={14} /> {item.name}: {item.error}</p>)}
@@ -163,14 +186,7 @@ export default function InvoicesPage() {
             })}
           </div>
 
-          <div className="hh-inv-tabs" role="tablist" aria-label="Invoices or bills">
-            <button type="button" role="tab" aria-selected={tab === "receivables"} className={tab === "receivables" ? "active" : ""} onClick={() => setParams({ tab: "", age: "", chase: "" })}>
-              Owed to us <span>{data.invoices.length}</span>
-            </button>
-            <button type="button" role="tab" aria-selected={tab === "bills"} className={tab === "bills" ? "active" : ""} onClick={() => setParams({ tab: "bills", age: "", chase: "" })}>
-              Bills to pay <span>{data.bills.length}</span>
-            </button>
-          </div>
+          {tabBar}
 
           <div className="hh-fin-tiles six" role="group" aria-label="Filter by age">
             {BUCKETS.map((item) => {
@@ -265,6 +281,7 @@ export default function InvoicesPage() {
           <p className="hh-fin-foot">Read-only from Xero. Follow-ups are kept in this app only; sending invoices and reminders is still done in Xero.</p>
         </>
       )}
+      </>}
 
       {editing && <FollowUpModal invoice={editing} reminders={data?.reminders ?? null} onClose={() => setEditing(null)} onSaved={(message) => { setEditing(null); flash(message); }} />}
       {sending && data?.reminders && <SendReminderModal invoice={sending} status={data.reminders} onClose={() => setSending(null)} onDone={(message) => { setSending(null); flash(message); }} />}

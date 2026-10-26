@@ -13,6 +13,7 @@ import receivablesRouter from "./receivables";
 import presenceRouter from "./presence";
 import checksRouter from "./checks";
 import billCodingRouter from "./bill-coding";
+import intakeReviewsRouter from "./intake-reviews";
 import { propertiesRouter, publicListingsRouter } from "./properties";
 import { requireStaffAccess } from "../middlewares/requireStaffAccess";
 
@@ -37,5 +38,6 @@ router.use(receivablesRouter);
 router.use(presenceRouter);
 router.use(checksRouter);
 router.use(billCodingRouter);
+router.use(intakeReviewsRouter);
 
 export default router;
