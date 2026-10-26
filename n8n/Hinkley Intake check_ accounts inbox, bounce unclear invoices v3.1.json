@@ -176,6 +176,18 @@
               "name": "noreply_address",
               "value": "no-reply@hinkleyhomes.co.uk",
               "type": "string"
+            },
+            {
+              "id": "c26ac003-3508-4d8c-b2e4-a84cf1ffcf68",
+              "name": "invoice_files_drive_id",
+              "value": "b!ScePe1_mFEmyTGy6pKrtSTSDsNZL6F9HijMzDGBOvBNZCqggk73FTas7eYOOqd2m",
+              "type": "string"
+            },
+            {
+              "id": "3846f94f-1343-433d-af48-2cc4c43dc2ba",
+              "name": "invoice_files_folder",
+              "value": "Hinkley Data Tables/Invoices",
+              "type": "string"
             }
           ]
         },
@@ -237,7 +249,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// One output item per usable attachment (PDF or image), carrying email metadata.\n// If the email has no PDF attachment, the email body (HTML or plain text) is also sent for reading.\nconst OK = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];\nconst ODT = 'application/vnd.oasis.opendocument.text';\nconst DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';\nconst OFFICE = [ODT, DOCX];\n// Outlook often labels attachments as application/octet-stream: fall back to the file extension.\nconst EXT = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', odt: ODT, docx: DOCX };\nconst MIN_BODY_CHARS = 150;\nfunction bodyToText(body) {\n  if (!body) return '';\n  const raw = typeof body === 'string' ? body : (body.content || '');\n  const isHtml = typeof body === 'object' ? String(body.contentType || '').toLowerCase() === 'html' : /<[a-z][^>]*>/i.test(raw);\n  if (!isHtml) return raw.trim();\n  return raw\n    .replace(/<(script|style|head)[^>]*>[^]*?<\\/\\1>/gi, ' ')\n    .replace(/<br[^>]*>/gi, '\\n')\n    .replace(/<\\/(p|div|tr|li|h[1-6]|table)>/gi, '\\n')\n    .replace(/<\\/(td|th)>/gi, ' | ')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')\n    .replace(/&pound;/gi, '£').replace(/&euro;/gi, '€').replace(/&quot;/gi, '\"').replace(/&#39;|&apos;/gi, \"'\")\n    .replace(/&#(\\d+);/g, (m, n) => String.fromCharCode(Number(n)))\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/ *\\n[ \\n]*/g, '\\n')\n    .trim();\n}\nconst out = [];\nconst all = $input.all();\nfor (let idx = 0; idx < all.length; idx++) {\n  const item = all[idx];\n  const j = item.json || {};\n  const ea = (j.from && j.from.emailAddress) ? j.from.emailAddress : null;\n  const fromRaw = ea ? (ea.name ? ea.name + ' <' + (ea.address || '') + '>' : (ea.address || '')) : ((j.from && j.from.text) ? j.from.text : (j.from ?? ''));\n  const fromStr = typeof fromRaw === 'string' ? fromRaw : JSON.stringify(fromRaw);\n  const m = fromStr.match(/[\\w.+-]+@[\\w.-]+\\.\\w+/);\n  const meta = {\n    from: fromStr,\n    from_email: m ? m[0] : '',\n    subject: j.subject ?? '',\n    received_at: j.receivedDateTime ?? j.date ?? '',\n    message_id: j.internetMessageId ?? j.messageId ?? (j.headers ? j.headers['message-id'] : '') ?? '',\n    outlook_message_id: j.id ?? '',\n    outlook_categories: Array.isArray(j.categories) ? j.categories : []\n  };\n  // Forwarded by the accounts inbox: use the original sender from the forwarded header.\n  const accountsUpn = String(j.accounts_mailbox_upn || '').trim().toLowerCase();\n  if (accountsUpn && meta.from_email.toLowerCase() === accountsUpn) {\n    const fwdText = bodyToText(j.body);\n    const re = /From:\\s*([^\\n<]*?)\\s*<([\\w.+-]+@[\\w.-]+\\.\\w+)>/gi;\n    let mm;\n    while ((mm = re.exec(fwdText)) !== null) {\n      if (mm[2].toLowerCase() !== accountsUpn) {\n        meta.forwarded_by = meta.from;\n        meta.from = (mm[1] ? mm[1].trim() + ' ' : '') + '<' + mm[2] + '>';\n        meta.from_email = mm[2];\n        break;\n      }\n    }\n  }\n  let found = 0;\n  let hasPdf = false;\n  for (const [key, bin] of Object.entries(item.binary || {})) {\n    const ext = String(bin.fileName || '').split('.').pop().toLowerCase();\n    let mime = String(bin.mimeType || '').toLowerCase();\n    if (!OK.includes(mime) && !OFFICE.includes(mime) && EXT[ext]) mime = EXT[ext];\n    if (!OK.includes(mime) && !OFFICE.includes(mime)) continue;\n    // Skip signature and logo images: tiny pictures and typical decorative file names are never invoices.\n    if (mime.indexOf('image/') === 0) {\n      const sm = /([\\d.]+)\\s*(bytes|kb|mb)/i.exec(String(bin.fileSize || ''));\n      const kb = sm ? (/mb/i.test(sm[2]) ? parseFloat(sm[1]) * 1024 : /kb/i.test(sm[2]) ? parseFloat(sm[1]) : parseFloat(sm[1]) / 1024) : null;\n      if ((kb !== null && kb < 15) || /^(image\\d{3}|outlook-|logo|signature|banner|icon|facebook|linkedin|twitter|instagram)/i.test(String(bin.fileName || ''))) continue;\n    }\n    const isOffice = OFFICE.includes(mime);\n    found++;\n    if (mime === 'application/pdf' || isOffice) hasPdf = true;\n    out.push({\n      json: { ...meta, source_type: isOffice ? 'office_document' : 'attachment', filename: bin.fileName || key, mime_type: mime, has_attachment: true, has_document: true },\n      // Word/ODT files are zip archives; mark them as zip so they can be unpacked to text.\n      binary: { data: isOffice ? { ...bin, mimeType: mime, fileExtension: 'zip' } : { ...bin, mimeType: mime } },\n      pairedItem: { item: idx }\n    });\n  }\n  const bodyText = bodyToText(j.body).slice(0, 60000);\n  if (!hasPdf && bodyText.length >= MIN_BODY_CHARS) {\n    found++;\n    out.push({\n      json: { ...meta, source_type: 'email_body', filename: 'email-body.txt', mime_type: 'text/plain', body_text: bodyText, has_attachment: false, has_document: true },\n      pairedItem: { item: idx }\n    });\n  }\n  if (!found) out.push({ json: { ...meta, has_attachment: false, has_document: false }, pairedItem: { item: idx } });\n}\nreturn out;"
+        "jsCode": "// One output item per usable attachment (PDF or image), carrying email metadata.\n// If the email has no PDF attachment, the email body (HTML or plain text) is also sent for reading.\nconst OK = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];\nconst ODT = 'application/vnd.oasis.opendocument.text';\nconst DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';\nconst OFFICE = [ODT, DOCX];\n// Outlook often labels attachments as application/octet-stream: fall back to the file extension.\nconst EXT = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', odt: ODT, docx: DOCX };\nconst MIN_BODY_CHARS = 150;\nfunction bodyToText(body) {\n  if (!body) return '';\n  const raw = typeof body === 'string' ? body : (body.content || '');\n  const isHtml = typeof body === 'object' ? String(body.contentType || '').toLowerCase() === 'html' : /<[a-z][^>]*>/i.test(raw);\n  if (!isHtml) return raw.trim();\n  return raw\n    .replace(/<(script|style|head)[^>]*>[^]*?<\\/\\1>/gi, ' ')\n    .replace(/<br[^>]*>/gi, '\\n')\n    .replace(/<\\/(p|div|tr|li|h[1-6]|table)>/gi, '\\n')\n    .replace(/<\\/(td|th)>/gi, ' | ')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')\n    .replace(/&pound;/gi, '£').replace(/&euro;/gi, '€').replace(/&quot;/gi, '\"').replace(/&#39;|&apos;/gi, \"'\")\n    .replace(/&#(\\d+);/g, (m, n) => String.fromCharCode(Number(n)))\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/ *\\n[ \\n]*/g, '\\n')\n    .trim();\n}\nconst out = [];\nconst all = $input.all();\nfor (let idx = 0; idx < all.length; idx++) {\n  const item = all[idx];\n  const j = item.json || {};\n  const ea = (j.from && j.from.emailAddress) ? j.from.emailAddress : null;\n  const fromRaw = ea ? (ea.name ? ea.name + ' <' + (ea.address || '') + '>' : (ea.address || '')) : ((j.from && j.from.text) ? j.from.text : (j.from ?? ''));\n  const fromStr = typeof fromRaw === 'string' ? fromRaw : JSON.stringify(fromRaw);\n  const m = fromStr.match(/[\\w.+-]+@[\\w.-]+\\.\\w+/);\n  const meta = {\n    from: fromStr,\n    from_email: m ? m[0] : '',\n    subject: j.subject ?? '',\n    received_at: j.receivedDateTime ?? j.date ?? '',\n    message_id: j.internetMessageId ?? j.messageId ?? (j.headers ? j.headers['message-id'] : '') ?? '',\n    outlook_message_id: j.id ?? '',\n    outlook_categories: Array.isArray(j.categories) ? j.categories : []\n  };\n  // Forwarded by the accounts inbox: use the original sender from the forwarded header.\n  const accountsUpn = String(j.accounts_mailbox_upn || '').trim().toLowerCase();\n  if (accountsUpn && meta.from_email.toLowerCase() === accountsUpn) {\n    const fwdText = bodyToText(j.body);\n    const re = /From:\\s*([^\\n<]*?)\\s*<([\\w.+-]+@[\\w.-]+\\.\\w+)>/gi;\n    let mm;\n    while ((mm = re.exec(fwdText)) !== null) {\n      if (mm[2].toLowerCase() !== accountsUpn) {\n        meta.forwarded_by = meta.from;\n        meta.from = (mm[1] ? mm[1].trim() + ' ' : '') + '<' + mm[2] + '>';\n        meta.from_email = mm[2];\n        break;\n      }\n    }\n  }\n  let found = 0;\n  let hasPdf = false;\n  for (const [key, bin] of Object.entries(item.binary || {})) {\n    const ext = String(bin.fileName || '').split('.').pop().toLowerCase();\n    let mime = String(bin.mimeType || '').toLowerCase();\n    if (!OK.includes(mime) && !OFFICE.includes(mime) && EXT[ext]) mime = EXT[ext];\n    if (!OK.includes(mime) && !OFFICE.includes(mime)) continue;\n    // Skip signature and logo images: tiny pictures and typical decorative file names are never invoices.\n    if (mime.indexOf('image/') === 0) {\n      const sm = /([\\d.]+)\\s*(bytes|kb|mb)/i.exec(String(bin.fileSize || ''));\n      const kb = sm ? (/mb/i.test(sm[2]) ? parseFloat(sm[1]) * 1024 : /kb/i.test(sm[2]) ? parseFloat(sm[1]) : parseFloat(sm[1]) / 1024) : null;\n      if ((kb !== null && kb < 15) || /^(image\\d{3}|outlook-|logo|signature|banner|icon|facebook|linkedin|twitter|instagram)/i.test(String(bin.fileName || ''))) continue;\n    }\n    const isOffice = OFFICE.includes(mime);\n    // Word/ODT files are read as text; keep the original so the invoice file itself can be saved.\n    const original = isOffice ? (await this.helpers.getBinaryDataBuffer(idx, key)).toString('base64') : undefined;\n    found++;\n    if (mime === 'application/pdf' || isOffice) hasPdf = true;\n    out.push({\n      json: { ...meta, source_type: isOffice ? 'office_document' : 'attachment', filename: bin.fileName || key, mime_type: mime, has_attachment: true, has_document: true, ...(isOffice ? { original_base64: original } : {}) },\n      // Word/ODT files are zip archives; mark them as zip so they can be unpacked to text.\n      binary: { data: isOffice ? { ...bin, mimeType: mime, fileExtension: 'zip' } : { ...bin, mimeType: mime } },\n      pairedItem: { item: idx }\n    });\n  }\n  const bodyText = bodyToText(j.body).slice(0, 60000);\n  if (!hasPdf && bodyText.length >= MIN_BODY_CHARS) {\n    found++;\n    out.push({\n      json: { ...meta, source_type: 'email_body', filename: 'email-body.txt', mime_type: 'text/plain', body_text: bodyText, has_attachment: false, has_document: true },\n      pairedItem: { item: idx }\n    });\n  }\n  if (!found) out.push({ json: { ...meta, has_attachment: false, has_document: false }, pairedItem: { item: idx } });\n}\nreturn out;"
       },
       "id": "904a24b2-14bd-4bdf-b202-81fe2fedf6a1",
       "name": "Split attachments",
@@ -340,7 +352,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Build the Anthropic Messages API request for each attachment.\nconst cfg = $('Config').first().json;\nconst SYSTEM = \"You extract data from supplier invoices for a UK property management business. Return ONLY one JSON object. No markdown fences, no commentary.\\n\\nRules:\\n- Copy values exactly as printed. Never guess or infer a missing value; use null instead.\\n- Do NOT decide whether an invoice should be paid or approved.\\n- Do NOT work out which property a line belongs to. Copy any property reference (address, house name, flat or unit) exactly as written next to the line, or at invoice level if it is given only once.\\n- Dates as YYYY-MM-DD. Amounts as plain numbers (no currency symbols). Currency as a 3-letter code.\\n- suggested_category must be one of: Cleaning, Maintenance and repairs, Compliance and safety, Pest control, Waste removal, Furniture and setup, Utilities and broadband, Build and refurbishment, Professional fees, Software and subscriptions, Other.\\n- suggested_job_type must be one of: Changeover, Midstay, Deep clean, Call-out, Other, or null if unclear.\\n- Invoice decision (be explicit): set is_invoice to true ONLY for a supplier invoice or a supplier credit note. Set document_type to \\\"invoice\\\" for an invoice (including a VAT invoice or pro-forma that requests payment) and \\\"credit_note\\\" for a credit note (a document titled credit note, credit memo or credit, or one that reduces or refunds an earlier invoice).\\n- For a credit note: put the credit note number in invoice_number and its date in invoice_date, copy amounts as positive numbers exactly as printed (do not add minus signs), and put the number of the invoice it credits in credited_invoice_reference (null if not shown).\\n- Everything else (a logo, signature image, quote, estimate, statement of account, payment receipt or remittance, order confirmation, reminder letter, or other) is NOT an invoice: set is_invoice to false, set document_type to quote, statement, receipt or other, and fill only document_type and legibility_confidence.\\n- If you cannot tell whether the document is an invoice or credit note, set is_invoice to false and explain why in extraction_notes.\\n\\nSchema:\\n{\\n  \\\"is_invoice\\\": true,\\n  \\\"document_type\\\": \\\"invoice | credit_note | quote | statement | receipt | other\\\",\\n  \\\"credited_invoice_reference\\\": null,\\n  \\\"legibility_confidence\\\": 0.0,\\n  \\\"supplier\\\": {\\n    \\\"name\\\": null, \\\"address\\\": null, \\\"email\\\": null, \\\"phone\\\": null,\\n    \\\"vat_number\\\": null, \\\"company_number\\\": null,\\n    \\\"bank\\\": {\\\"account_name\\\": null, \\\"sort_code\\\": null, \\\"account_number\\\": null, \\\"iban\\\": null}\\n  },\\n  \\\"invoice_number\\\": null,\\n  \\\"invoice_date\\\": null,\\n  \\\"due_date\\\": null,\\n  \\\"quote_or_po_reference\\\": null,\\n  \\\"addressed_to\\\": {\\\"name\\\": null, \\\"address\\\": null},\\n  \\\"currency\\\": \\\"GBP\\\",\\n  \\\"lines\\\": [\\n    {\\n      \\\"description\\\": null,\\n      \\\"property_reference_as_written\\\": null,\\n      \\\"service_date\\\": null,\\n      \\\"quantity\\\": null,\\n      \\\"net\\\": null, \\\"vat\\\": null, \\\"gross\\\": null,\\n      \\\"suggested_category\\\": null,\\n      \\\"suggested_job_type\\\": null\\n    }\\n  ],\\n  \\\"totals\\\": {\\\"net\\\": null, \\\"vat\\\": null, \\\"gross\\\": null},\\n  \\\"payment_terms\\\": null,\\n  \\\"extraction_notes\\\": []\\n}\\nlegibility_confidence is your own 0 to 1 estimate of how clearly the whole document could be read. Put anything unclear, cut off, handwritten or ambiguous into extraction_notes.\";\nconst hash53 = (str, seed = 0) => { let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed; for (let i = 0; i < str.length; i++) { const ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); } h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909); return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36); };\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const it = items[i];\n  let b64, block;\n  if (typeof it.json.body_text === 'string') {\n    const doc = 'From: ' + it.json.from + '\\nSubject: ' + it.json.subject + '\\nReceived: ' + it.json.received_at + '\\n\\n' + it.json.body_text;\n    b64 = Buffer.from(doc, 'utf8').toString('base64');\n    const intro = it.json.source_type === 'document_text'\n      ? 'The invoice (if any) is in the attached document ' + it.json.filename + ', converted to plain text below together with the email details:'\n      : 'The invoice (if any) is in the body of this email, not an attachment. Email content:';\n    block = { type: 'text', text: intro + String.fromCharCode(10, 10) + doc };\n  } else {\n    const buf = await this.helpers.getBinaryDataBuffer(i, 'data');\n    b64 = buf.toString('base64');\n    block = it.json.mime_type === 'application/pdf'\n      ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }\n      : { type: 'image', source: { type: 'base64', media_type: it.json.mime_type, data: b64 } };\n  }\n  out.push({\n    json: {\n      ...it.json,\n      document_base64: b64,\n      doc_hash: hash53(b64) + '-' + b64.length,\n      requestBody: {\n        model: cfg.model,\n        max_tokens: 3000,\n        temperature: 0,\n        system: SYSTEM,\n        messages: [{ role: 'user', content: [block, { type: 'text', text: 'Extract the invoice fields as specified. Return JSON only.' }] }]\n      }\n    },\n    binary: it.binary\n  });\n}\nreturn out;"
+        "jsCode": "// Build the Anthropic Messages API request for each attachment.\nconst cfg = $('Config').first().json;\nconst SYSTEM = \"You extract data from supplier invoices for a UK property management business. Return ONLY one JSON object. No markdown fences, no commentary.\\n\\nRules:\\n- Copy values exactly as printed. Never guess or infer a missing value; use null instead.\\n- Do NOT decide whether an invoice should be paid or approved.\\n- Do NOT work out which property a line belongs to. Copy any property reference (address, house name, flat or unit) exactly as written next to the line, or at invoice level if it is given only once.\\n- Dates as YYYY-MM-DD. Amounts as plain numbers (no currency symbols). Currency as a 3-letter code.\\n- suggested_category must be one of: Cleaning, Maintenance and repairs, Compliance and safety, Pest control, Waste removal, Furniture and setup, Utilities and broadband, Build and refurbishment, Professional fees, Software and subscriptions, Other.\\n- suggested_job_type must be one of: Changeover, Midstay, Deep clean, Call-out, Other, or null if unclear.\\n- Invoice decision (be explicit): set is_invoice to true ONLY for a supplier invoice or a supplier credit note. Set document_type to \\\"invoice\\\" for an invoice (including a VAT invoice or pro-forma that requests payment) and \\\"credit_note\\\" for a credit note (a document titled credit note, credit memo or credit, or one that reduces or refunds an earlier invoice).\\n- For a credit note: put the credit note number in invoice_number and its date in invoice_date, copy amounts as positive numbers exactly as printed (do not add minus signs), and put the number of the invoice it credits in credited_invoice_reference (null if not shown).\\n- Everything else (a logo, signature image, quote, estimate, statement of account, payment receipt or remittance, order confirmation, reminder letter, or other) is NOT an invoice: set is_invoice to false, set document_type to quote, statement, receipt or other, and fill only document_type and legibility_confidence.\\n- If you cannot tell whether the document is an invoice or credit note, set is_invoice to false and explain why in extraction_notes.\\n\\nSchema:\\n{\\n  \\\"is_invoice\\\": true,\\n  \\\"document_type\\\": \\\"invoice | credit_note | quote | statement | receipt | other\\\",\\n  \\\"credited_invoice_reference\\\": null,\\n  \\\"legibility_confidence\\\": 0.0,\\n  \\\"supplier\\\": {\\n    \\\"name\\\": null, \\\"address\\\": null, \\\"email\\\": null, \\\"phone\\\": null,\\n    \\\"vat_number\\\": null, \\\"company_number\\\": null,\\n    \\\"bank\\\": {\\\"account_name\\\": null, \\\"sort_code\\\": null, \\\"account_number\\\": null, \\\"iban\\\": null}\\n  },\\n  \\\"invoice_number\\\": null,\\n  \\\"invoice_date\\\": null,\\n  \\\"due_date\\\": null,\\n  \\\"quote_or_po_reference\\\": null,\\n  \\\"addressed_to\\\": {\\\"name\\\": null, \\\"address\\\": null},\\n  \\\"currency\\\": \\\"GBP\\\",\\n  \\\"lines\\\": [\\n    {\\n      \\\"description\\\": null,\\n      \\\"property_reference_as_written\\\": null,\\n      \\\"service_date\\\": null,\\n      \\\"quantity\\\": null,\\n      \\\"net\\\": null, \\\"vat\\\": null, \\\"gross\\\": null,\\n      \\\"suggested_category\\\": null,\\n      \\\"suggested_job_type\\\": null\\n    }\\n  ],\\n  \\\"totals\\\": {\\\"net\\\": null, \\\"vat\\\": null, \\\"gross\\\": null},\\n  \\\"payment_terms\\\": null,\\n  \\\"extraction_notes\\\": []\\n}\\nlegibility_confidence is your own 0 to 1 estimate of how clearly the whole document could be read. Put anything unclear, cut off, handwritten or ambiguous into extraction_notes.\";\nconst hash53 = (str, seed = 0) => { let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed; for (let i = 0; i < str.length; i++) { const ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); } h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909); return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36); };\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const it = items[i];\n  let b64, block;\n  if (typeof it.json.body_text === 'string') {\n    const doc = 'From: ' + it.json.from + '\\nSubject: ' + it.json.subject + '\\nReceived: ' + it.json.received_at + '\\n\\n' + it.json.body_text;\n    b64 = Buffer.from(doc, 'utf8').toString('base64');\n    const intro = it.json.source_type === 'document_text'\n      ? 'The invoice (if any) is in the attached document ' + it.json.filename + ', converted to plain text below together with the email details:'\n      : 'The invoice (if any) is in the body of this email, not an attachment. Email content:';\n    block = { type: 'text', text: intro + String.fromCharCode(10, 10) + doc };\n  } else {\n    const buf = await this.helpers.getBinaryDataBuffer(i, 'data');\n    b64 = buf.toString('base64');\n    block = it.json.mime_type === 'application/pdf'\n      ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }\n      : { type: 'image', source: { type: 'base64', media_type: it.json.mime_type, data: b64 } };\n  }\n  out.push({\n    json: {\n      ...it.json,\n      document_base64: b64,\n      // The invoice file itself (PDF, image, or the original Word/ODT), to save to SharePoint.\n      file_base64: typeof it.json.body_text === 'string' ? (it.json.original_base64 || null) : b64,\n      doc_hash: hash53(b64) + '-' + b64.length,\n      requestBody: {\n        model: cfg.model,\n        max_tokens: 3000,\n        temperature: 0,\n        system: SYSTEM,\n        messages: [{ role: 'user', content: [block, { type: 'text', text: 'Extract the invoice fields as specified. Return JSON only.' }] }]\n      }\n    },\n    binary: it.binary\n  });\n}\nreturn out;"
       },
       "id": "fd0061aa-5931-4ff6-a62e-cf557ce3f7c6",
       "name": "Build AI request",
@@ -387,7 +399,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Parse the model reply and build the payload for the Hinkley app.\nconst cfg = $('Config').first().json;\n// Reads the OpenAI reply (or a cached reading).\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const resp = items[i].json || {};\n  const src = $('Build AI request').itemMatching(i).json;\n  const isFallback = Array.isArray(resp.output);\n  let extraction = null, extraction_error = null;\n  try {\n    if (resp.cached_extraction) { extraction = resp.cached_extraction; } else {\n    if (resp.error) throw new Error(typeof resp.error === 'string' ? resp.error : JSON.stringify(resp.error));\n    if (isFallback) {\n      const parts = [];\n      for (const o of resp.output) for (const c of (o.content || [])) parts.push(c.text);\n      const first = parts.find(p => p !== undefined && p !== null);\n      extraction = (first && typeof first === 'object') ? first : JSON.parse(String(parts.join('')).replace(/```json|```/g, '').trim());\n    } else {\n      const text = (resp.content || []).filter(b => b.type === 'text').map(b => b.text).join('');\n      extraction = JSON.parse(text.replace(/```json|```/g, '').trim());\n    }\n    }\n  } catch (e) {\n    extraction_error = String(e.message || e).slice(0, 500);\n  }\n  // Normalise the document type: stored documents are either 'invoice' or 'credit_note'.\n  if (extraction && typeof extraction === 'object') {\n    const dt = String(extraction.document_type || '').toLowerCase().replace(/[^a-z]/g, '');\n    if (extraction.is_invoice === true) extraction.document_type = (dt === 'creditnote' || dt === 'credit' || dt === 'creditmemo') ? 'credit_note' : 'invoice';\n  }\n  const document_type = (extraction && extraction.is_invoice === true) ? extraction.document_type : ((extraction && extraction.document_type) || 'unknown');\n  const usedModel = resp.cached_extraction ? 'cache' : cfg.model;\n  const base = src.message_id || [src.from, src.subject, src.received_at].join('|');\n  // Fingerprint of the invoice itself, so the same invoice sent again (e.g. forwarded) is skipped.\n  const norm = v => String(v === null || v === undefined ? '' : v).toLowerCase().replace(/[^a-z0-9.]/g, '');\n  let invoice_fingerprint = 'doc::' + base + '::' + src.filename;\n  if (extraction && extraction.is_invoice === true) {\n    const sup = extraction.supplier || {};\n    const bank = sup.bank || {};\n    const supplierKey = norm(bank.account_number) || norm(sup.vat_number) || norm(sup.name);\n    const gross = extraction.totals && typeof extraction.totals.gross === 'number' ? extraction.totals.gross.toFixed(2) : '';\n    if (supplierKey && (norm(extraction.invoice_number) || gross)) {\n      // Without an invoice number or date, also use the file name so a repeat monthly charge of the same amount is not mistaken for a copy.\n      const weak = !norm(extraction.invoice_number) && !norm(extraction.invoice_date);\n      invoice_fingerprint = (document_type === 'credit_note' ? 'cn::' : 'inv::') + [supplierKey, norm(extraction.invoice_number), norm(extraction.invoice_date), gross].join('|') + (weak ? '|' + norm(src.filename) : '');\n    }\n  }\n  out.push({\n    json: {\n      payload: {\n        idempotency_key: base + '::' + src.filename,\n        document_type,\n        shadow_mode: cfg.shadow_mode,\n        model: usedModel,\n        extraction_provider: resp.cached_extraction ? 'cache' : 'openai',\n        from_cache: !!resp.cached_extraction,\n        doc_hash: src.doc_hash || '',\n        source: {\n          from: src.from, from_email: src.from_email, subject: src.subject,\n          received_at: src.received_at, message_id: src.message_id,\n          filename: src.filename, mime_type: src.mime_type, source_type: src.source_type\n        },\n        extraction,\n        extraction_error,\n        document_base64: src.document_base64\n      },\n      invoice_fingerprint,\n      document_type,\n      outlook_message_id: src.outlook_message_id || '',\n      outlook_categories: src.outlook_categories || []\n    },\n    pairedItem: { item: i }\n  });\n}\nreturn out;"
+        "jsCode": "// Parse the model reply and build the payload for the Hinkley app.\nconst cfg = $('Config').first().json;\n// Reads the OpenAI reply (or a cached reading).\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const resp = items[i].json || {};\n  const src = $('Build AI request').itemMatching(i).json;\n  const isFallback = Array.isArray(resp.output);\n  let extraction = null, extraction_error = null;\n  try {\n    if (resp.cached_extraction) { extraction = resp.cached_extraction; } else {\n    if (resp.error) throw new Error(typeof resp.error === 'string' ? resp.error : JSON.stringify(resp.error));\n    if (isFallback) {\n      const parts = [];\n      for (const o of resp.output) for (const c of (o.content || [])) parts.push(c.text);\n      const first = parts.find(p => p !== undefined && p !== null);\n      extraction = (first && typeof first === 'object') ? first : JSON.parse(String(parts.join('')).replace(/```json|```/g, '').trim());\n    } else {\n      const text = (resp.content || []).filter(b => b.type === 'text').map(b => b.text).join('');\n      extraction = JSON.parse(text.replace(/```json|```/g, '').trim());\n    }\n    }\n  } catch (e) {\n    extraction_error = String(e.message || e).slice(0, 500);\n  }\n  // Normalise the document type: stored documents are either 'invoice' or 'credit_note'.\n  if (extraction && typeof extraction === 'object') {\n    const dt = String(extraction.document_type || '').toLowerCase().replace(/[^a-z]/g, '');\n    if (extraction.is_invoice === true) extraction.document_type = (dt === 'creditnote' || dt === 'credit' || dt === 'creditmemo') ? 'credit_note' : 'invoice';\n  }\n  const document_type = (extraction && extraction.is_invoice === true) ? extraction.document_type : ((extraction && extraction.document_type) || 'unknown');\n  const usedModel = resp.cached_extraction ? 'cache' : cfg.model;\n  const base = src.message_id || [src.from, src.subject, src.received_at].join('|');\n  // Fingerprint of the invoice itself, so the same invoice sent again (e.g. forwarded) is skipped.\n  const norm = v => String(v === null || v === undefined ? '' : v).toLowerCase().replace(/[^a-z0-9.]/g, '');\n  let invoice_fingerprint = 'doc::' + base + '::' + src.filename;\n  if (extraction && extraction.is_invoice === true) {\n    const sup = extraction.supplier || {};\n    const bank = sup.bank || {};\n    const supplierKey = norm(bank.account_number) || norm(sup.vat_number) || norm(sup.name);\n    const gross = extraction.totals && typeof extraction.totals.gross === 'number' ? extraction.totals.gross.toFixed(2) : '';\n    if (supplierKey && (norm(extraction.invoice_number) || gross)) {\n      // Without an invoice number or date, also use the file name so a repeat monthly charge of the same amount is not mistaken for a copy.\n      const weak = !norm(extraction.invoice_number) && !norm(extraction.invoice_date);\n      invoice_fingerprint = (document_type === 'credit_note' ? 'cn::' : 'inv::') + [supplierKey, norm(extraction.invoice_number), norm(extraction.invoice_date), gross].join('|') + (weak ? '|' + norm(src.filename) : '');\n    }\n  }\n  out.push({\n    json: {\n      payload: {\n        idempotency_key: base + '::' + src.filename,\n        document_type,\n        shadow_mode: cfg.shadow_mode,\n        model: usedModel,\n        extraction_provider: resp.cached_extraction ? 'cache' : 'openai',\n        from_cache: !!resp.cached_extraction,\n        doc_hash: src.doc_hash || '',\n        source: {\n          from: src.from, from_email: src.from_email, subject: src.subject,\n          received_at: src.received_at, message_id: src.message_id,\n          filename: src.filename, mime_type: src.mime_type, source_type: src.source_type\n        },\n        extraction,\n        extraction_error,\n        document_base64: src.document_base64,\n        file_base64: src.file_base64 || null\n      },\n      invoice_fingerprint,\n      document_type,\n      outlook_message_id: src.outlook_message_id || '',\n      outlook_categories: src.outlook_categories || []\n    },\n    pairedItem: { item: i }\n  });\n}\nreturn out;"
       },
       "id": "39fe98bd-19be-484a-ba13-7ad3f78a2efc",
       "name": "Parse extraction",
@@ -928,7 +940,7 @@
     },
     {
       "parameters": {
-        "content": "## Intake check for the accounts inbox (bounce unclear invoices)\nReads each new email in accounts@ , reads the invoice (OpenAI GPT-5.4) and checks three things with **rules**, not AI opinion:\n1. **Formatted correctly**: supplier, invoice number, date, total, itemised lines, an amount on every line.\n2. **Addressed to one of our companies** (`company_names` in Config).\n3. **Every line says which property it is for**, with its own cost. A bare number such as \"51\" counts as incomplete.\n**Verdicts**\n- **pass**: category \"n8n: invoice OK\", nothing else.\n- **bounce**: the supplier is asked, in a reply, to reissue the invoice and told exactly which lines or details are missing.\n- **review**: a person looks. Used when the AI may have misread it (low legibility, totals not adding up), or when a bounce would be unsafe: sender inside the company, automated sender, already asked twice for this invoice, or daily limit reached. The supplier is never contacted.\n- **not invoice**: category only, no email.\n**Modes** (Config `mode`)\n- `shadow` (default): nothing goes to the supplier. Ruel gets the message that would have been sent.\n- `draft`: a reply is created as a draft in accounts@ for a person to read and send.\n- `live`: the reply is sent to the supplier.\n**Before running**\n1. Pick the **Postgres account** credential (login n8n_intake_writer) on every Postgres step; see Storage notes.\n2. Select the OpenAI credential, and the Outlook credential on every Outlook/Graph node. The Outlook user needs permission to read, send and edit categories on accounts@.\n3. Edit Config: `company_names` (exact legal names; Jenny to confirm, incl. Lettings), `internal_domain`, `bounce_cc`.\n4. Run in shadow mode until Jenny has compared the proposed bounces with what she would have asked, then switch to draft, then live.\n**Keeping LLM use low:** emails already checked are skipped before reading; signature and logo images are never sent to the AI; every reading is saved in Supabase (document_readings) by file fingerprint, so the same file is never read twice, including when bill coding has already read it.\n**App**: every **review** also shows in the Hinkley app under Invoices > For review, where staff mark it done or dismissed.",
+        "content": "## Intake check for the accounts inbox (bounce unclear invoices)\nReads each new email in accounts@ , reads the invoice (OpenAI GPT-5.4) and checks three things with **rules**, not AI opinion:\n1. **Formatted correctly**: supplier, invoice number, date, total, itemised lines, an amount on every line.\n2. **Addressed to one of our companies** (`company_names` in Config).\n3. **Every line says which property it is for**, with its own cost. A bare number such as \"51\" counts as incomplete.\n**Verdicts**\n- **pass**: category \"n8n: invoice OK\", nothing else.\n- **bounce**: the supplier is asked, in a reply, to reissue the invoice and told exactly which lines or details are missing.\n- **review**: a person looks. Used when the AI may have misread it (low legibility, totals not adding up), or when a bounce would be unsafe: sender inside the company, automated sender, already asked twice for this invoice, or daily limit reached. The supplier is never contacted.\n- **not invoice**: category only, no email.\n**Modes** (Config `mode`)\n- `shadow` (default): nothing goes to the supplier. Ruel gets the message that would have been sent.\n- `draft`: a reply is created as a draft in accounts@ for a person to read and send.\n- `live`: the reply is sent to the supplier.\n**Before running**\n1. Pick the **Postgres account** credential (login n8n_intake_writer) on every Postgres step; see Storage notes.\n2. Select the OpenAI credential, and the Outlook credential on every Outlook/Graph node. The Outlook user needs permission to read, send and edit categories on accounts@.\n3. Edit Config: `company_names` (exact legal names; Jenny to confirm, incl. Lettings), `internal_domain`, `bounce_cc`.\n4. Run in shadow mode until Jenny has compared the proposed bounces with what she would have asked, then switch to draft, then live.\n**Keeping LLM use low:** emails already checked are skipped before reading; signature and logo images are never sent to the AI; every reading is saved in Supabase (document_readings) by file fingerprint, so the same file is never read twice, including when bill coding has already read it.\n**App**: every **review** also shows in the Hinkley app under Invoices > For review, where staff mark it done or dismissed.\n**Invoice files**: each invoice is saved to SharePoint and its link, or the invoice link from Xero/QuickBooks/etc., shows in the app under Invoices > Inbox.",
         "height": 720,
         "width": 560
       },
@@ -1055,7 +1067,7 @@
     },
     {
       "parameters": {
-        "content": "## Storage: Supabase (the Hinkley app's database)\nEvery step that reads or saves data uses the **Postgres** credential: login `n8n_intake_writer` on the Supabase session pooler. It can only do what this workflow needs:\n- **invoice_intake_checks**: read and add. Every email checked, with its verdict. Emails already here are skipped; earlier bounce requests set the limits.\n- **document_readings**: read and add. AI readings by file fingerprint, shared with bill coding, so a document is never read twice.\n- **company_aliases**: read. Other names invoices may be addressed to; edit them in the app (Company aliases). If they can't be read, wrong bill-tos go to review instead of bouncing.\n- **invoice_intake_reviews**: add. Every review shows in the app under Invoices > For review.\nWrites skip rows that are already there, so overlapping runs are safe. Nothing is kept in OneDrive any more.",
+        "content": "## Storage: Supabase (the Hinkley app's database)\nEvery step that reads or saves data uses the **Postgres** credential: login `n8n_intake_writer` on the Supabase session pooler. It can only do what this workflow needs:\n- **invoice_intake_checks**: read and add. Every email checked, with its verdict. Emails already here are skipped; earlier bounce requests set the limits.\n- **document_readings**: read and add. AI readings by file fingerprint, shared with bill coding, so a document is never read twice.\n- **company_aliases**: read. Other names invoices may be addressed to; edit them in the app (Company aliases). If they can't be read, wrong bill-tos go to review instead of bouncing.\n- **invoice_intake_files**: add. Where to open each invoice: the copy saved to SharePoint, or the invoice link in the email.\n- **invoice_intake_reviews**: add. Every review shows in the app under Invoices > For review.\nWrites skip rows that are already there, so overlapping runs are safe. **Invoice files**: every invoice that passed, bounced or went to review is saved with the **Microsoft Drive account** credential to Config `invoice_files_folder` (one folder per month, e.g. Invoices/2026-10). Share that folder with whoever needs to open them from the app.",
         "height": 480,
         "width": 560,
         "color": 5
@@ -1330,6 +1342,132 @@
       "waitBetweenTries": 3000,
       "onError": "continueRegularOutput",
       "notes": "Keeps each new AI reading so the same document is never paid for twice. A failure here only costs a re-read later."
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per invoice document to keep (passed, bounced or for review): the file it came in,\n// named \"date supplier number\", for SharePoint > invoice_files_folder > year-month.\nconst cfg = $('Config').first().json;\nconst KEEP = ['pass', 'bounce', 'review'];\nconst EXT = { 'application/pdf': 'pdf', 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp',\n  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx', 'application/vnd.oasis.opendocument.text': 'odt' };\nconst clean = v => String(v || '').replace(/[\\\\/:*?\"<>|#%&{}~\\u0000-\\u001f]+/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 60);\nconst docs = {};\nfor (const it of $('Parse extraction').all()) {\n  const p = (it.json || {}).payload || {};\n  const id = (p.source || {}).message_id || '';\n  (docs[id] = docs[id] || []).push(p);\n}\nconst out = [];\nfor (const it of $input.all()) {\n  const c = it.json || {};\n  if (!KEEP.includes(c.verdict) || !c.internet_message_id) continue;\n  const month = String(c.processed_at || new Date().toISOString()).slice(0, 7);\n  const seen = new Set();\n  for (const p of docs[c.internet_message_id] || []) {\n    const s = p.source || {};\n    const x = p.extraction;\n    if (!p.file_base64 || (x && x.is_invoice !== true) || seen.has(p.doc_hash)) continue;\n    seen.add(p.doc_hash);\n    const mime = String(s.mime_type || 'application/octet-stream');\n    const orig = String(s.filename || '');\n    const ext = (orig.match(/\\.([a-z0-9]{2,5})$/i) || [])[1] || EXT[mime] || 'bin';\n    const label = [x && x.invoice_date, x && (x.supplier || {}).name, x && x.invoice_number].map(clean).filter(Boolean).join(' ');\n    const name = (label || clean(orig.replace(/\\.[a-z0-9]{2,5}$/i, '')) || 'invoice') + '.' + ext.toLowerCase();\n    const path = String(cfg.invoice_files_folder || 'Hinkley Data Tables/Invoices').split('/').filter(Boolean).concat([month, name]);\n    out.push({\n      json: {\n        internet_message_id: c.internet_message_id, file_name: name, mime_type: mime,\n        upload_url: 'https://graph.microsoft.com/v1.0/drives/' + cfg.invoice_files_drive_id + '/root:/' + path.map(encodeURIComponent).join('/') + ':/content?@microsoft.graph.conflictBehavior=rename'\n      },\n      binary: { data: await this.helpers.prepareBinaryData(Buffer.from(p.file_base64, 'base64'), name, mime) }\n    });\n  }\n}\nreturn out;\n"
+      },
+      "id": "8ef2169c-fe76-4fb9-a33c-a848cdab0947",
+      "name": "Prepare invoice files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        73568,
+        31648
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $json.upload_url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOneDriveOAuth2Api",
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "cecbf722-ace2-4538-8ea6-12bfd46b6952",
+      "name": "Save invoice file to SharePoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        73808,
+        31648
+      ],
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "msLXAEonvBjNyNfl",
+          "name": "Microsoft Drive account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "notes": "Saves the invoice file in OneDrive/SharePoint (Config invoice_files_drive_id + invoice_files_folder, one folder per month). A name already taken gets a number added."
+    },
+    {
+      "parameters": {
+        "jsCode": "// The SharePoint link of each saved invoice file, for the app (invoice_intake_files).\nconst rows = [];\n$input.all().forEach((it, i) => {\n  const r = it.json || {};\n  const p = $('Prepare invoice files').itemMatching(i).json || {};\n  if (!r.webUrl || !p.internet_message_id) return;\n  rows.push({ internet_message_id: p.internet_message_id, kind: 'file', name: r.name || p.file_name, url: r.webUrl, drive_item_id: r.id || null, mime_type: p.mime_type || null, size: Number.isFinite(r.size) ? r.size : null });\n});\nif (!rows.length) return [];\nreturn [{ json: { rows } }];\n"
+      },
+      "id": "cae51c13-f6a2-46bf-ae4a-d25889c8460e",
+      "name": "Collect saved file links",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        74048,
+        31648
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into public.invoice_intake_files (internet_message_id, kind, name, url, drive_item_id, mime_type, size)\nselect internet_message_id, kind, name, url, drive_item_id, mime_type, size\nfrom jsonb_to_recordset($1::jsonb) as r(internet_message_id text, kind text, name text, url text, drive_item_id text, mime_type text, size integer)\nwhere coalesce(internet_message_id, '') <> '' and coalesce(url, '') <> '' and kind in ('file', 'link')\non conflict (internet_message_id, url) do nothing;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.rows)] }}"
+        }
+      },
+      "id": "15626bca-551f-4a09-9ebc-90bbd927a49a",
+      "name": "Save file links in Supabase",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        74288,
+        31648
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "Postgres account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput",
+      "notes": "The app shows these on Invoices > Inbox and For review (invoice_intake_files)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// The invoice link in each checked invoice email (Xero, QuickBooks, Invoice Simple, Square...),\n// so the app can open it. The link with \"invoice\" in its text or address, on a known invoicing site, wins.\nconst KEEP = ['pass', 'bounce', 'review'];\nconst PLATFORMS = /(^|\\.)(xero\\.com|intuit\\.com|quickbooks\\.com|invoicesimple\\.com|getinvoicesimple\\.com|squareup\\.com|square\\.link|sumup\\.com|zoho\\.com|zoho\\.eu|freeagent\\.com|stripe\\.com|paypal\\.com|invoice2go\\.com|waveapps\\.com|freshbooks\\.com|invoicehome\\.com|kashflow\\.com|clearbooks\\.co\\.uk|sage\\.com|pandle\\.com|invoiceninja\\.com|zervant\\.com|bill\\.com)$/i;\nconst SKIP = /unsubscribe|preferences|privacy|terms|cookie|facebook|twitter|linkedin|instagram|youtube|apps\\.apple|play\\.google|mailto:/i;\nconst trig = {};\nfor (const t of $('Outlook trigger (accounts inbox)').all()) {\n  const j = t.json || {};\n  if (j.internetMessageId) trig[j.internetMessageId] = j;\n  if (j.id) trig[j.id] = j;\n}\nconst best = html => {\n  let top = null;\n  const re = /<a\\b[^>]*href\\s*=\\s*[\"']([^\"']+)[\"'][^>]*>([\\s\\S]*?)<\\/a>/gi;\n  let m;\n  while ((m = re.exec(html)) !== null) {\n    const url = m[1].trim().replace(/&amp;/g, '&');\n    const text = m[2].replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n    let u; try { u = new URL(url); } catch (e) { continue; }\n    if (u.protocol !== 'https:' || SKIP.test(url) || SKIP.test(text)) continue;\n    let score = 0;\n    if (PLATFORMS.test(u.hostname)) score += 2;\n    if (/\\b(view|download|open|see|pay|access)\\b.{0,25}\\b(invoice|bill)\\b|\\binvoice\\b/i.test(text)) score += 2;\n    if (/invoice/i.test(u.pathname + u.search)) score += 1;\n    if (score >= 2 && (!top || score > top.score)) top = { url, score };\n  }\n  if (!top) {   // plain-text emails: a bare invoice address on a known invoicing site\n    for (const url of (html.replace(/<[^>]+>/g, ' ').match(/https:\\/\\/[^\\s\"'<>)]+/g) || [])) {\n      let u; try { u = new URL(url); } catch (e) { continue; }\n      if (!SKIP.test(url) && PLATFORMS.test(u.hostname) && /inv|bill|pay/i.test(u.pathname + u.search)) { top = { url }; break; }\n    }\n  }\n  return top ? top.url : null;\n};\nconst rows = [];\nfor (const it of $input.all()) {\n  const c = it.json || {};\n  if (!KEEP.includes(c.verdict) || !c.internet_message_id) continue;\n  const t = trig[c.internet_message_id] || trig[c.outlook_message_id] || {};\n  const body = t.body;\n  const url = best(String(typeof body === 'string' ? body : (body && body.content) || ''));\n  if (url && url.length <= 2000) rows.push({ internet_message_id: c.internet_message_id, kind: 'link', name: null, url });\n}\nif (!rows.length) return [];\nreturn [{ json: { rows } }];\n"
+      },
+      "id": "30947983-f6e3-4795-bcdf-149607c13515",
+      "name": "Find invoice links",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        73568,
+        31840
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into public.invoice_intake_files (internet_message_id, kind, name, url, drive_item_id, mime_type, size)\nselect internet_message_id, kind, name, url, drive_item_id, mime_type, size\nfrom jsonb_to_recordset($1::jsonb) as r(internet_message_id text, kind text, name text, url text, drive_item_id text, mime_type text, size integer)\nwhere coalesce(internet_message_id, '') <> '' and coalesce(url, '') <> '' and kind in ('file', 'link')\non conflict (internet_message_id, url) do nothing;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.rows)] }}"
+        }
+      },
+      "id": "c112f9ed-770a-49d8-86b6-67733a242451",
+      "name": "Save invoice links in Supabase",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        73808,
+        31840
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "Postgres account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput",
+      "notes": "Invoice links from Xero, QuickBooks and the like, shown in the app next to the email (invoice_intake_files)."
     }
   ],
   "pinData": {},
@@ -1566,6 +1704,16 @@
             "node": "Sent for review?",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Prepare invoice files",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Find invoice links",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -1783,6 +1931,50 @@
         [
           {
             "node": "Check invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare invoice files": {
+      "main": [
+        [
+          {
+            "node": "Save invoice file to SharePoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save invoice file to SharePoint": {
+      "main": [
+        [
+          {
+            "node": "Collect saved file links",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect saved file links": {
+      "main": [
+        [
+          {
+            "node": "Save file links in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find invoice links": {
+      "main": [
+        [
+          {
+            "node": "Save invoice links in Supabase",
             "type": "main",
             "index": 0
           }

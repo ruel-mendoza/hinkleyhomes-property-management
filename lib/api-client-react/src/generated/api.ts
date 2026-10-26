@@ -62,6 +62,7 @@ import type {
   GetComplianceParams,
   GetPerformanceParams,
   HealthStatus,
+  IntakeCheckList,
   IntakeReview,
   IntakeReviewList,
   IntakeReviewUpdate,
@@ -76,6 +77,7 @@ import type {
   ListCohoMaintenanceParams,
   ListCohoPropertiesParams,
   ListFinanceAlertsParams,
+  ListIntakeChecksParams,
   ListIntakeReviewsParams,
   MoneyOverview,
   Occupancy,
@@ -3691,6 +3693,90 @@ export function useListIntakeReviews<TData = Awaited<ReturnType<typeof listIntak
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListIntakeReviewsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListIntakeChecksUrl = (params?: ListIntakeChecksParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/invoices/intake-checks?${stringifiedParams}` : `/api/invoices/intake-checks`
+}
+
+/**
+ * @summary Emails to the accounts inbox the intake check looked at, with its verdict and where to open each invoice
+ */
+export const listIntakeChecks = async (params?: ListIntakeChecksParams, options?: Parameters<typeof customFetch>[1]): Promise<IntakeCheckList> => {
+
+  return customFetch<IntakeCheckList>(getListIntakeChecksUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListIntakeChecksQueryKey = (params?: ListIntakeChecksParams,) => {
+    return [
+    `/api/invoices/intake-checks`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListIntakeChecksQueryOptions = <TData = Awaited<ReturnType<typeof listIntakeChecks>>, TError = ErrorType<void>>(params?: ListIntakeChecksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIntakeChecks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListIntakeChecksQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listIntakeChecks>>> = ({ signal }) => listIntakeChecks(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listIntakeChecks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListIntakeChecksQueryResult = NonNullable<Awaited<ReturnType<typeof listIntakeChecks>>>
+export type ListIntakeChecksQueryError = ErrorType<void>
+
+
+/**
+ * @summary Emails to the accounts inbox the intake check looked at, with its verdict and where to open each invoice
+ */
+
+export function useListIntakeChecks<TData = Awaited<ReturnType<typeof listIntakeChecks>>, TError = ErrorType<void>>(
+ params?: ListIntakeChecksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIntakeChecks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListIntakeChecksQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { IntakeFile } from './intakeFile';
 import type { IntakeReviewIssue } from './intakeReviewIssue';
 import type { IntakeReviewReason } from './intakeReviewReason';
 import type { IntakeReviewStatus } from './intakeReviewStatus';
@@ -45,4 +46,5 @@ export interface IntakeReview {
   resolvedAt: string | null;
   /** @nullable */
   resolution: string | null;
+  files: IntakeFile[];
 }

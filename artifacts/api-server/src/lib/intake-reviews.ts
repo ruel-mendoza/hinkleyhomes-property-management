@@ -1,5 +1,5 @@
-import { sql } from "drizzle-orm";
-import { getDb, invoiceIntakeReviewsTable, type InvoiceIntakeReview } from "@workspace/db";
+import { asc, inArray, sql } from "drizzle-orm";
+import { getDb, invoiceIntakeFilesTable, invoiceIntakeReviewsTable, type InvoiceIntakeReview } from "@workspace/db";
 
 // Inbox intake check (n8n "Hinkley Intake check"): emails to accounts@ it sent
 // for review are posted here and listed on the Invoices page ("For review").
@@ -93,7 +93,37 @@ export async function recordIntakeReview(review: IncomingIntakeReview): Promise<
   return { id: row.id, created: row.created };
 }
 
-export function intakeReviewView(row: InvoiceIntakeReview) {
+export type IntakeFileView = { kind: "file" | "link"; name: string | null; url: string };
+
+// Saved files must be on SharePoint/OneDrive; invoice links just https. Anything
+// else the workflow wrote is left out rather than shown as a link.
+function safeUrl(kind: string, url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:") return false;
+    return kind === "link" || u.hostname.endsWith(".sharepoint.com");
+  } catch {
+    return false;
+  }
+}
+
+// The files and invoice links the workflow saved for these emails, by message id.
+export async function intakeFilesFor(messageIds: string[]): Promise<Map<string, IntakeFileView[]>> {
+  const map = new Map<string, IntakeFileView[]>();
+  const ids = [...new Set(messageIds.filter(Boolean))];
+  if (!ids.length) return map;
+  const t = invoiceIntakeFilesTable;
+  const rows = await getDb().select().from(t).where(inArray(t.internetMessageId, ids)).orderBy(asc(t.kind), asc(t.createdAt));
+  for (const row of rows) {
+    if ((row.kind !== "file" && row.kind !== "link") || !safeUrl(row.kind, row.url)) continue;
+    const list = map.get(row.internetMessageId) ?? [];
+    list.push({ kind: row.kind, name: row.name, url: row.url });
+    map.set(row.internetMessageId, list);
+  }
+  return map;
+}
+
+export function intakeReviewView(row: InvoiceIntakeReview, files: IntakeFileView[] = []) {
   return {
     id: row.id,
     status: row.status,
@@ -115,5 +145,6 @@ export function intakeReviewView(row: InvoiceIntakeReview) {
     resolvedBy: row.resolvedBy,
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
     resolution: row.resolution,
+    files,
   };
 }

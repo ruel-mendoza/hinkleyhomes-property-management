@@ -1608,9 +1608,50 @@ export const ListIntakeReviewsResponse = zod.object({
   "createdAt": zod.string(),
   "resolvedBy": zod.string().nullable(),
   "resolvedAt": zod.string().nullable(),
-  "resolution": zod.string().nullable()
+  "resolution": zod.string().nullable(),
+  "files": zod.array(zod.object({
+  "kind": zod.enum(['file', 'link']),
+  "name": zod.string().nullable(),
+  "url": zod.string()
+}))
 })),
   "openCount": zod.number().int()
+})
+
+
+/**
+ * @summary Emails to the accounts inbox the intake check looked at, with its verdict and where to open each invoice
+ */
+export const ListIntakeChecksQueryParams = zod.object({
+  "verdict": zod.enum(['invoices', 'pass', 'bounce', 'review', 'not_invoice', 'all']).optional()
+})
+
+export const ListIntakeChecksResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "processedAt": zod.string(),
+  "senderEmail": zod.string().nullable(),
+  "subject": zod.string().nullable(),
+  "supplierName": zod.string().nullable(),
+  "invoiceNumber": zod.string().nullable(),
+  "invoiceDate": zod.string().nullable(),
+  "total": zod.number().nullable(),
+  "billTo": zod.string().nullable(),
+  "verdict": zod.string(),
+  "issueCodes": zod.string().nullable(),
+  "action": zod.string().nullable(),
+  "files": zod.array(zod.object({
+  "kind": zod.enum(['file', 'link']),
+  "name": zod.string().nullable(),
+  "url": zod.string()
+}))
+})),
+  "counts": zod.object({
+  "pass": zod.number().int(),
+  "bounce": zod.number().int(),
+  "review": zod.number().int(),
+  "not_invoice": zod.number().int()
+})
 })
 
 
@@ -1660,7 +1701,12 @@ export const UpdateIntakeReviewResponse = zod.object({
   "createdAt": zod.string(),
   "resolvedBy": zod.string().nullable(),
   "resolvedAt": zod.string().nullable(),
-  "resolution": zod.string().nullable()
+  "resolution": zod.string().nullable(),
+  "files": zod.array(zod.object({
+  "kind": zod.enum(['file', 'link']),
+  "name": zod.string().nullable(),
+  "url": zod.string()
+}))
 })
 
 

@@ -12,6 +12,7 @@ import {
 import { errorText } from "@/components/action-modals";
 import { ModalShell } from "@/components/properties/ModalShell";
 import { formatDate } from "@/services/properties";
+import { InvoiceFileLinks } from "./IntakeChecksTab";
 import "./finance.css";
 
 // Invoices page, "For review" tab: emails to accounts@ that the n8n intake check
@@ -65,6 +66,7 @@ export function IntakeReviewsTab({ get, setParams, flash }: { get: (key: string)
                       <small className="hh-fin-sub">{[review.invoiceNumber, review.invoiceDate ? formatDate(review.invoiceDate) : null].filter(Boolean).join(" · ") || "No number or date read"}</small>
                       {review.total !== null && <small className="hh-fin-sub">{money(review.total, review.currency)}</small>}
                       {review.billTo && <small className="hh-fin-sub">To: {review.billTo}{review.billToCompany && review.billToCompany !== review.billTo ? ` (${review.billToCompany})` : ""}</small>}
+                      <InvoiceFileLinks files={review.files} />
                     </td>
                     <td className="hh-chk-summary">
                       {review.reasons.map((reason, index) => <small key={`r${index}`} className="hh-fin-sub warn">{reason.message}</small>)}

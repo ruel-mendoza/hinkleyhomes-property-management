@@ -4,6 +4,7 @@
 --   document_readings       read and add (AI readings, shared with bill coding)
 --   company_aliases         read (names invoices may be addressed to)
 --   invoice_intake_reviews  add new open reviews (Invoices > For review)
+--   invoice_intake_files    add (SharePoint file and invoice links per email)
 -- Row policies in lib/db/src/schema enforce the same; the database push adds them.
 --
 -- Run in Supabase > SQL Editor. Replace the password first and keep it only in
@@ -25,3 +26,4 @@ grant insert on table public.invoice_intake_reviews to n8n_intake_writer;
 grant select, insert on table public.invoice_intake_checks to n8n_intake_writer;
 grant select, insert on table public.document_readings to n8n_intake_writer;
 grant select on table public.company_aliases to n8n_intake_writer;
+grant insert on table public.invoice_intake_files to n8n_intake_writer;

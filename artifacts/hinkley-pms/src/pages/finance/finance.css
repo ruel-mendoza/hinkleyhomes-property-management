@@ -195,6 +195,9 @@
 .hh-chk-cell.empty{color:#6f7f96}
 .hh-chk-alert-name{display:block;margin:4px 0 2px}
 .hh-chk-summary{max-width:60ch;line-height:1.45;white-space:normal;overflow-wrap:anywhere}
+.hh-intake-files{display:flex;flex-direction:column;gap:3px;margin-top:4px}
+.hh-intake-files a{display:inline-flex;align-items:center;gap:5px;color:#79cdb0;font-size:12px;font-weight:600;text-decoration:none;white-space:normal;overflow-wrap:anywhere}
+.hh-intake-files a:hover,.hh-intake-files a:focus-visible{text-decoration:underline}
 td.hh-chk-summary{min-width:260px;width:60ch}
 .spin{animation:hh-spin 1s linear infinite}
 @keyframes hh-spin{to{transform:rotate(360deg)}}

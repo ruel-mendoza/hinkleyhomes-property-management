@@ -1810,6 +1810,70 @@ export interface IntakeReviewIssue {
   lines: IntakeReviewIssueLine[];
 }
 
+export type IntakeFileKind = typeof IntakeFileKind[keyof typeof IntakeFileKind];
+
+
+export const IntakeFileKind = {
+  file: 'file',
+  link: 'link',
+} as const;
+
+export interface IntakeFile {
+  kind: IntakeFileKind;
+  /** @nullable */
+  name: string | null;
+  url: string;
+}
+
+export type IntakeCheckFilter = typeof IntakeCheckFilter[keyof typeof IntakeCheckFilter];
+
+
+export const IntakeCheckFilter = {
+  invoices: 'invoices',
+  pass: 'pass',
+  bounce: 'bounce',
+  review: 'review',
+  not_invoice: 'not_invoice',
+  all: 'all',
+} as const;
+
+export interface IntakeCheck {
+  id: string;
+  processedAt: string;
+  /** @nullable */
+  senderEmail: string | null;
+  /** @nullable */
+  subject: string | null;
+  /** @nullable */
+  supplierName: string | null;
+  /** @nullable */
+  invoiceNumber: string | null;
+  /** @nullable */
+  invoiceDate: string | null;
+  /** @nullable */
+  total: number | null;
+  /** @nullable */
+  billTo: string | null;
+  verdict: string;
+  /** @nullable */
+  issueCodes: string | null;
+  /** @nullable */
+  action: string | null;
+  files: IntakeFile[];
+}
+
+export type IntakeCheckListCounts = {
+  pass: number;
+  bounce: number;
+  review: number;
+  not_invoice: number;
+};
+
+export interface IntakeCheckList {
+  items: IntakeCheck[];
+  counts: IntakeCheckListCounts;
+}
+
 export interface IntakeReview {
   id: string;
   status: IntakeReviewStatus;
@@ -1846,6 +1910,7 @@ export interface IntakeReview {
   resolvedAt: string | null;
   /** @nullable */
   resolution: string | null;
+  files: IntakeFile[];
 }
 
 export interface IntakeReviewList {
@@ -2364,6 +2429,10 @@ status?: FinanceAlertFilter;
 
 export type ListIntakeReviewsParams = {
 status?: IntakeReviewFilter;
+};
+
+export type ListIntakeChecksParams = {
+verdict?: IntakeCheckFilter;
 };
 
 export type ListBillReviewsParams = {

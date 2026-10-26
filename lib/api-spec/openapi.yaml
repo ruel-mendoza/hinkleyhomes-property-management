@@ -988,6 +988,26 @@ paths:
                 $ref: "#/components/schemas/IntakeReviewList"
         "503":
           description: Database is not configured
+  /invoices/intake-checks:
+    get:
+      operationId: listIntakeChecks
+      tags: [xero]
+      summary: Emails to the accounts inbox the intake check looked at, with its verdict and where to open each invoice
+      parameters:
+        - name: verdict
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/IntakeCheckFilter"
+      responses:
+        "200":
+          description: Checks, newest first (up to 500)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntakeCheckList"
+        "503":
+          description: Database is not configured
   /invoices/intake-reviews/{id}:
     put:
       operationId: updateIntakeReview
@@ -3477,6 +3497,72 @@ components:
           items:
             $ref: "#/components/schemas/IntakeReviewIssueLine"
       required: [code, message, lines]
+    IntakeFile:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [file, link]
+        name:
+          type: ["string", "null"]
+        url:
+          type: string
+      required: [kind, name, url]
+    IntakeCheckFilter:
+      type: string
+      enum: [invoices, pass, bounce, review, not_invoice, all]
+    IntakeCheck:
+      type: object
+      properties:
+        id:
+          type: string
+        processedAt:
+          type: string
+        senderEmail:
+          type: ["string", "null"]
+        subject:
+          type: ["string", "null"]
+        supplierName:
+          type: ["string", "null"]
+        invoiceNumber:
+          type: ["string", "null"]
+        invoiceDate:
+          type: ["string", "null"]
+        total:
+          type: ["number", "null"]
+        billTo:
+          type: ["string", "null"]
+        verdict:
+          type: string
+        issueCodes:
+          type: ["string", "null"]
+        action:
+          type: ["string", "null"]
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/IntakeFile"
+      required: [id, processedAt, senderEmail, subject, supplierName, invoiceNumber, invoiceDate, total, billTo, verdict, issueCodes, action, files]
+    IntakeCheckList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/IntakeCheck"
+        counts:
+          type: object
+          properties:
+            pass:
+              type: integer
+            bounce:
+              type: integer
+            review:
+              type: integer
+            not_invoice:
+              type: integer
+          required: [pass, bounce, review, not_invoice]
+      required: [items, counts]
     IntakeReview:
       type: object
       properties:
@@ -3524,7 +3610,11 @@ components:
           type: ["string", "null"]
         resolution:
           type: ["string", "null"]
-      required: [id, status, receivedAt, senderEmail, senderName, subject, webLink, supplierName, invoiceNumber, invoiceDate, total, currency, billTo, billToCompany, reasons, issues, createdAt, resolvedBy, resolvedAt, resolution]
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/IntakeFile"
+      required: [id, status, receivedAt, senderEmail, senderName, subject, webLink, supplierName, invoiceNumber, invoiceDate, total, currency, billTo, billToCompany, reasons, issues, createdAt, resolvedBy, resolvedAt, resolution, files]
     IntakeReviewList:
       type: object
       properties:

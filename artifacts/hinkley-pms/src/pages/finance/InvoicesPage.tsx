@@ -19,6 +19,7 @@ import { ModalShell } from "@/components/properties/ModalShell";
 import { downloadText, formatDate } from "@/services/properties";
 import { ReminderBanner, ReminderCell, ReminderSettingsModal, SendReminderModal } from "./ReminderControls";
 import { IntakeReviewsTab, intakeReviewsQueryOptions } from "./IntakeReviewsTab";
+import { IntakeChecksTab } from "./IntakeChecksTab";
 import "./finance.css";
 
 // Invoices (Xero, Phase 1): what each company is owed and owes, with our own
@@ -37,7 +38,7 @@ export const OUTCOMES: Record<InvoiceFollowUpOutcome, [string, string]> = {
   write_off_review: ["Write-off review", "overdue"],
 };
 
-type Tab = "receivables" | "bills" | "review";
+type Tab = "receivables" | "bills" | "inbox" | "review";
 type Bucket = "all" | "not_due" | "1_30" | "31_60" | "61_90" | "90_plus";
 const BUCKETS: { key: Bucket; label: string; test: (days: number) => boolean }[] = [
   { key: "not_due", label: "Not yet due", test: (days) => days <= 0 },
@@ -77,7 +78,8 @@ export default function InvoicesPage() {
     for (const [key, value] of Object.entries(change)) value ? next.set(key, value) : next.delete(key);
     navigate(`/invoices${next.size ? `?${next}` : ""}`, { replace: true });
   };
-  const tab: Tab = get("tab") === "bills" ? "bills" : get("tab") === "review" ? "review" : "receivables";
+  const tab: Tab = (["bills", "inbox", "review"] as const).find((key) => key === get("tab")) ?? "receivables";
+  const intake = tab === "inbox" || tab === "review";
   const bucket = (BUCKETS.some((item) => item.key === get("age")) ? get("age") : "all") as Bucket;
   const company = get("company");
   const term = get("q");
@@ -126,14 +128,17 @@ export default function InvoicesPage() {
   };
 
   const tabBar = (
-    <div className="hh-inv-tabs" role="tablist" aria-label="Invoices, bills or invoices for review">
-      <button type="button" role="tab" aria-selected={tab === "receivables"} className={tab === "receivables" ? "active" : ""} onClick={() => setParams({ tab: "", age: "", chase: "", status: "" })}>
+    <div className="hh-inv-tabs" role="tablist" aria-label="Invoices, bills, inbox or invoices for review">
+      <button type="button" role="tab" aria-selected={tab === "receivables"} className={tab === "receivables" ? "active" : ""} onClick={() => setParams({ tab: "", age: "", chase: "", status: "", verdict: "" })}>
         Owed to us {data && <span>{data.invoices.length}</span>}
       </button>
-      <button type="button" role="tab" aria-selected={tab === "bills"} className={tab === "bills" ? "active" : ""} onClick={() => setParams({ tab: "bills", age: "", chase: "", status: "" })}>
+      <button type="button" role="tab" aria-selected={tab === "bills"} className={tab === "bills" ? "active" : ""} onClick={() => setParams({ tab: "bills", age: "", chase: "", status: "", verdict: "" })}>
         Bills to pay {data && <span>{data.bills.length}</span>}
       </button>
-      <button type="button" role="tab" aria-selected={tab === "review"} className={tab === "review" ? "active" : ""} onClick={() => setParams({ tab: "review", age: "", chase: "", q: "" })}>
+      <button type="button" role="tab" aria-selected={tab === "inbox"} className={tab === "inbox" ? "active" : ""} onClick={() => setParams({ tab: "inbox", age: "", chase: "", q: "", status: "", company: "" })}>
+        Inbox
+      </button>
+      <button type="button" role="tab" aria-selected={tab === "review"} className={tab === "review" ? "active" : ""} onClick={() => setParams({ tab: "review", age: "", chase: "", q: "", verdict: "", company: "" })}>
         For review {reviewOpen !== undefined && <span className={reviewOpen ? "hh-chk-count bad" : ""}>{reviewOpen}</span>}
       </button>
     </div>
@@ -145,17 +150,17 @@ export default function InvoicesPage() {
         <div>
           <div className="eyebrow">Hinkley Homes · Xero</div>
           <h1 className="page-title">Invoices</h1>
-          <p className="page-sub">{tab === "review" ? "Invoices emailed to accounts@ that the intake check sent for a person to look at" : <>What each company is owed and owes in Xero, with follow-ups{data ? ` · as of ${formatDate(data.asOf)}` : ""}</>}</p>
+          <p className="page-sub">{tab === "inbox" ? "Every email to accounts@ the intake check looked at, with the saved invoice or its link" : tab === "review" ? "Invoices emailed to accounts@ that the intake check sent for a person to look at" : <>What each company is owed and owes in Xero, with follow-ups{data ? ` · as of ${formatDate(data.asOf)}` : ""}</>}</p>
         </div>
         <div className="head-actions">
-          {tab !== "review" && <button type="button" className="button" onClick={exportCsv} disabled={!visible.length} data-testid="button-invoices-export"><Download size={14} /> Export (CSV)</button>}
+          {!intake && <button type="button" className="button" onClick={exportCsv} disabled={!visible.length} data-testid="button-invoices-export"><Download size={14} /> Export (CSV)</button>}
         </div>
       </div>
 
-      {tab === "review" ? (
+      {intake ? (
         <>
           {tabBar}
-          <IntakeReviewsTab get={get} setParams={setParams} flash={flash} />
+          {tab === "inbox" ? <IntakeChecksTab get={get} setParams={setParams} /> : <IntakeReviewsTab get={get} setParams={setParams} flash={flash} />}
         </>
       ) : <>
       {query.isLoading && <section className="panel hh-fin-note">Loading invoices from Xero for all five companies…</section>}

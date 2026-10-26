@@ -440,6 +440,31 @@ export const invoiceIntakeChecksTable = pgTable(
 
 export type InvoiceIntakeCheck = typeof invoiceIntakeChecksTable.$inferSelect;
 
+// Where to open each checked invoice: the file the workflow saved to SharePoint
+// (kind "file"), or the invoice link in the email when it came from Xero,
+// QuickBooks and the like (kind "link"). Matched to the check by message id.
+export const invoiceIntakeFilesTable = pgTable(
+  "invoice_intake_files",
+  {
+    id: id(),
+    internetMessageId: text("internet_message_id").notNull(),
+    kind: text("kind").notNull(),
+    name: text("name"),
+    url: text("url").notNull(),
+    driveItemId: text("drive_item_id"),
+    mimeType: text("mime_type"),
+    size: integer("size"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("invoice_intake_files_message_url_uq").on(t.internetMessageId, t.url),
+    check("invoice_intake_files_kind_chk", sql`${t.kind} in ('file', 'link')`),
+    pgPolicy("invoice_intake_files_n8n_insert", { for: "insert", to: n8nIntakeWriterRole, withCheck: sql`true` }),
+  ],
+).enableRLS();
+
+export type InvoiceIntakeFile = typeof invoiceIntakeFilesTable.$inferSelect;
+
 export const intakeReviewStatusEnum = pgEnum("intake_review_status", ["open", "done", "dismissed"]);
 
 export const invoiceIntakeReviewsTable = pgTable(
