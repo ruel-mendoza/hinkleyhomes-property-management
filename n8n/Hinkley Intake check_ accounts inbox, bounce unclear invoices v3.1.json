@@ -1405,7 +1405,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "insert into public.invoice_intake_files (internet_message_id, kind, name, url, drive_item_id, mime_type, size)\nselect internet_message_id, kind, name, url, drive_item_id, mime_type, size\nfrom jsonb_to_recordset($1::jsonb) as r(internet_message_id text, kind text, name text, url text, drive_item_id text, mime_type text, size integer)\nwhere coalesce(internet_message_id, '') <> '' and coalesce(url, '') <> '' and kind in ('file', 'link')\non conflict (internet_message_id, url) do nothing;",
+        "query": "insert into public.invoice_intake_files (internet_message_id, kind, name, url, drive_item_id, mime_type, size)\nselect internet_message_id, kind, name, url, drive_item_id, mime_type, size\nfrom jsonb_to_recordset($1::jsonb) as r(internet_message_id text, kind text, name text, url text, drive_item_id text, mime_type text, size integer)\nwhere coalesce(internet_message_id, '') <> '' and coalesce(url, '') <> '' and kind in ('file', 'link')\non conflict do nothing;",
         "options": {
           "queryReplacement": "={{ [JSON.stringify($json.rows)] }}"
         }
@@ -1445,7 +1445,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "insert into public.invoice_intake_files (internet_message_id, kind, name, url, drive_item_id, mime_type, size)\nselect internet_message_id, kind, name, url, drive_item_id, mime_type, size\nfrom jsonb_to_recordset($1::jsonb) as r(internet_message_id text, kind text, name text, url text, drive_item_id text, mime_type text, size integer)\nwhere coalesce(internet_message_id, '') <> '' and coalesce(url, '') <> '' and kind in ('file', 'link')\non conflict (internet_message_id, url) do nothing;",
+        "query": "insert into public.invoice_intake_files (internet_message_id, kind, name, url, drive_item_id, mime_type, size)\nselect internet_message_id, kind, name, url, drive_item_id, mime_type, size\nfrom jsonb_to_recordset($1::jsonb) as r(internet_message_id text, kind text, name text, url text, drive_item_id text, mime_type text, size integer)\nwhere coalesce(internet_message_id, '') <> '' and coalesce(url, '') <> '' and kind in ('file', 'link')\non conflict do nothing;",
         "options": {
           "queryReplacement": "={{ [JSON.stringify($json.rows)] }}"
         }
