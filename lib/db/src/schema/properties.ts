@@ -1,8 +1,9 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, integer, pgEnum, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, index, integer, pgEnum, pgPolicy, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { id, timestamps } from "./columns";
+import { n8nIntakeWriterRole } from "./roles";
 
 // The six Hinkley Homes Group companies. Single-tenant: there is no
 // organisation table — every property belongs to one of these entities.
@@ -27,7 +28,10 @@ export const companyAliasesTable = pgTable("company_aliases", {
   notes: text("notes"),
   createdBy: text("created_by"),
   ...timestamps,
-}).enableRLS();
+}, () => [
+  // The n8n intake check reads them to accept invoices addressed to these names.
+  pgPolicy("company_aliases_n8n_read", { for: "select", to: n8nIntakeWriterRole, using: sql`true` }),
+]).enableRLS();
 
 export const propertyTypeEnum = pgEnum("property_type", [
   "hmo",

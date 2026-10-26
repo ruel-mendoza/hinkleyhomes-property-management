@@ -1,10 +1,11 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, date, index, integer, jsonb, numeric, pgEnum, pgPolicy, pgRole, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, integer, jsonb, numeric, pgEnum, pgPolicy, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { id, money, timestamps } from "./columns";
 import { contractorInvoicesTable } from "./maintenance";
 import { entitiesTable, propertiesTable } from "./properties";
+import { n8nIntakeWriterRole } from "./roles";
 import { supplierBankDetailsTable, suppliersTable } from "./suppliers";
 
 export const receiptSourceEnum = pgEnum("receipt_source", ["email", "whatsapp", "manual"]);
@@ -360,13 +361,17 @@ export const billCodingReviewsTable = pgTable(
 ).enableRLS();
 
 // Each document is read by the AI once: the reading is kept by file fingerprint.
+// Shared with the n8n intake check, which looks readings up and adds its own.
 export const documentReadingsTable = pgTable("document_readings", {
   docHash: text("doc_hash").primaryKey(),
   extraction: jsonb("extraction").$type<Record<string, unknown>>().notNull(),
   model: text("model"),
   provider: text("provider"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}).enableRLS();
+}, () => [
+  pgPolicy("document_readings_n8n_read", { for: "select", to: n8nIntakeWriterRole, using: sql`true` }),
+  pgPolicy("document_readings_n8n_insert", { for: "insert", to: n8nIntakeWriterRole, withCheck: sql`true` }),
+]).enableRLS();
 
 // One settings row, id "default". Shadow mode on: nothing is written to Xero.
 export const billCodingSettingsTable = pgTable("bill_coding_settings", {
@@ -397,10 +402,43 @@ export type BillCodingSettings = typeof billCodingSettingsTable.$inferSelect;
 // Emails to accounts@ the intake check could not pass or bounce on its own
 // (verdict "review"): a person looks at them on the Invoices page. One row per
 // email; the supplier is never contacted from here. n8n inserts the rows
-// itself (the app may be asleep) as n8n_intake_writer, which can only insert
-// into this table; create that login first with lib/db/sql/n8n-intake-writer.sql.
+// itself (the app may be asleep) as n8n_intake_writer (see ./roles.ts).
 
-export const n8nIntakeWriterRole = pgRole("n8n_intake_writer").existing();
+// Every email the intake check looked at, with its verdict: the workflow skips
+// emails already here and counts earlier bounce requests from it.
+export const invoiceIntakeChecksTable = pgTable(
+  "invoice_intake_checks",
+  {
+    id: id(),
+    internetMessageId: text("internet_message_id").notNull(),
+    outlookMessageId: text("outlook_message_id"),
+    processedAt: timestamp("processed_at", { withTimezone: true }).notNull().defaultNow(),
+    senderEmail: text("sender_email"),
+    subject: text("subject"),
+    supplierName: text("supplier_name"),
+    invoiceNumber: text("invoice_number"),
+    invoiceDate: date("invoice_date"),
+    totalGross: money("total_gross"),
+    billTo: text("bill_to"),
+    // pass | bounce | review | not_invoice
+    verdict: text("verdict").notNull(),
+    issueCodes: text("issue_codes"),
+    // none | shadow_proposed | draft_created | bounce_sent
+    action: text("action"),
+    mode: text("mode"),
+    bounceKey: text("bounce_key"),
+    // { issues: [...per document], review: [...] }, as the workflow builds it.
+    issues: jsonb("issues").$type<Record<string, unknown>>().notNull().default({}),
+  },
+  (t) => [
+    uniqueIndex("invoice_intake_checks_message_uq").on(t.internetMessageId),
+    index("invoice_intake_checks_action_idx").on(t.action, t.processedAt),
+    pgPolicy("invoice_intake_checks_n8n_read", { for: "select", to: n8nIntakeWriterRole, using: sql`true` }),
+    pgPolicy("invoice_intake_checks_n8n_insert", { for: "insert", to: n8nIntakeWriterRole, withCheck: sql`true` }),
+  ],
+).enableRLS();
+
+export type InvoiceIntakeCheck = typeof invoiceIntakeChecksTable.$inferSelect;
 
 export const intakeReviewStatusEnum = pgEnum("intake_review_status", ["open", "done", "dismissed"]);
 
