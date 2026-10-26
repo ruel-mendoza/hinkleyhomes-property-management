@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { AlertTriangle, Landmark, PoundSterling } from "lucide-react";
 import { Link } from "wouter";
 import type { MoneyBankAccount, MoneyCompany, MoneyOverview } from "@workspace/api-client-react";
@@ -38,10 +38,14 @@ export function AccountsNotices({ data }: { data?: MoneyOverview }) {
   );
 }
 
-export function MoneyPanels({ data, loading, failed, propertyReference }: { data?: MoneyOverview; loading: boolean; failed: boolean; propertyReference?: string }) {
+// Left column: what needs attention (passed in as lead), then tenant money; banking on the right.
+export function MoneyPanels({ data, loading, failed, propertyReference, lead }: { data?: MoneyOverview; loading: boolean; failed: boolean; propertyReference?: string; lead?: ReactNode }) {
   return (
     <div className="hh-money-grid">
-      <TenantMoney data={data} loading={loading} failed={failed} propertyReference={propertyReference} />
+      <div className="hh-money-col">
+        {lead}
+        <TenantMoney data={data} loading={loading} failed={failed} propertyReference={propertyReference} />
+      </div>
       <Banking data={data} loading={loading} failed={failed} />
     </div>
   );
