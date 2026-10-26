@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, date, index, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, integer, jsonb, numeric, pgEnum, pgPolicy, pgRole, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { id, money, timestamps } from "./columns";
@@ -396,7 +396,11 @@ export type BillCodingSettings = typeof billCodingSettingsTable.$inferSelect;
 // --- Inbox intake check (n8n "Hinkley Intake check") ---------------------------
 // Emails to accounts@ the intake check could not pass or bounce on its own
 // (verdict "review"): a person looks at them on the Invoices page. One row per
-// email; the supplier is never contacted from here.
+// email; the supplier is never contacted from here. n8n inserts the rows
+// itself (the app may be asleep) as n8n_intake_writer, which can only insert
+// into this table; create that login first with lib/db/sql/n8n-intake-writer.sql.
+
+export const n8nIntakeWriterRole = pgRole("n8n_intake_writer").existing();
 
 export const intakeReviewStatusEnum = pgEnum("intake_review_status", ["open", "done", "dismissed"]);
 
@@ -432,6 +436,12 @@ export const invoiceIntakeReviewsTable = pgTable(
   (t) => [
     uniqueIndex("invoice_intake_reviews_message_uq").on(t.internetMessageId),
     index("invoice_intake_reviews_status_idx").on(t.status, t.createdAt),
+    // New open reviews only: n8n can't read, change or close existing ones.
+    pgPolicy("invoice_intake_reviews_n8n_insert", {
+      for: "insert",
+      to: n8nIntakeWriterRole,
+      withCheck: sql`${t.status} = 'open' and ${t.resolvedBy} is null and ${t.resolvedAt} is null`,
+    }),
   ],
 ).enableRLS();
 
