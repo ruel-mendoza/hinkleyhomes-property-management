@@ -194,7 +194,8 @@
 .hh-chk-cell.completed{background:#1b3329;color:#bfe7d3}
 .hh-chk-cell.empty{color:#6f7f96}
 .hh-chk-alert-name{display:block;margin:4px 0 2px}
-.hh-chk-summary{max-width:60ch;line-height:1.45}
+.hh-chk-summary{max-width:60ch;line-height:1.45;white-space:normal;overflow-wrap:anywhere}
+td.hh-chk-summary{min-width:260px;width:60ch}
 .spin{animation:hh-spin 1s linear infinite}
 @keyframes hh-spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.spin{animation:none}}
