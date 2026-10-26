@@ -56,3 +56,36 @@
 /* Unmatched bank line that may pay an overdue rent */
 .hh-money-list a.hh-money-possible{display:block;margin-top:4px;padding:4px 8px;border-radius:6px;background:#1f3550;border:1px solid #2c4a6e;color:#c4dbf5;font-size:12px;font-weight:600;line-height:1.4;text-decoration:none}
 .hh-money-list a.hh-money-possible:hover,.hh-money-list a.hh-money-possible:focus-visible{border-color:#79cdb0;color:#fff;text-decoration:none}
+
+/* Compact tenant money lines */
+.hh-money-line{display:flex;justify-content:space-between;gap:12px;margin:10px 0 0;padding-top:10px;border-top:1px solid #2a374d;font-size:13px;color:#c6d1de}
+.hh-money-line > span:first-child{flex:none;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#a9b5c5}
+.hh-money-line > span:last-child{text-align:right}
+.hh-money-line a{color:#e2e9f1;font-weight:600;text-decoration:none}
+.hh-money-line a:hover,.hh-money-line a:focus-visible{color:#79cdb0;text-decoration:underline}
+.hh-money-more{margin-top:6px;padding:0;border:0;background:none;color:#79cdb0;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.hh-money-more:hover,.hh-money-more:focus-visible{text-decoration:underline}
+
+/* Needs attention */
+.hh-attn{margin-top:14px}
+.hh-attn .panel-head{align-items:center}
+.hh-attn-list{list-style:none;margin:0;padding:2px 10px 10px}
+.hh-attn-list li a{display:grid;grid-template-columns:10px minmax(150px,1.1fr) auto minmax(0,1.6fr) 16px;align-items:center;gap:12px;padding:9px 8px;border-radius:7px;color:#c6d1de;text-decoration:none;font-size:13px}
+.hh-attn-list li + li a{border-top:1px solid #243147}
+.hh-attn-list li a:hover,.hh-attn-list li a:focus-visible{background:#1c2a40;outline:none}
+.hh-attn-list li a:focus-visible{box-shadow:0 0 0 2px #79cdb0 inset}
+.hh-attn-list i{width:9px;height:9px;border-radius:50%;background:#6f7f96}
+.hh-attn-list li.high i{background:#ef6f74}
+.hh-attn-list li.warn i{background:#e5b04f}
+.hh-attn-list li.info i{background:#5b9be0}
+.hh-attn-label{font-weight:700;color:#e2e9f1}
+.hh-attn-list strong{white-space:nowrap;color:#e2e9f1;font-variant-numeric:tabular-nums}
+.hh-attn-list strong small{font-size:12px;font-weight:600;color:#a9b5c5}
+.hh-attn-detail{min-width:0;color:#95a2b5;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hh-attn-list svg{color:#79cdb0}
+.hh-attn-clear{display:flex;align-items:center;gap:8px;margin:0;padding:6px 17px 16px;font-size:13px;color:#a9e6cf}
+.hh-attn-problem{margin:0;padding:0 17px 12px;font-size:12px;color:#f0c27b}
+@media (max-width: 720px){
+  .hh-attn-list li a{grid-template-columns:10px minmax(0,1fr) auto 16px}
+  .hh-attn-detail{grid-column:2 / 4;white-space:normal}
+}

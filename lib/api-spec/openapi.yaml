@@ -627,6 +627,25 @@ paths:
           description: COHO returned an error
         "503":
           description: COHO API key is not configured
+  /overview/attention:
+    get:
+      operationId: getAttention
+      tags: [xero]
+      summary: What needs someone today, from the app's own tables and COHO compliance (the overview adds money figures it already loads)
+      parameters:
+        - name: property
+          in: query
+          required: false
+          description: COHO property reference; narrows COHO actions and compliance
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Items to act on, unordered (the page ranks them)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttentionReport"
   /overview/money:
     get:
       operationId: getMoneyOverview
@@ -1615,6 +1634,43 @@ components:
           items:
             $ref: "#/components/schemas/MoneyCompany"
       required: [error, companies]
+    AttentionSeverity:
+      type: string
+      enum: [high, warn, info]
+    AttentionItem:
+      type: object
+      properties:
+        key:
+          type: string
+        severity:
+          $ref: "#/components/schemas/AttentionSeverity"
+        label:
+          type: string
+        count:
+          type: integer
+        amount:
+          type: ["number", "null"]
+        detail:
+          type: ["string", "null"]
+        href:
+          type: string
+      required: [key, severity, label, count, amount, detail, href]
+    AttentionReport:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttentionItem"
+        problems:
+          type: array
+          items:
+            type: string
+        checked:
+          type: array
+          items:
+            type: string
+      required: [items, problems, checked]
     MoneyOverview:
       type: object
       properties:

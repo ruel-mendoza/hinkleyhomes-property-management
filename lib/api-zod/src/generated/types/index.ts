@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './attentionItem';
+export * from './attentionReport';
+export * from './attentionSeverity';
 export * from './billCodingSettings';
 export * from './billCodingSettingsCategoryAccountMap';
 export * from './billCodingSettingsUpdate';
@@ -100,6 +103,7 @@ export * from './financeIncomeOwner';
 export * from './financeIncomeProperty';
 export * from './financeItem';
 export * from './financeItemCategory';
+export * from './getAttentionParams';
 export * from './getComplianceParams';
 export * from './getPerformanceParams';
 export * from './healthStatus';

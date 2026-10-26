@@ -14,6 +14,7 @@ import presenceRouter from "./presence";
 import checksRouter from "./checks";
 import billCodingRouter from "./bill-coding";
 import intakeReviewsRouter from "./intake-reviews";
+import attentionRouter from "./attention";
 import { propertiesRouter, publicListingsRouter } from "./properties";
 import { requireStaffAccess } from "../middlewares/requireStaffAccess";
 
@@ -39,5 +40,6 @@ router.use(presenceRouter);
 router.use(checksRouter);
 router.use(billCodingRouter);
 router.use(intakeReviewsRouter);
+router.use(attentionRouter);
 
 export default router;

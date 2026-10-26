@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AttentionReport,
   BillCodingSettings,
   BillCodingSettingsUpdate,
   BillReviewAnswers,
@@ -59,6 +60,7 @@ import type {
   FinanceAlertUpdate,
   FinanceBankFeed,
   FinanceIncome,
+  GetAttentionParams,
   GetComplianceParams,
   GetPerformanceParams,
   HealthStatus,
@@ -2289,6 +2291,90 @@ export function useGetOccupancy<TData = Awaited<ReturnType<typeof getOccupancy>>
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetOccupancyQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAttentionUrl = (params?: GetAttentionParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/overview/attention?${stringifiedParams}` : `/api/overview/attention`
+}
+
+/**
+ * @summary What needs someone today, from the app's own tables and COHO compliance (the overview adds money figures it already loads)
+ */
+export const getAttention = async (params?: GetAttentionParams, options?: Parameters<typeof customFetch>[1]): Promise<AttentionReport> => {
+
+  return customFetch<AttentionReport>(getGetAttentionUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAttentionQueryKey = (params?: GetAttentionParams,) => {
+    return [
+    `/api/overview/attention`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAttentionQueryOptions = <TData = Awaited<ReturnType<typeof getAttention>>, TError = ErrorType<unknown>>(params?: GetAttentionParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAttention>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAttentionQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAttention>>> = ({ signal }) => getAttention(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAttention>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAttentionQueryResult = NonNullable<Awaited<ReturnType<typeof getAttention>>>
+export type GetAttentionQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary What needs someone today, from the app's own tables and COHO compliance (the overview adds money figures it already loads)
+ */
+
+export function useGetAttention<TData = Awaited<ReturnType<typeof getAttention>>, TError = ErrorType<unknown>>(
+ params?: GetAttentionParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAttention>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAttentionQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

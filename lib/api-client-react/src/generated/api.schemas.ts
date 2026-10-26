@@ -201,6 +201,33 @@ export interface MoneyXero {
   companies: MoneyCompany[];
 }
 
+export type AttentionSeverity = typeof AttentionSeverity[keyof typeof AttentionSeverity];
+
+
+export const AttentionSeverity = {
+  high: 'high',
+  warn: 'warn',
+  info: 'info',
+} as const;
+
+export interface AttentionItem {
+  key: string;
+  severity: AttentionSeverity;
+  label: string;
+  count: number;
+  /** @nullable */
+  amount: number | null;
+  /** @nullable */
+  detail: string | null;
+  href: string;
+}
+
+export interface AttentionReport {
+  items: AttentionItem[];
+  problems: string[];
+  checked: string[];
+}
+
 export interface MoneyOverview {
   /** When the figures were fetched (ISO date-time) */
   asOf: string;
@@ -2409,6 +2436,13 @@ page?: number;
  */
 pageSize?: number;
 propertyReference?: string;
+};
+
+export type GetAttentionParams = {
+/**
+ * COHO property reference; narrows COHO actions and compliance
+ */
+property?: string;
 };
 
 export type GetPerformanceParams = {

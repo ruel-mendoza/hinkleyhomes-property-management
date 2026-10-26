@@ -899,6 +899,28 @@ export const GetOccupancyResponse = zod.object({
 
 
 /**
+ * @summary What needs someone today, from the app's own tables and COHO compliance (the overview adds money figures it already loads)
+ */
+export const GetAttentionQueryParams = zod.object({
+  "property": zod.coerce.string().optional().describe('COHO property reference; narrows COHO actions and compliance')
+})
+
+export const GetAttentionResponse = zod.object({
+  "items": zod.array(zod.object({
+  "key": zod.string(),
+  "severity": zod.enum(['high', 'warn', 'info']),
+  "label": zod.string(),
+  "count": zod.number().int(),
+  "amount": zod.number().nullable(),
+  "detail": zod.string().nullable(),
+  "href": zod.string()
+})),
+  "problems": zod.array(zod.string()),
+  "checked": zod.array(zod.string())
+})
+
+
+/**
  * @summary Rent collection, arrears, deposits and rent reviews from COHO, plus banking per company from Xero
  */
 export const GetMoneyOverviewResponse = zod.object({

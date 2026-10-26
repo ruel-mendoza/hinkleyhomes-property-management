@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AlertTriangle, Landmark, PoundSterling } from "lucide-react";
 import { Link } from "wouter";
 import type { MoneyBankAccount, MoneyCompany, MoneyOverview } from "@workspace/api-client-react";
@@ -46,14 +47,22 @@ export function MoneyPanels({ data, loading, failed, propertyReference }: { data
   );
 }
 
+// Compact: the three longest arrears (the rest on request), then one line each
+// for rent reviews and deposits. Ranking and links live in Needs attention.
+const ARREARS_SHOWN = 3;
+
 function TenantMoney({ data, loading, failed, propertyReference }: { data?: MoneyOverview; loading: boolean; failed: boolean; propertyReference?: string }) {
+  const [showAll, setShowAll] = useState(false);
   const coho = data?.coho;
   const inScope = <T extends { propertyReference: string }>(items: T[]) => items.filter((item) => !propertyReference || item.propertyReference === propertyReference);
-  const arrears = coho ? inScope(coho.arrears) : [];
-  const reviews = coho ? inScope(coho.rentReviews) : [];
+  const arrears = coho ? inScope(coho.arrears).sort((a, b) => b.daysInArrears - a.daysInArrears) : [];
+  const reviews = coho ? inScope(coho.rentReviews).sort((a, b) => a.nextReview.localeCompare(b.nextReview)) : [];
   const noDeposit = coho ? inScope(coho.tenanciesWithoutDeposit) : [];
+  const shown = showAll ? arrears : arrears.slice(0, ARREARS_SHOWN);
+  const nextReview = reviews[0];
+  const overdueReviews = reviews.filter((item) => item.overdue).length;
   return (
-    <section className="panel">
+    <section className="panel" id="tenant-money">
       <div className="panel-head">
         <div><div className="panel-title">Tenant money</div><div className="panel-caption">Arrears, rent reviews and deposits from COHO</div></div>
         <PoundSterling size={16} className="hh-money-icon" />
@@ -63,52 +72,51 @@ function TenantMoney({ data, loading, failed, propertyReference }: { data?: Mone
           : coho.error ? <p className="hh-money-note warn"><AlertTriangle size={13} /> {coho.error}</p>
             : (
               <div className="hh-money-body">
-                <h3 className="hh-money-heading">Arrears <span>{arrears.length ? pounds.format(arrears.reduce((sum, item) => sum + item.outstanding, 0)) : "None"}</span></h3>
+                <h3 className="hh-money-heading">Arrears <span>{arrears.length ? `${pounds.format(arrears.reduce((sum, item) => sum + item.outstanding, 0))} · ${arrears.length} ${arrears.length === 1 ? "tenancy" : "tenancies"}` : "None"}</span></h3>
                 {arrears.length ? (
-                  <ul className="hh-money-list">
-                    {arrears.map((item) => (
-                      <li key={`${item.propertyReference}-${item.earliestDue}`}>
-                        <div>
-                          <Link href={propertyLink(item.propertyReference)}>{item.propertyName}</Link><small>{item.tenantName ?? "Tenant"} · due since {formatDate(item.earliestDue)}</small>
-                          {item.possiblePayment && (
-                            <Link href="/bank-feed?status=suggested" className="hh-money-possible">
-                              Possible payment: {pence.format(item.possiblePayment.amount)} received {formatDate(item.possiblePayment.date)}{item.possiblePayment.payer ? ` from ${item.possiblePayment.payer}` : ""}, not yet matched in COHO
-                            </Link>
-                          )}
-                        </div>
-                        <strong>{pence.format(item.outstanding)}</strong>
-                        <span className={`status ${item.daysInArrears >= 14 ? "overdue" : "pending"}`}>{item.daysInArrears} {item.daysInArrears === 1 ? "day" : "days"}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <>
+                    <ul className="hh-money-list">
+                      {shown.map((item) => (
+                        <li key={`${item.propertyReference}-${item.earliestDue}`}>
+                          <div>
+                            <Link href={propertyLink(item.propertyReference)}>{item.propertyName}</Link>
+                            <small>{item.tenantName ?? "Tenant"}{item.possiblePayment ? " · possible payment not yet matched" : ""}</small>
+                          </div>
+                          <strong>{pence.format(item.outstanding)}</strong>
+                          <span className={`status ${item.daysInArrears >= 14 ? "overdue" : "pending"}`}>{item.daysInArrears} {item.daysInArrears === 1 ? "day" : "days"}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {arrears.length > ARREARS_SHOWN && (
+                      <button type="button" className="hh-money-more" onClick={() => setShowAll(!showAll)} aria-expanded={showAll}>
+                        {showAll ? "Show fewer" : `Show all ${arrears.length}`}
+                      </button>
+                    )}
+                  </>
                 ) : <p className="hh-money-empty">No tenancies are in arrears.</p>}
 
-                <h3 className="hh-money-heading">Rent reviews <span>{reviews.length ? `${reviews.length} due` : "None due"}</span></h3>
-                {reviews.length ? (
-                  <ul className="hh-money-list">
-                    {reviews.map((item) => (
-                      <li key={`${item.propertyReference}-${item.nextReview}`}>
-                        <div><Link href={propertyLink(item.propertyReference)}>{item.propertyName}</Link><small>Currently {item.currentRent === null ? "—" : `${pence.format(item.currentRent)} ${FREQUENCY[item.paymentFrequency ?? ""] ?? item.paymentFrequency ?? ""}`}</small></div>
-                        <strong>{formatDate(item.nextReview)}</strong>
-                        <span className={`status ${item.overdue ? "overdue" : "upcoming"}`}>{item.overdue ? "Overdue" : "Due soon"}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : <p className="hh-money-empty">No rent reviews in the next 4 weeks.</p>}
-
-                <h3 className="hh-money-heading">Deposits <span>{pounds.format(coho.depositsHeldTotal)} held</span></h3>
-                <p className="hh-money-text">
-                  {coho.depositsHeld} protected {coho.depositsHeld === 1 ? "deposit" : "deposits"}
-                  {coho.depositsPending ? ` · ${coho.depositsPending} pending` : ""}
-                  {coho.depositsClosing ? ` · ${coho.depositsClosing} closing${coho.depositsClosingOverdue ? ` (${coho.depositsClosingOverdue} overdue)` : ""}` : ""}
-                  {propertyReference ? " (all properties)" : ""}
+                <p className="hh-money-line">
+                  <span>Rent reviews</span>
+                  {nextReview ? (
+                    <span>
+                      {reviews.length} due{overdueReviews ? ` (${overdueReviews} overdue)` : ""} · next <Link href={propertyLink(nextReview.propertyReference)}>{nextReview.propertyName}</Link> {formatDate(nextReview.nextReview)}
+                    </span>
+                  ) : <span>None in the next 4 weeks</span>}
+                </p>
+                <p className="hh-money-line">
+                  <span>Deposits</span>
+                  <span>
+                    {pounds.format(coho.depositsHeldTotal)} held ({coho.depositsHeld}){coho.depositsPending ? ` · ${coho.depositsPending} pending` : ""}
+                    {coho.depositsClosing ? ` · ${coho.depositsClosing} closing${coho.depositsClosingOverdue ? `, ${coho.depositsClosingOverdue} overdue` : ""}` : ""}
+                    {propertyReference ? " · all properties" : ""}
+                  </span>
                 </p>
                 {noDeposit.length > 0 && (
                   <p className="hh-money-flag">
                     <AlertTriangle size={13} />
                     <span>No deposit record for {noDeposit.map((item, index) => (
                       <span key={item.propertyReference}>{index > 0 && (index === noDeposit.length - 1 ? " and " : ", ")}<Link href={propertyLink(item.propertyReference)}>{item.propertyName}</Link></span>
-                    ))}. Check whether a deposit was taken.</span>
+                    ))}.</span>
                   </p>
                 )}
               </div>

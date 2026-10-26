@@ -39,6 +39,7 @@ import ChecksPage from '@/pages/finance/ChecksPage';
 import PropertyAliasesPage from '@/pages/properties/PropertyAliasesPage';
 import ListingsWidget from '@/pages/listings-widget';
 import { AccountsNotices, MoneyPanels, formatPounds } from '@/components/overview/MoneyPanels';
+import { NeedsAttention } from '@/components/overview/NeedsAttention';
 import { PresenceIndicator, usePresenceHeartbeat } from '@/components/presence/PresenceIndicator';
 import {
   AccessRestrictedPage,
@@ -159,29 +160,33 @@ function Overview({ profileName, configured, statusLoading, properties, properti
   const calendarQuery = useListCohoCalendar(calendarParams, { query: { queryKey: getListCohoCalendarQueryKey(calendarParams), enabled: configured } });
   const upcoming = (calendarQuery.data?.items ?? [])
     .filter(entry => (!propertyReference || entry.propertyReference === propertyReference) && new Date(entry.entryDate) < weekEnd)
-    .slice(0, 8);
+    .slice(0, 5);
   const moneyQuery = useGetMoneyOverview({ query: { queryKey: getGetMoneyOverviewQueryKey(), refetchInterval: 5 * 60_000 } });
   const coho = moneyQuery.data?.coho;
   const cohoMoney = coho && !coho.error ? coho : undefined;
   const arrearsInScope = (cohoMoney?.arrears ?? []).filter(item => !propertyReference || item.propertyReference === propertyReference);
   const collectedShare = cohoMoney?.dueThisMonth ? Math.round((cohoMoney.paidThisMonth / cohoMoney.dueThisMonth) * 100) : null;
   const moneyValue = (value?: number) => moneyQuery.isLoading ? '…' : value === undefined ? '—' : formatPounds(value);
-  const pending = statusLoading || (configured && propertiesLoading);
-  const show = (value: number) => pending ? '…' : configured ? value.toString() : '—';
+  const companies = moneyQuery.data?.xero.companies.filter(company => !company.error) ?? [];
+  const bankTotals = companies.map(company => company.bankTotal).filter((total): total is number => total !== null);
+  const unreconciled = companies.reduce((sum, company) => sum + company.unreconciledCount, 0);
+  const oldestUnreconciled = companies.map(company => company.oldestUnreconciled).filter((date): date is string => !!date).sort()[0];
   return <>
     <div className="dashboard-hero"><PageHeader title="Operations overview" subtitle={`${propertyName} · ${now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`} eyebrow={`${greeting(now)}, ${profileName.split(' ')[0]}`} /></div>
+    {!statusLoading && !configured && <p className="hh-props-alert" role="alert"><PlugZap size={14} /> COHO is not connected: add the COHO API key to see tenants, rent and compliance.</p>}
     <AccountsNotices data={moneyQuery.data} />
+    <NeedsAttention money={moneyQuery.data} propertyReference={propertyReference} />
     <div className="metric-row2" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }}>
-      <SmallMetric label="COHO connection" value={statusLoading ? '…' : configured ? 'Connected' : 'Not set up'} foot={configured ? 'Public API 1.1' : 'Add the COHO API key'} icon={<PlugZap size={14} />} />
-      <SmallMetric label="Properties" value={show(properties.length)} foot="In COHO" icon={<Building2 size={14} />} />
       <SmallMetric label="Rent collected" value={moneyValue(cohoMoney?.paidThisMonth)} foot={cohoMoney ? `of ${formatPounds(cohoMoney.dueThisMonth)} due this month${collectedShare === null ? '' : ` (${collectedShare}%)`}${propertyReference ? ' · all properties' : ''}` : 'This month, from COHO'} icon={<PoundSterling size={14} />} />
       <SmallMetric label="Overdue rent" value={propertyReference ? moneyValue(cohoMoney ? arrearsInScope.reduce((sum, item) => sum + item.outstanding, 0) : undefined) : moneyValue(cohoMoney?.overdue)} foot={cohoMoney ? (arrearsInScope.length ? `${arrearsInScope.length} ${arrearsInScope.length === 1 ? 'tenancy' : 'tenancies'} in arrears` : 'No arrears') : 'From COHO credit control'} icon={<AlertTriangle size={14} />} />
+      <SmallMetric label="Cash in the bank" value={moneyQuery.isLoading ? '…' : bankTotals.length ? formatPounds(bankTotals.reduce((sum, total) => sum + total, 0)) : '—'} foot={bankTotals.length ? `Bank accounts across ${bankTotals.length} ${bankTotals.length === 1 ? 'company' : 'companies'} · Xero` : 'From Xero'} icon={<Landmark size={14} />} />
+      <SmallMetric label="Unreconciled in Xero" value={moneyQuery.isLoading ? '…' : companies.length ? unreconciled.toString() : '—'} foot={unreconciled && oldestUnreconciled ? `Oldest from ${new Date(`${oldestUnreconciled}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : companies.length ? 'All reconciled' : 'From Xero'} icon={<Wallet size={14} />} />
     </div>
     <PerformanceStrip propertyReference={propertyReference} />
     <MoneyPanels data={moneyQuery.data} loading={moneyQuery.isLoading} failed={moneyQuery.isError} propertyReference={propertyReference} />
     <MoneyTrend />
     <ReceivablesStrip />
-    <section className="panel arrival-panel"><div className="panel-head"><div><div className="panel-title">Coming up in COHO</div><div className="panel-caption">Tenancies, viewings, maintenance and actions in the next 7 days</div></div><Link href="/calendar" className="button" style={{ textDecoration: 'none' }}>Open calendar <ArrowUpRight size={13} /></Link></div>
+    <section className="panel arrival-panel"><div className="panel-head"><div><div className="panel-title">Coming up in COHO</div><div className="panel-caption">Tenancies, viewings, maintenance and actions in the next 7 days</div></div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Link href="/maintenance" className="button" style={{ textDecoration: 'none' }}><Wrench size={13} /> Maintenance</Link><Link href="/calendar" className="button" style={{ textDecoration: 'none' }}>Open calendar <ArrowUpRight size={13} /></Link></div></div>
       {!configured ? <div className="empty-state"><PlugZap size={21} /><h3>COHO is not configured</h3><p>Add the COHO API key to see live activity.</p></div>
         : calendarQuery.isLoading ? <div className="empty-state"><CalendarDays size={21} /><h3>Loading COHO activity…</h3></div>
           : calendarQuery.isError ? <div className="empty-state"><CalendarDays size={21} /><h3>COHO activity could not be loaded</h3><p>Try again in a moment.</p></div>
@@ -192,10 +197,6 @@ function Overview({ profileName, configured, statusLoading, properties, properti
               <span className="status upcoming">{entry.entryType || entry.source}</span>
             </div>)}</div>
               : <div className="empty-state"><CalendarDays size={21} /><h3>Nothing scheduled this week</h3><p>COHO has no activity for {propertyName.toLowerCase() === 'all properties' ? 'any property' : propertyName} in the next 7 days.</p></div>}
-    </section>
-    <section className="panel" style={{ padding: 15, marginTop: 13, display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-      <div><div className="panel-title">Maintenance</div><div className="panel-caption">Report, update and complete COHO maintenance issues</div></div>
-      <Link href="/maintenance" className="button primary" style={{ textDecoration: 'none' }}><Wrench size={13} /> Open maintenance</Link>
     </section>
   </>;
 }
