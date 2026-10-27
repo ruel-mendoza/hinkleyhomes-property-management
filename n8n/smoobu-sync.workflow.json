@@ -1,0 +1,106 @@
+{
+  "name": "Hinkley PMS – Smoobu sync (webhook + hourly)",
+  "nodes": [
+    {
+      "id": "6f1d6a52-6c1e-4d0b-9d0f-2f1b0d9a7c11",
+      "name": "Smoobu webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "0c8a1f4e-7d3b-4e5a-9b6c-2d1e3f4a5b6c",
+      "notes": "Smoobu doesn't sign its webhooks, so the path carries a secret. Before activating, replace REPLACE-WITH-RANDOM-SECRET with 32+ random characters (node -e \"console.log(require('crypto').randomBytes(24).toString('hex'))\"), then paste the production URL into Smoobu: Settings > Advanced > API Keys > Webhook URL. Keep that URL private. Answers Smoobu straight away; the app re-reads each booking from Smoobu, so the payload itself is never trusted.",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hinkley-smoobu-REPLACE-WITH-RANDOM-SECRET",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "a3b4c5d6-1e2f-4a3b-8c9d-0e1f2a3b4c5d",
+      "name": "Forward event to PMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 0],
+      "notes": "Sends Smoobu's event ({ action, user, data }) to the PMS, which refreshes that booking from Smoobu (or the guest messages count). Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret.",
+      "parameters": {
+        "method": "POST",
+        "url": "https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/smoobu/event",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "b7c8d9e0-2f3a-4b5c-9d0e-1f2a3b4c5d6e",
+      "name": "Every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 220],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "c9d0e1f2-3a4b-4c5d-8e9f-2a3b4c5d6e7f",
+      "name": "Catch-up sync",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 220],
+      "notes": "Asks the PMS to read the Smoobu apartment list and every booking changed since its last good sync, in case a webhook was missed. Same Header Auth credential as above.",
+      "parameters": {
+        "method": "POST",
+        "url": "https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/smoobu/sync",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 300000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Smoobu webhook": {
+      "main": [
+        [
+          {
+            "node": "Forward event to PMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every hour": {
+      "main": [
+        [
+          {
+            "node": "Catch-up sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none"
+  },
+  "pinData": {}
+}

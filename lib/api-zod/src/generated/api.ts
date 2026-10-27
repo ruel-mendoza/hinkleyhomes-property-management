@@ -899,6 +899,77 @@ export const GetOccupancyResponse = zod.object({
 
 
 /**
+ * @summary Short-stay arrivals, departures, changeovers and unread guest messages for today and the next 7 days (read-only from Smoobu)
+ */
+export const GetStaysResponse = zod.object({
+  "asOf": zod.string(),
+  "apartments": zod.number().int(),
+  "lastSync": zod.object({
+  "at": zod.string(),
+  "status": zod.string(),
+  "error": zod.string().nullable()
+}).nullable(),
+  "counts": zod.object({
+  "arrivingToday": zod.number().int(),
+  "leavingToday": zod.number().int(),
+  "inHouse": zod.number().int(),
+  "changeoversThisWeek": zod.number().int()
+}),
+  "bookings": zod.array(zod.object({
+  "id": zod.string(),
+  "apartmentId": zod.number().int().nullable(),
+  "apartmentName": zod.string(),
+  "guestName": zod.string().nullable(),
+  "channel": zod.string().nullable(),
+  "arrival": zod.string(),
+  "departure": zod.string(),
+  "nights": zod.number().int(),
+  "guests": zod.number().int().nullable(),
+  "checkInTime": zod.string().nullable(),
+  "checkOutTime": zod.string().nullable(),
+  "price": zod.number().nullable(),
+  "pricePaid": zod.boolean().nullable(),
+  "cleaningFee": zod.number().nullable()
+})),
+  "changeovers": zod.array(zod.object({
+  "date": zod.string(),
+  "apartmentName": zod.string(),
+  "leavingGuest": zod.string().nullable(),
+  "checkOutTime": zod.string().nullable(),
+  "arrivingGuest": zod.string().nullable(),
+  "checkInTime": zod.string().nullable(),
+  "sameDay": zod.boolean(),
+  "cleaningFee": zod.number().nullable()
+})),
+  "messages": zod.object({
+  "unreadThreads": zod.number().int(),
+  "unreadMessages": zod.number().int(),
+  "threads": zod.array(zod.object({
+  "bookingId": zod.string().nullable(),
+  "guestName": zod.string().nullable(),
+  "apartmentName": zod.string().nullable(),
+  "unread": zod.number().int(),
+  "lastMessageAt": zod.string().nullable(),
+  "preview": zod.string().nullable()
+})),
+  "error": zod.string().nullable()
+})
+})
+
+
+/**
+ * @summary Read changed bookings and apartments from Smoobu now
+ */
+export const SyncStaysResponse = zod.object({
+  "status": zod.enum(['succeeded', 'failed', 'skipped']),
+  "runId": zod.string().nullable(),
+  "apartments": zod.number().int(),
+  "bookings": zod.number().int(),
+  "error": zod.string().nullable()
+})
+
+
+/**
  * @summary What needs someone today, from the app's own tables and COHO compliance (the overview adds money figures it already loads)
  */
 export const GetAttentionQueryParams = zod.object({

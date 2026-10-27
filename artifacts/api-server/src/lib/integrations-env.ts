@@ -11,6 +11,14 @@ export function cohoApiKey(): string | undefined {
   return read("COHO_API_KEY");
 }
 
+// Smoobu (Hinkley Homes Stays) HMAC API key and secret, from Smoobu Settings >
+// Advanced > API Keys. Both are needed; the secret signs every request.
+export function smoobuCredentials(): { key: string; secret: string } | undefined {
+  const key = read("SMOOBU_API_KEY");
+  const secret = read("SMOOBU_API_SECRET");
+  return key && secret ? { key, secret } : undefined;
+}
+
 // Shared secret for scheduled n8n calls into the API (e.g. the COHO actions
 // sync). Too-short values are ignored so a weak key can't be used.
 export function pmsSyncKey(): string | undefined {

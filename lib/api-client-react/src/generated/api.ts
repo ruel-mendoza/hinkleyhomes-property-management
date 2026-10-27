@@ -101,6 +101,8 @@ import type {
   ReminderSettingsUpdate,
   SignupEmailCheckRequest,
   SignupEmailCheckResult,
+  StaysOverview,
+  StaysSyncResult,
   SyncCohoActionsParams,
   TrackingOptions
 } from './api.schemas';
@@ -2301,6 +2303,157 @@ export function useGetOccupancy<TData = Awaited<ReturnType<typeof getOccupancy>>
 
 
 
+
+export const getGetStaysUrl = () => {
+
+
+
+
+  return `/api/stays`
+}
+
+/**
+ * @summary Short-stay arrivals, departures, changeovers and unread guest messages for today and the next 7 days (read-only from Smoobu)
+ */
+export const getStays = async ( options?: Parameters<typeof customFetch>[1]): Promise<StaysOverview> => {
+
+  return customFetch<StaysOverview>(getGetStaysUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStaysQueryKey = () => {
+    return [
+    `/api/stays`
+    ] as const;
+    }
+
+
+export const getGetStaysQueryOptions = <TData = Awaited<ReturnType<typeof getStays>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStays>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStaysQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStays>>> = ({ signal }) => getStays({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStays>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStaysQueryResult = NonNullable<Awaited<ReturnType<typeof getStays>>>
+export type GetStaysQueryError = ErrorType<void>
+
+
+/**
+ * @summary Short-stay arrivals, departures, changeovers and unread guest messages for today and the next 7 days (read-only from Smoobu)
+ */
+
+export function useGetStays<TData = Awaited<ReturnType<typeof getStays>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStays>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStaysQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSyncStaysUrl = () => {
+
+
+
+
+  return `/api/stays/sync`
+}
+
+/**
+ * @summary Read changed bookings and apartments from Smoobu now
+ */
+export const syncStays = async ( options?: Parameters<typeof customFetch>[1]): Promise<StaysSyncResult> => {
+
+  return customFetch<StaysSyncResult>(getSyncStaysUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSyncStaysMutationKey = () => ['syncStays'] as const;
+
+export const getSyncStaysMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncStays>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncStays>>, TError,void, TContext> => {
+
+const mutationKey = getSyncStaysMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncStays>>, void> = () => {
+
+
+          return  syncStays(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncStaysMutationResult = NonNullable<Awaited<ReturnType<typeof syncStays>>>
+
+    export type SyncStaysMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Read changed bookings and apartments from Smoobu now
+ */
+export const useSyncStays = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncStays>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncStays>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getSyncStaysMutationOptions(options));
+    }
 
 export const getGetAttentionUrl = (params?: GetAttentionParams,) => {
   const normalizedParams = new URLSearchParams();

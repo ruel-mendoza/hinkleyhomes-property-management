@@ -5,6 +5,117 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface StayBooking {
+  id: string;
+  /** @nullable */
+  apartmentId: number | null;
+  apartmentName: string;
+  /** @nullable */
+  guestName: string | null;
+  /** @nullable */
+  channel: string | null;
+  arrival: string;
+  departure: string;
+  nights: number;
+  /** @nullable */
+  guests: number | null;
+  /** @nullable */
+  checkInTime: string | null;
+  /** @nullable */
+  checkOutTime: string | null;
+  /** @nullable */
+  price: number | null;
+  /** @nullable */
+  pricePaid: boolean | null;
+  /** @nullable */
+  cleaningFee: number | null;
+}
+
+export interface StayChangeover {
+  date: string;
+  apartmentName: string;
+  /** @nullable */
+  leavingGuest: string | null;
+  /** @nullable */
+  checkOutTime: string | null;
+  /** @nullable */
+  arrivingGuest: string | null;
+  /** @nullable */
+  checkInTime: string | null;
+  sameDay: boolean;
+  /** @nullable */
+  cleaningFee: number | null;
+}
+
+export interface GuestThread {
+  /** @nullable */
+  bookingId: string | null;
+  /** @nullable */
+  guestName: string | null;
+  /** @nullable */
+  apartmentName: string | null;
+  unread: number;
+  /** @nullable */
+  lastMessageAt: string | null;
+  /** @nullable */
+  preview: string | null;
+}
+
+export interface GuestMessages {
+  unreadThreads: number;
+  unreadMessages: number;
+  threads: GuestThread[];
+  /** @nullable */
+  error: string | null;
+}
+
+/**
+ * @nullable
+ */
+export type StaysOverviewLastSync = {
+  at: string;
+  status: string;
+  /** @nullable */
+  error: string | null;
+} | null;
+
+export type StaysOverviewCounts = {
+  arrivingToday: number;
+  leavingToday: number;
+  inHouse: number;
+  changeoversThisWeek: number;
+};
+
+export interface StaysOverview {
+  asOf: string;
+  apartments: number;
+  /** @nullable */
+  lastSync: StaysOverviewLastSync;
+  counts: StaysOverviewCounts;
+  bookings: StayBooking[];
+  changeovers: StayChangeover[];
+  messages: GuestMessages;
+}
+
+export type StaysSyncResultStatus = typeof StaysSyncResultStatus[keyof typeof StaysSyncResultStatus];
+
+
+export const StaysSyncResultStatus = {
+  succeeded: 'succeeded',
+  failed: 'failed',
+  skipped: 'skipped',
+} as const;
+
+export interface StaysSyncResult {
+  status: StaysSyncResultStatus;
+  /** @nullable */
+  runId: string | null;
+  apartments: number;
+  bookings: number;
+  /** @nullable */
+  error: string | null;
+}
+
 export type OccupancyStatus = typeof OccupancyStatus[keyof typeof OccupancyStatus];
 
 

@@ -14,6 +14,8 @@ tags:
     description: Server-side proxy for COHO Public API 1.1 property, calendar, and maintenance operations
   - name: xero
     description: Xero data through the read-only n8n gateway, plus follow-up notes kept in Supabase
+  - name: smoobu
+    description: Hinkley Homes Stays short-stay bookings and guest messages, read-only from Smoobu
 paths:
   /healthz:
     get:
@@ -627,6 +629,36 @@ paths:
           description: COHO returned an error
         "503":
           description: COHO API key is not configured
+  /stays:
+    get:
+      operationId: getStays
+      tags: [smoobu]
+      summary: Short-stay arrivals, departures, changeovers and unread guest messages for today and the next 7 days (read-only from Smoobu)
+      responses:
+        "200":
+          description: Stays overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaysOverview"
+        "503":
+          description: Smoobu or the database is not configured
+  /stays/sync:
+    post:
+      operationId: syncStays
+      tags: [smoobu]
+      summary: Read changed bookings and apartments from Smoobu now
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaysSyncResult"
+        "502":
+          description: The sync failed
+        "503":
+          description: Smoobu or the database is not configured
   /overview/attention:
     get:
       operationId: getAttention
@@ -1406,6 +1438,143 @@ components:
         minLength: 1
         maxLength: 200
   schemas:
+    StayBooking:
+      type: object
+      properties:
+        id:
+          type: string
+        apartmentId:
+          type: ["integer", "null"]
+        apartmentName:
+          type: string
+        guestName:
+          type: ["string", "null"]
+        channel:
+          type: ["string", "null"]
+        arrival:
+          type: string
+        departure:
+          type: string
+        nights:
+          type: integer
+        guests:
+          type: ["integer", "null"]
+        checkInTime:
+          type: ["string", "null"]
+        checkOutTime:
+          type: ["string", "null"]
+        price:
+          type: ["number", "null"]
+        pricePaid:
+          type: ["boolean", "null"]
+        cleaningFee:
+          type: ["number", "null"]
+      required: [id, apartmentId, apartmentName, guestName, channel, arrival, departure, nights, guests, checkInTime, checkOutTime, price, pricePaid, cleaningFee]
+    StayChangeover:
+      type: object
+      properties:
+        date:
+          type: string
+        apartmentName:
+          type: string
+        leavingGuest:
+          type: ["string", "null"]
+        checkOutTime:
+          type: ["string", "null"]
+        arrivingGuest:
+          type: ["string", "null"]
+        checkInTime:
+          type: ["string", "null"]
+        sameDay:
+          type: boolean
+        cleaningFee:
+          type: ["number", "null"]
+      required: [date, apartmentName, leavingGuest, checkOutTime, arrivingGuest, checkInTime, sameDay, cleaningFee]
+    GuestThread:
+      type: object
+      properties:
+        bookingId:
+          type: ["string", "null"]
+        guestName:
+          type: ["string", "null"]
+        apartmentName:
+          type: ["string", "null"]
+        unread:
+          type: integer
+        lastMessageAt:
+          type: ["string", "null"]
+        preview:
+          type: ["string", "null"]
+      required: [bookingId, guestName, apartmentName, unread, lastMessageAt, preview]
+    GuestMessages:
+      type: object
+      properties:
+        unreadThreads:
+          type: integer
+        unreadMessages:
+          type: integer
+        threads:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuestThread"
+        error:
+          type: ["string", "null"]
+      required: [unreadThreads, unreadMessages, threads, error]
+    StaysOverview:
+      type: object
+      properties:
+        asOf:
+          type: string
+        apartments:
+          type: integer
+        lastSync:
+          type: ["object", "null"]
+          properties:
+            at:
+              type: string
+            status:
+              type: string
+            error:
+              type: ["string", "null"]
+          required: [at, status, error]
+        counts:
+          type: object
+          properties:
+            arrivingToday:
+              type: integer
+            leavingToday:
+              type: integer
+            inHouse:
+              type: integer
+            changeoversThisWeek:
+              type: integer
+          required: [arrivingToday, leavingToday, inHouse, changeoversThisWeek]
+        bookings:
+          type: array
+          items:
+            $ref: "#/components/schemas/StayBooking"
+        changeovers:
+          type: array
+          items:
+            $ref: "#/components/schemas/StayChangeover"
+        messages:
+          $ref: "#/components/schemas/GuestMessages"
+      required: [asOf, apartments, lastSync, counts, bookings, changeovers, messages]
+    StaysSyncResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [succeeded, failed, skipped]
+        runId:
+          type: ["string", "null"]
+        apartments:
+          type: integer
+        bookings:
+          type: integer
+        error:
+          type: ["string", "null"]
+      required: [status, runId, apartments, bookings, error]
     OccupancyStatus:
       type: string
       enum: [fixed_term, becoming_periodic, periodic, ending, future, vacant]

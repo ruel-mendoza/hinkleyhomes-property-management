@@ -1,0 +1,37 @@
+/* Stays page and its Overview strip, in the app's dark panel style (see index.css). */
+.hh-stay-sync{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hh-stay-sync span{font-size:12px;color:#95a2b5}
+.hh-stay-sync span.failed{color:#f08f91}
+.hh-stay-sync .button{text-decoration:none}
+.hh-stay-note{padding:14px 16px;color:#95a2b5;font-size:13px}
+
+.hh-stay-sum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.hh-stay-sum div{display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:8px;background:#25324a;border:1px solid #33425a;color:#dce4ed;font-size:14px}
+.hh-stay-sum strong{font-size:18px;font-weight:800}
+.hh-stay-sum .good{background:#173d35;border-color:#24584b;color:#bfeadb}
+.hh-stay-sum .warn{background:#403421;border-color:#5a4626;color:#f0d29b}
+
+.hh-stay-panel{margin-bottom:14px}
+.hh-stay-panel .panel-head .button{text-decoration:none}
+.hh-stay-panel td{vertical-align:top}
+.hh-stay-sub{display:block;margin-top:2px;font-size:12px;color:#95a2b5}
+.hh-stay-unpaid{margin-left:6px}
+
+.hh-stay-threads{list-style:none;margin:0;padding:0}
+.hh-stay-threads li{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px 16px;border-top:1px solid #2a3749}
+.hh-stay-threads li:first-child{border-top:0}
+.hh-stay-threads strong{color:#e2e9f1;font-size:14px}
+.hh-stay-threads small{display:block;margin-top:2px;font-size:12px;color:#95a2b5}
+.hh-stay-threads p{margin:6px 0 0;font-size:13px;color:#c0cad8;line-height:1.45}
+
+.hh-stay-foot{margin:4px 0 0;font-size:12px;color:#95a2b5}
+
+.hh-stay-strip{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:13px;padding:13px 16px}
+.hh-stay-strip .button{text-decoration:none}
+.hh-stay-strip-stats{display:flex;gap:22px;flex-wrap:wrap;flex:1}
+.hh-stay-strip-stats div{display:flex;flex-direction:column;gap:1px}
+.hh-stay-strip-stats span{font-size:12px;color:#95a2b5}
+.hh-stay-strip-stats strong{font-size:18px;font-weight:800;color:#e2e9f1}
+.hh-stay-strip-stats strong.warn{color:#edc16b}
+
+@media(max-width:760px){.hh-stay-sum{grid-template-columns:repeat(2,minmax(0,1fr))}}

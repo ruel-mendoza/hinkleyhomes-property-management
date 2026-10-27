@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, date, index, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { id, money, timestamps } from "./columns";
@@ -58,29 +58,55 @@ export const bookingStatusEnum = pgEnum("booking_status", [
   "cancelled",
 ]);
 
-// Short-stay bookings, synced from Smoobu.
+// Smoobu apartments (Hinkley Homes Stays). A register property is linked to
+// one by properties.smoobu_property_id; most short-stay apartments are only here.
+export const smoobuApartmentsTable = pgTable("smoobu_apartments", {
+  id: id(),
+  smoobuApartmentId: integer("smoobu_apartment_id").notNull().unique(),
+  name: text("name").notNull(),
+  street: text("street"),
+  city: text("city"),
+  postcode: text("postcode"),
+  maxOccupancy: integer("max_occupancy"),
+  bedrooms: integer("bedrooms"),
+  ...timestamps,
+}).enableRLS();
+
+// Short-stay bookings, synced read-only from Smoobu (the source of truth for
+// serviced accommodation; PriceLabs and the OTAs connect to it). Blocked dates
+// are not stored. Only the guest's name is kept, never contact details.
 export const shortStayBookingsTable = pgTable(
   "short_stay_bookings",
   {
     id: id(),
-    propertyId: uuid("property_id")
-      .notNull()
-      .references(() => propertiesTable.id, { onDelete: "restrict" }),
+    // Set when the Smoobu apartment is linked to a register property.
+    propertyId: uuid("property_id").references(() => propertiesTable.id, { onDelete: "set null" }),
     roomId: uuid("room_id").references(() => roomsTable.id, { onDelete: "set null" }),
     smoobuBookingId: text("smoobu_booking_id").unique(),
+    smoobuApartmentId: integer("smoobu_apartment_id"),
+    apartmentName: text("apartment_name"),
     chargeAutomationReference: text("charge_automation_reference").unique(),
     guestName: text("guest_name").notNull(),
     channel: text("channel"),
     status: bookingStatusEnum("status").notNull().default("confirmed"),
     arrivalDate: date("arrival_date").notNull(),
     departureDate: date("departure_date").notNull(),
+    // Expected times as entered in Smoobu, e.g. "16:00".
+    checkInTime: text("check_in_time"),
+    checkOutTime: text("check_out_time"),
+    adults: integer("adults"),
+    children: integer("children"),
     checkedOutAt: timestamp("checked_out_at", { withTimezone: true }),
     totalAmount: money("total_amount"),
+    pricePaid: boolean("price_paid"),
     cleaningFee: money("cleaning_fee"),
+    smoobuModifiedAt: timestamp("smoobu_modified_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [
     index("short_stay_bookings_property_dates_idx").on(t.propertyId, t.departureDate),
+    index("short_stay_bookings_apartment_dates_idx").on(t.smoobuApartmentId, t.departureDate),
+    index("short_stay_bookings_arrival_idx").on(t.arrivalDate),
     index("short_stay_bookings_room_id_idx").on(t.roomId),
     check("short_stay_bookings_dates_chk", sql`${t.departureDate} >= ${t.arrivalDate}`),
   ],
@@ -139,3 +165,4 @@ export type ShortStayBooking = typeof shortStayBookingsTable.$inferSelect;
 export type InsertShortStayBooking = z.infer<typeof insertShortStayBookingSchema>;
 export type Payment = typeof paymentsTable.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type SmoobuApartment = typeof smoobuApartmentsTable.$inferSelect;

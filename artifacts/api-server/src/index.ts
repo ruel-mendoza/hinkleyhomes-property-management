@@ -1,5 +1,5 @@
 import app from "./app";
-import { cohoApiKey, readXeroEnv, readXeroGatewayEnv } from "./lib/integrations-env";
+import { cohoApiKey, readXeroEnv, readXeroGatewayEnv, smoobuCredentials } from "./lib/integrations-env";
 import { logger } from "./lib/logger";
 
 const rawPort = process.env["PORT"];
@@ -29,6 +29,7 @@ app.listen(port, (err) => {
   logger.info(
     {
       coho: cohoApiKey() ? "configured" : "unconfigured",
+      smoobu: smoobuCredentials() ? "configured" : "unconfigured",
       xeroGateway: xeroGateway.status,
       xeroDirect: xero.status,
     },

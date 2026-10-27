@@ -13,6 +13,8 @@ import { runDailyChecks } from "../lib/finance-checks";
 import { codingPlan, recordResult, recordReview, savedReading } from "../lib/bill-coding";
 import type { XeroBill } from "../lib/bill-coding-rules";
 import { parseIntakeReview, recordIntakeReview } from "../lib/intake-reviews";
+import { smoobuCredentials } from "../lib/integrations-env";
+import { handleSmoobuEvent, syncStays } from "../lib/stays";
 import { COMPANIES } from "./money";
 import {
   ALL_TENANT_IDS,
@@ -71,6 +73,32 @@ router.post("/integrations/coho/unit-snapshot", requireSyncKey, async (req, res)
     req.log.error({ err: error }, "Scheduled unit snapshot failed");
     res.status(502).json({ error: "The unit snapshot could not be recorded." });
   }
+});
+
+// --- Smoobu (n8n "Hinkley PMS – Smoobu sync") -----------------------------------------
+// Smoobu webhooks reach n8n, which forwards each one here as it came ({ action, user, data }).
+// The booking is re-read from Smoobu, so a forged event can only cause a refresh.
+router.post("/integrations/smoobu/event", requireSyncKey, async (req, res): Promise<void> => {
+  if (!isDatabaseConfigured() || !smoobuCredentials()) {
+    res.status(503).json({ error: "Smoobu or the database is not configured." });
+    return;
+  }
+  try {
+    res.json(await handleSmoobuEvent(req.body));
+  } catch (error) {
+    req.log.error({ err: error }, "Smoobu event could not be handled");
+    res.status(502).json({ error: "The booking could not be read from Smoobu." });
+  }
+});
+
+// Hourly catch-up: bookings changed since the last good run, and the apartment list.
+router.post("/integrations/smoobu/sync", requireSyncKey, async (_req, res): Promise<void> => {
+  if (!isDatabaseConfigured() || !smoobuCredentials()) {
+    res.status(503).json({ error: "Smoobu or the database is not configured." });
+    return;
+  }
+  const result = await syncStays("schedule");
+  res.status(result.status === "failed" ? 502 : 200).json(result);
 });
 
 // --- Payment reminders (n8n "Xero overdue reminders" workflow) -----------------------
