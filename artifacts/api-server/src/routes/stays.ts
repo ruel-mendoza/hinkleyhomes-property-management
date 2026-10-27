@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Response } from "express";
 import { isDatabaseConfigured } from "@workspace/db";
 import {
+  AutoLinkStayApartmentsResponse,
   GetStaysResponse,
   LinkStayApartmentBody,
   LinkStayApartmentParams,
@@ -9,7 +10,7 @@ import {
   SyncStaysResponse,
 } from "@workspace/api-zod";
 import { smoobuMode } from "../lib/integrations-env";
-import { StaysError, linkApartment, listApartments, staysOverview, syncStays } from "../lib/stays";
+import { StaysError, autoLinkApartments, linkApartment, listApartments, staysOverview, syncStays } from "../lib/stays";
 
 // Stays page (Hinkley Homes Stays, read-only from Smoobu) and the Smoobu
 // apartments tab on the Properties page. See lib/stays.ts.
@@ -45,6 +46,12 @@ router.get("/stays/apartments", async (req, res): Promise<void> => {
     req.log.error({ err: error }, "Smoobu apartments could not be read");
     res.status(503).json({ error: "Smoobu apartments aren't set up yet: run the database push." });
   }
+});
+
+router.post("/stays/apartments/auto-link", async (_req, res): Promise<void> => {
+  if (notConnected(res)) return;
+  const staff = res.locals.staff as { email?: string } | undefined;
+  res.json(AutoLinkStayApartmentsResponse.parse(await autoLinkApartments(staff?.email ?? null)));
 });
 
 router.put("/stays/apartments/:apartmentId/link", async (req, res): Promise<void> => {

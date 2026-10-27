@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { BedDouble, ExternalLink, PlugZap, RefreshCw } from "lucide-react";
+import { BedDouble, ExternalLink, PlugZap, RefreshCw, Wand2 } from "lucide-react";
 import {
   getGetStaysQueryKey,
   getListStayApartmentsQueryKey,
+  useAutoLinkStayApartments,
   useLinkStayApartment,
   useSyncStays,
   type PropertySummary,
@@ -16,7 +17,8 @@ import { formatDate } from "@/services/properties";
 
 // Smoobu apartments (Hinkley Homes Stays) beside the COHO properties. Staff link
 // each apartment to the property it is in; that link lives only in this app.
-// Smoobu itself is never changed.
+// Smoobu itself is never changed. Every sync links clear matches by name or
+// address and postcode; staff link the rest or correct them here.
 
 type Query = { data?: StayApartmentList; isLoading: boolean; isError: boolean; error: unknown };
 
@@ -32,6 +34,7 @@ export function SmoobuApartmentsTab({ query, properties, onToast }: { query: Que
   const queryClient = useQueryClient();
   const sync = useSyncStays();
   const link = useLinkStayApartment();
+  const autoLink = useAutoLinkStayApartments();
   const [saving, setSaving] = useState<number | null>(null);
   const [onlyUnlinked, setOnlyUnlinked] = useState(false);
 
@@ -54,6 +57,17 @@ export function SmoobuApartmentsTab({ query, properties, onToast }: { query: Que
       onToast(result.status === "skipped" ? "A sync was already running." : `Read ${result.apartments} ${result.apartments === 1 ? "apartment" : "apartments"} from Smoobu.`);
     } catch (error) {
       onToast(`Sync failed: ${errorText(error)}`);
+    }
+  };
+
+  const runAutoLink = async () => {
+    try {
+      const result = await autoLink.mutateAsync();
+      await Promise.all([queryClient.invalidateQueries({ queryKey: getListStayApartmentsQueryKey() }), queryClient.invalidateQueries({ queryKey: getGetStaysQueryKey() })]);
+      onToast(result.error ? `Couldn't match apartments: ${result.error}`
+        : `Linked ${result.linked} ${result.linked === 1 ? "apartment" : "apartments"}.${result.notMatched ? ` ${result.notMatched} still need linking by hand.` : ""}`);
+    } catch (error) {
+      onToast(`Couldn't match apartments: ${errorText(error)}`);
     }
   };
 
@@ -91,6 +105,11 @@ export function SmoobuApartmentsTab({ query, properties, onToast }: { query: Que
         <div className="hh-apt-actions">
           {items.length > 0 && linked < items.length && (
             <label className="hh-apt-filter"><input type="checkbox" checked={onlyUnlinked} onChange={(event) => setOnlyUnlinked(event.target.checked)} /> Not linked only</label>
+          )}
+          {linked < items.length && (
+            <button type="button" className="button" onClick={() => void runAutoLink()} disabled={autoLink.isPending} title="Link apartments whose name or address and postcode match one COHO or register property" data-testid="button-auto-link">
+              <Wand2 size={14} /> {autoLink.isPending ? "Matching…" : "Link automatically"}
+            </button>
           )}
           <button type="button" className="button" onClick={() => void runSync()} disabled={sync.isPending} data-testid="button-sync-apartments">
             <RefreshCw size={14} className={sync.isPending ? "spin" : ""} /> {sync.isPending ? "Syncing…" : "Sync now"}
@@ -131,6 +150,7 @@ export function SmoobuApartmentsTab({ query, properties, onToast }: { query: Que
                       </select>
                       {href && <Link href={href} className="icon-btn" aria-label="Open property" title="Open property"><ExternalLink size={13} /></Link>}
                     </div>
+                    {apartment.linkedBy === "auto" && value && <small className="hh-apt-sub">Matched automatically</small>}
                   </td>
                 </tr>
               );

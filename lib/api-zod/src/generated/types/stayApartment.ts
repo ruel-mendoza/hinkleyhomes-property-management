@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { StayApartmentLinkedBy } from './stayApartmentLinkedBy';
 
 export interface StayApartment {
   smoobuApartmentId: number;
@@ -25,6 +26,11 @@ export interface StayApartment {
      * @nullable
      */
   propertyId: string | null;
+  /**
+     * auto = matched by name or address; staff = chosen (or cleared) by someone
+     * @nullable
+     */
+  linkedBy: StayApartmentLinkedBy;
   /** A guest is staying tonight */
   inHouse: boolean;
   /** @nullable */

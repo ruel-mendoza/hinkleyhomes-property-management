@@ -118,6 +118,18 @@ export interface StaysSyncResult {
   error: string | null;
 }
 
+/**
+ * auto = matched by name or address; staff = chosen (or cleared) by someone
+ * @nullable
+ */
+export type StayApartmentLinkedBy = typeof StayApartmentLinkedBy[keyof typeof StayApartmentLinkedBy] | null;
+
+
+export const StayApartmentLinkedBy = {
+  auto: 'auto',
+  staff: 'staff',
+} as const;
+
 export interface StayApartment {
   smoobuApartmentId: number;
   name: string;
@@ -137,10 +149,26 @@ export interface StayApartment {
      * @nullable
      */
   propertyId: string | null;
+  /**
+     * auto = matched by name or address; staff = chosen (or cleared) by someone
+     * @nullable
+     */
+  linkedBy: StayApartmentLinkedBy;
   /** A guest is staying tonight */
   inHouse: boolean;
   /** @nullable */
   nextArrival: string | null;
+}
+
+export interface StayApartmentAutoLinkResult {
+  linked: number;
+  /** Apartments still not linked */
+  notMatched: number;
+  /**
+     * Why matching couldn't run (e.g. COHO unreachable)
+     * @nullable
+     */
+  error: string | null;
 }
 
 export interface StayApartmentList {

@@ -673,6 +673,20 @@ paths:
                 $ref: "#/components/schemas/StayApartmentList"
         "503":
           description: Smoobu or the database is not configured
+  /stays/apartments/auto-link:
+    post:
+      operationId: autoLinkStayApartments
+      tags: [smoobu]
+      summary: Link apartments nobody has linked yet to the one COHO or register property whose name or address and postcode match (the sync does this too)
+      responses:
+        "200":
+          description: How many were linked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StayApartmentAutoLinkResult"
+        "503":
+          description: Smoobu or the database is not configured
   /stays/apartments/{apartmentId}/link:
     put:
       operationId: linkStayApartment
@@ -1642,12 +1656,28 @@ components:
         propertyId:
           description: Register-only property the apartment is in, when linked to one
           type: ["string", "null"]
+        linkedBy:
+          description: auto = matched by name or address; staff = chosen (or cleared) by someone
+          type: ["string", "null"]
+          enum: [auto, staff, null]
         inHouse:
           description: A guest is staying tonight
           type: boolean
         nextArrival:
           type: ["string", "null"]
-      required: [smoobuApartmentId, name, address, bedrooms, maxOccupancy, cohoReference, propertyId, inHouse, nextArrival]
+      required: [smoobuApartmentId, name, address, bedrooms, maxOccupancy, cohoReference, propertyId, linkedBy, inHouse, nextArrival]
+    StayApartmentAutoLinkResult:
+      type: object
+      properties:
+        linked:
+          type: integer
+        notMatched:
+          description: Apartments still not linked
+          type: integer
+        error:
+          description: Why matching couldn't run (e.g. COHO unreachable)
+          type: ["string", "null"]
+      required: [linked, notMatched, error]
     StayApartmentList:
       type: object
       properties:

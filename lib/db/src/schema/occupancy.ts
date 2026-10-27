@@ -58,9 +58,10 @@ export const bookingStatusEnum = pgEnum("booking_status", [
   "cancelled",
 ]);
 
-// Smoobu apartments (Hinkley Homes Stays). Staff link each one to the property
-// it sits in on the Properties page: a COHO property (by reference) or a
-// register-only one. Several apartments (rooms) can share one property.
+// Smoobu apartments (Hinkley Homes Stays), each linked to the property it sits
+// in: a COHO property (by reference) or a register-only one. The sync links
+// clear matches; staff link the rest on the Properties page. Several apartments
+// (rooms) can share one property.
 export const smoobuApartmentsTable = pgTable(
   "smoobu_apartments",
   {
@@ -74,6 +75,9 @@ export const smoobuApartmentsTable = pgTable(
     bedrooms: integer("bedrooms"),
     cohoPropertyReference: text("coho_property_reference"),
     propertyId: uuid("property_id").references(() => propertiesTable.id, { onDelete: "set null" }),
+    // "auto" when the sync matched it by name or address; "staff" once someone
+    // chose (or cleared) the link, after which it is never matched again.
+    linkedBy: text("linked_by"),
     ...timestamps,
   },
   (t) => [

@@ -1,13 +1,17 @@
-import { and, desc, eq, gt, gte, isNotNull, like, lte, ne, or } from "drizzle-orm";
+import { and, desc, eq, gt, gte, isNotNull, isNull, like, lte, ne, or } from "drizzle-orm";
 import {
   auditLogTable,
   cleaningAllowancesTable,
   getDb,
   integrationSyncRunsTable,
   propertiesTable,
+  propertyAliasesTable,
   shortStayBookingsTable,
   smoobuApartmentsTable,
 } from "@workspace/db";
+import { aliasKey } from "./bill-coding-rules";
+import { fetchCohoProperties } from "./coho-properties";
+import { cohoApiKey } from "./integrations-env";
 import { logger } from "./logger";
 import { ukToday } from "./performance";
 import { SmoobuApiError, smoobuGet } from "./smoobu-api";
@@ -134,6 +138,7 @@ export async function listApartments(onlyApartmentId?: number) {
       maxOccupancy: apartment.maxOccupancy,
       cohoReference: apartment.cohoPropertyReference,
       propertyId: apartment.propertyId,
+      linkedBy: apartment.linkedBy === "auto" || apartment.linkedBy === "staff" ? apartment.linkedBy : null,
       inHouse: stays.some((booking) => booking.arrival <= today),
       nextArrival: stays.find((booking) => booking.arrival > today)?.arrival ?? null,
     };
@@ -160,7 +165,7 @@ export async function linkApartment(
     if (!property) throw new StaysError("That property isn't in the register.", 404);
   }
   await db.transaction(async (tx) => {
-    await tx.update(a).set({ cohoPropertyReference: cohoReference, propertyId }).where(eq(a.smoobuApartmentId, apartmentId));
+    await tx.update(a).set({ cohoPropertyReference: cohoReference, propertyId, linkedBy: "staff" }).where(eq(a.smoobuApartmentId, apartmentId));
     await tx.insert(auditLogTable).values({
       actorEmail: actor.email,
       actorUserId: actor.userId,
@@ -177,6 +182,111 @@ export async function linkApartment(
   await db.update(t).set({ propertyId: (await linkedProperties()).get(apartmentId) ?? null }).where(eq(t.smoobuApartmentId, apartmentId));
   const [item] = (await listApartments(apartmentId)).items;
   return item;
+}
+
+// --- Automatic links ------------------------------------------------------------
+
+// A property an apartment could be in, with the spellings it is known by: its
+// name, its address line, and its property aliases (normalised like aliases are).
+type LinkCandidate = { cohoReference: string | null; propertyId: string | null; postcode: string; keys: Set<string> };
+const postcodeKey = (value: string | null | undefined) => (value ?? "").replace(/\s+/g, "").toUpperCase();
+const keysOf = (...values: (string | null | undefined)[]) => values.map((value) => aliasKey(value ?? "")).filter((key) => /[a-z]/.test(key));
+
+async function linkCandidates(): Promise<LinkCandidate[]> {
+  const p = propertiesTable;
+  const al = propertyAliasesTable;
+  const [coho, register, aliases] = await Promise.all([
+    cohoApiKey() ? fetchCohoProperties() : Promise.resolve([]),
+    getDb().select({ id: p.id, name: p.name, line: p.addressLine1, postcode: p.postcode, coho: p.cohoPropertyReference, status: p.status }).from(p),
+    getDb().select({ propertyId: al.propertyId, key: al.normalizedAlias }).from(al).where(and(eq(al.kind, "text"), isNotNull(al.propertyId), isNull(al.roomId))),
+  ]);
+  const candidates: LinkCandidate[] = [];
+  const byCoho = new Map<string, LinkCandidate>();
+  for (const row of coho) {
+    const candidate = { cohoReference: row.reference, propertyId: null, postcode: postcodeKey(row.postcode), keys: new Set(keysOf(row.name, `${row.houseNumber ?? ""} ${row.streetName ?? ""}`)) };
+    candidates.push(candidate);
+    byCoho.set(row.reference, candidate);
+  }
+  // A register row for a listed COHO property is the same property: its
+  // spellings count towards the COHO one.
+  const byRegister = new Map<string, LinkCandidate>();
+  for (const row of register) {
+    if (row.status === "archived") continue;
+    const listed = row.coho ? byCoho.get(row.coho) : undefined;
+    if (listed) {
+      for (const key of keysOf(row.name, row.line)) listed.keys.add(key);
+      byRegister.set(row.id, listed);
+      continue;
+    }
+    const candidate = { cohoReference: null, propertyId: row.id, postcode: postcodeKey(row.postcode), keys: new Set(keysOf(row.name, row.line)) };
+    candidates.push(candidate);
+    byRegister.set(row.id, candidate);
+  }
+  for (const alias of aliases) if (alias.propertyId && alias.key) byRegister.get(alias.propertyId)?.keys.add(alias.key);
+  return candidates;
+}
+
+// The apartment's name first (what staff typed in Smoobu), then its street
+// address. Postcodes must agree when both are known, and a spelling with no
+// house number needs both postcodes. Two or more matches is left for staff.
+function matchApartment(apartment: { name: string; street: string | null; postcode: string | null }, candidates: LinkCandidate[]): LinkCandidate | null {
+  const postcode = postcodeKey(apartment.postcode);
+  for (const key of keysOf(apartment.name, apartment.street)) {
+    const numbered = /\d/.test(key);
+    const found = candidates.filter((candidate) => candidate.keys.has(key) && (numbered ? !postcode || !candidate.postcode || candidate.postcode === postcode : postcode !== "" && candidate.postcode === postcode));
+    if (found.length === 1) return found[0];
+    if (found.length > 1) return null;
+  }
+  return null;
+}
+
+// Links apartments nobody has linked or unlinked yet to their one clear match.
+// Runs after every sync, and from the Properties page.
+export async function autoLinkApartments(actorEmail: string | null = null): Promise<{ linked: number; notMatched: number; error: string | null }> {
+  const db = getDb();
+  const a = smoobuApartmentsTable;
+  const unlinked = and(isNull(a.cohoPropertyReference), isNull(a.propertyId));
+  const countUnlinked = async () => (await db.select({ id: a.id }).from(a).where(unlinked)).length;
+  const open = await db.select().from(a).where(and(unlinked, isNull(a.linkedBy)));
+  if (!open.length) return { linked: 0, notMatched: await countUnlinked(), error: null };
+  let candidates: LinkCandidate[];
+  try {
+    candidates = await linkCandidates();
+  } catch (error) {
+    return { linked: 0, notMatched: await countUnlinked(), error: error instanceof Error ? error.message : String(error) };
+  }
+  const linkedIds: number[] = [];
+  for (const apartment of open) {
+    const match = matchApartment(apartment, candidates);
+    if (!match) continue;
+    const saved = await db.transaction(async (tx) => {
+      const rows = await tx
+        .update(a)
+        .set({ cohoPropertyReference: match.cohoReference, propertyId: match.propertyId, linkedBy: "auto" })
+        .where(and(eq(a.id, apartment.id), unlinked, isNull(a.linkedBy)))
+        .returning({ id: a.id });
+      if (!rows.length) return false;
+      await tx.insert(auditLogTable).values({
+        actorEmail,
+        action: "smoobu_apartment.auto_link",
+        tableName: "smoobu_apartments",
+        recordId: String(apartment.smoobuApartmentId),
+        before: { name: apartment.name, cohoReference: null, propertyId: null },
+        after: { name: apartment.name, cohoReference: match.cohoReference, propertyId: match.propertyId },
+      });
+      return true;
+    });
+    if (saved) linkedIds.push(apartment.smoobuApartmentId);
+  }
+  if (linkedIds.length) {
+    const properties = await linkedProperties();
+    const t = shortStayBookingsTable;
+    for (const apartmentId of new Set(linkedIds)) {
+      const propertyId = properties.get(apartmentId);
+      if (propertyId) await db.update(t).set({ propertyId }).where(and(eq(t.smoobuApartmentId, apartmentId), isNull(t.propertyId)));
+    }
+  }
+  return { linked: linkedIds.length, notMatched: await countUnlinked(), error: null };
 }
 
 function lastSyncRun() {
@@ -307,6 +417,8 @@ async function runSync(trigger: "schedule" | "manual"): Promise<StaysSyncResult>
   let bookings = 0;
   try {
     apartments = await syncApartments();
+    const auto = await autoLinkApartments();
+    if (auto.error) logger.warn({ error: auto.error }, "Smoobu apartments could not be matched to properties");
     const properties = await linkedProperties();
     // Changed since the day before the last good run, or the last few months the first time.
     const window = lastGood

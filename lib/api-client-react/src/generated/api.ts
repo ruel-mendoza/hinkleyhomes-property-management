@@ -102,6 +102,7 @@ import type {
   SignupEmailCheckRequest,
   SignupEmailCheckResult,
   StayApartment,
+  StayApartmentAutoLinkResult,
   StayApartmentLink,
   StayApartmentList,
   StaysOverview,
@@ -2534,6 +2535,80 @@ export function useListStayApartments<TData = Awaited<ReturnType<typeof listStay
 
 
 
+
+export const getAutoLinkStayApartmentsUrl = () => {
+
+
+
+
+  return `/api/stays/apartments/auto-link`
+}
+
+/**
+ * @summary Link apartments nobody has linked yet to the one COHO or register property whose name or address and postcode match (the sync does this too)
+ */
+export const autoLinkStayApartments = async ( options?: Parameters<typeof customFetch>[1]): Promise<StayApartmentAutoLinkResult> => {
+
+  return customFetch<StayApartmentAutoLinkResult>(getAutoLinkStayApartmentsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAutoLinkStayApartmentsMutationKey = () => ['autoLinkStayApartments'] as const;
+
+export const getAutoLinkStayApartmentsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof autoLinkStayApartments>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof autoLinkStayApartments>>, TError,void, TContext> => {
+
+const mutationKey = getAutoLinkStayApartmentsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof autoLinkStayApartments>>, void> = () => {
+
+
+          return  autoLinkStayApartments(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AutoLinkStayApartmentsMutationResult = NonNullable<Awaited<ReturnType<typeof autoLinkStayApartments>>>
+
+    export type AutoLinkStayApartmentsMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Link apartments nobody has linked yet to the one COHO or register property whose name or address and postcode match (the sync does this too)
+ */
+export const useAutoLinkStayApartments = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof autoLinkStayApartments>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof autoLinkStayApartments>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getAutoLinkStayApartmentsMutationOptions(options));
+    }
 
 export const getLinkStayApartmentUrl = (apartmentId: number,) => {
 

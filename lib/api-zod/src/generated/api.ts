@@ -982,10 +982,21 @@ export const ListStayApartmentsResponse = zod.object({
   "maxOccupancy": zod.number().int().nullable(),
   "cohoReference": zod.string().nullable().describe('COHO property the apartment is in, when linked to one'),
   "propertyId": zod.string().nullable().describe('Register-only property the apartment is in, when linked to one'),
+  "linkedBy": zod.union([zod.literal('auto'),zod.literal('staff'),zod.literal(null)]).nullable().describe('auto = matched by name or address; staff = chosen (or cleared) by someone'),
   "inHouse": zod.boolean().describe('A guest is staying tonight'),
   "nextArrival": zod.string().nullable()
 })),
   "lastSync": zod.string().nullable()
+})
+
+
+/**
+ * @summary Link apartments nobody has linked yet to the one COHO or register property whose name or address and postcode match (the sync does this too)
+ */
+export const AutoLinkStayApartmentsResponse = zod.object({
+  "linked": zod.number().int(),
+  "notMatched": zod.number().int().describe('Apartments still not linked'),
+  "error": zod.string().nullable().describe('Why matching couldn\'t run (e.g. COHO unreachable)')
 })
 
 
@@ -1013,6 +1024,7 @@ export const LinkStayApartmentResponse = zod.object({
   "maxOccupancy": zod.number().int().nullable(),
   "cohoReference": zod.string().nullable().describe('COHO property the apartment is in, when linked to one'),
   "propertyId": zod.string().nullable().describe('Register-only property the apartment is in, when linked to one'),
+  "linkedBy": zod.union([zod.literal('auto'),zod.literal('staff'),zod.literal(null)]).nullable().describe('auto = matched by name or address; staff = chosen (or cleared) by someone'),
   "inHouse": zod.boolean().describe('A guest is staying tonight'),
   "nextArrival": zod.string().nullable()
 })
