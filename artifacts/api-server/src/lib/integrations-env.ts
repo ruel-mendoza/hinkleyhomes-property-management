@@ -19,6 +19,26 @@ export function smoobuCredentials(): { key: string; secret?: string } | undefine
   return key ? { key, secret: read("SMOOBU_API_SECRET") } : undefined;
 }
 
+// Smoobu through the n8n gateway workflow (n8n/smoobu-gateway.workflow.json),
+// which holds the Smoobu key. Uses the Xero gateway's key unless it has its own.
+export function readSmoobuGatewayEnv(): { url: string; key: string } | undefined {
+  const url = read("N8N_SMOOBU_GATEWAY_URL");
+  const key = read("N8N_SMOOBU_GATEWAY_KEY") ?? read("N8N_XERO_GATEWAY_KEY");
+  if (!url || !key || key.length < 32) return undefined;
+  try {
+    return new URL(url).protocol === "https:" ? { url, key } : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Smoobu can be read: through the n8n gateway, or directly with SMOOBU_API_KEY.
+export function smoobuMode(): "gateway" | "signed key" | "old key" | undefined {
+  if (readSmoobuGatewayEnv()) return "gateway";
+  const credentials = smoobuCredentials();
+  return credentials ? (credentials.secret ? "signed key" : "old key") : undefined;
+}
+
 // Shared secret for scheduled n8n calls into the API (e.g. the COHO actions
 // sync). Too-short values are ignored so a weak key can't be used.
 export function pmsSyncKey(): string | undefined {

@@ -1,0 +1,333 @@
+{
+  "name": "Hinkley PMS – Smoobu gateway (read-only)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hinkley-smoobu-gateway",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d1e2f3a4-5b6c-4d7e-8f9a-0b1c2d3e4f5a",
+      "name": "PMS request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "a7b8c9d0-1e2f-4a3b-9c4d-5e6f7a8b9c0d",
+      "notes": "Header Auth credential: the same one as the Xero gateway (Name = X-Hinkley-Gateway-Key). The app sends { path, query }."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e2f3a4b5-6c7d-4e8f-9a0b-1c2d3e4f5a6b",
+              "name": "useSignedKey",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "f3a4b5c6-7d8e-4f9a-8b0c-2d3e4f5a6b7c",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "notes": "useSignedKey = false: the old Api-Key credential (works until 31 Oct 2026). Set to true once SMOOBU_API_KEY and SMOOBU_API_SECRET are in n8n Variables."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validates a PMS request and turns it into one read-only Smoobu call.\n// Anything not on these allowlists is rejected before Smoobu is contacted.\n// Smoobu is the channel manager and PriceLabs writes prices through it, so the\n// gateway only ever reads (GET).\nconst body = $json.body || {};\nconst RESERVATION_QUERY = ['from', 'to', 'created_from', 'created_to', 'modifiedFrom', 'modifiedTo', 'arrivalFrom', 'arrivalTo', 'departureFrom', 'departureTo', 'showCancellation', 'excludeBlocked', 'apartmentId', 'includeRelated', 'includePriceElements', 'page', 'pageSize'];\nconst PATHS = [\n  { pattern: /^\\/api\\/apartments$/, query: [] },\n  { pattern: /^\\/api\\/apartments\\/\\d{1,12}$/, query: [] },\n  { pattern: /^\\/api\\/reservations$/, query: RESERVATION_QUERY },\n  { pattern: /^\\/api\\/reservations\\/\\d{1,12}$/, query: [] },\n  { pattern: /^\\/api\\/reservations\\/\\d{1,12}\\/price-elements$/, query: [] },\n  { pattern: /^\\/api\\/threads$/, query: ['page_number', 'page_size'] },\n];\nconst reject = (error) => [{ json: { ok: false, status: 400, error } }];\n\nconst path = typeof body.path === 'string' ? body.path : '';\nconst rule = PATHS.find((item) => item.pattern.test(path));\nif (!rule) return reject('Path not allowed: ' + (path || '(none)'));\n\nconst query = {};\nfor (const [name, value] of Object.entries(body.query || {})) {\n  if (!rule.query.includes(name)) return reject('Query parameter not allowed for ' + path + ': ' + name);\n  if (!['string', 'number', 'boolean'].includes(typeof value) || String(value).length > 100) return reject('Bad value for ' + name);\n  query[name] = String(value);\n}\nreturn [{ json: { ok: true, path, query, useSignedKey: $json.useSignedKey === true } }];\n"
+      },
+      "id": "a4b5c6d7-8e9f-4a0b-9c1d-3e4f5a6b7c8d",
+      "name": "Validate request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "b5c6d7e8-9f0a-4b1c-8d2e-4f5a6b7c8d9e",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c6d7e8f9-0a1b-4c2d-9e3f-5a6b7c8d9e0f",
+      "name": "Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "d7e8f9a0-1b2c-4d3e-8f4a-6b7c8d9e0f1a",
+              "leftValue": "={{ $json.useSignedKey }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e8f9a0b1-2c3d-4e4f-9a5b-7c8d9e0f1a2b",
+      "name": "Use signed key?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        880,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calls Smoobu with the signed HMAC key (needed from 31 October 2026, when the\n// old Api-Key header stops). n8n credentials can't sign requests, so the key and\n// secret come from n8n Variables: SMOOBU_API_KEY and SMOOBU_API_SECRET.\n// Answers in the same shape as the old-key HTTP node: { statusCode, headers, body }.\nconst crypto = require('crypto');\n\nconst key = $vars.SMOOBU_API_KEY;\nconst secret = $vars.SMOOBU_API_SECRET;\nif (!key || !secret) throw new Error('Add the n8n Variables SMOOBU_API_KEY and SMOOBU_API_SECRET (Overview > Variables).');\n\nconst { path, query } = $json;\n// RFC 3986: spaces as %20, and ! ' ( ) * escaped too.\nconst encode = (value) => encodeURIComponent(value).replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());\nconst qs = Object.entries(query || {})\n  .map(([name, value]) => [encode(name), encode(String(value))])\n  .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0))\n  .map(([name, value]) => name + '=' + value)\n  .join('&');\n\n// Canonical string, one part per line: method, path, query sorted by key,\n// timestamp, nonce, SHA-256 of the body (hex), API key. Signed with the secret.\nconst timestamp = new Date().toISOString().replace(/\\.\\d{3}Z$/, 'Z');\nconst nonce = crypto.randomUUID();\nconst bodyHash = crypto.createHash('sha256').update('').digest('hex');\nconst canonical = ['GET', path, qs, timestamp, nonce, bodyHash, key].join('\\n');\nconst signature = crypto.createHmac('sha256', secret).update(canonical).digest('base64');\n\nconst response = await this.helpers.httpRequest({\n  method: 'GET',\n  url: 'https://login.smoobu.com' + path + (qs ? '?' + qs : ''),\n  headers: { Accept: 'application/json', 'X-API-Key': key, 'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Signature': signature },\n  json: true,\n  returnFullResponse: true,\n  ignoreHttpStatusErrors: true,\n  timeout: 30000,\n});\nreturn [{ json: { statusCode: response.statusCode, headers: response.headers || {}, body: response.body ?? null } }];\n"
+      },
+      "id": "f9a0b1c2-3d4e-4f5a-8b6c-8d9e0f1a2b3c",
+      "name": "Call Smoobu (signed key)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://login.smoobu.com{{ $json.path }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpTemplatedCustomAuth",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "={{ JSON.stringify($json.query) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "a0b1c2d3-4e5f-4a6b-9c7d-9e0f1a2b3c4d",
+      "name": "Call Smoobu (old key)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        0
+      ],
+      "credentials": {
+        "httpTemplatedCustomAuth": {
+          "id": "hFg3bM7L5fuf6jer",
+          "name": "Smoobu API Key (Ruel M)"
+        }
+      },
+      "notes": "Old Api-Key header. Stops working on 31 Oct 2026; set Settings > useSignedKey to true before then."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: $json.statusCode < 400, status: $json.statusCode, path: $('Validate request').item.json.path, retryAfter: $json.headers?.['x-ratelimit-retry-after'] ?? null, data: $json.body ?? null }) }}",
+        "options": {
+          "responseCode": "={{ [401, 403].includes($json.statusCode) ? 502 : $json.statusCode }}"
+        }
+      },
+      "id": "b1c2d3e4-5f6a-4b7c-8d8e-0f1a2b3c4d5e",
+      "name": "Return Smoobu result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, status: $json.status, error: $json.error }) }}",
+        "options": {
+          "responseCode": "={{ $json.status }}"
+        }
+      },
+      "id": "c2d3e4f5-6a7b-4c8d-9e9f-1a2b3c4d5e6f",
+      "name": "Reject request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Smoobu gateway (read-only)\nThe PMS reads Smoobu through this workflow, so the Smoobu key stays in n8n.\n\n**Setup**\n1. **PMS request**: Header Auth credential = the Xero gateway one (`X-Hinkley-Gateway-Key`). Publish the workflow and copy the production URL into Replit Secrets as `N8N_SMOOBU_GATEWAY_URL`.\n2. **Call Smoobu (old key)**: credential \"Smoobu API Key (Ruel M)\".\n\n**Before 31 Oct 2026** (the old key stops)\n1. In Smoobu, **Settings > Advanced > API Keys**: create an **HMAC** key, tick **Guest Data (PII)**, copy key and secret.\n2. n8n **Overview > Variables**: add `SMOOBU_API_KEY` and `SMOOBU_API_SECRET`.\n3. **Settings** node: set `useSignedKey` to `true`.\n\nOnly the GET paths listed in **Validate request** are allowed: apartments, reservations, price elements and message threads.",
+        "height": 520,
+        "width": 480,
+        "color": 5
+      },
+      "id": "d3e4f5a6-7b8c-4d9e-8f0a-2b3c4d5e6f7a",
+      "name": "Setup notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "PMS request": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Validate request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate request": {
+      "main": [
+        [
+          {
+            "node": "Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Allowed?": {
+      "main": [
+        [
+          {
+            "node": "Use signed key?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use signed key?": {
+      "main": [
+        [
+          {
+            "node": "Call Smoobu (signed key)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call Smoobu (old key)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Smoobu (signed key)": {
+      "main": [
+        [
+          {
+            "node": "Return Smoobu result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Smoobu (old key)": {
+      "main": [
+        [
+          {
+            "node": "Return Smoobu result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none"
+  },
+  "pinData": {}
+}

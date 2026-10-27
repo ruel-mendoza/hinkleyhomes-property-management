@@ -13,7 +13,7 @@ import { runDailyChecks } from "../lib/finance-checks";
 import { codingPlan, recordResult, recordReview, savedReading } from "../lib/bill-coding";
 import type { XeroBill } from "../lib/bill-coding-rules";
 import { parseIntakeReview, recordIntakeReview } from "../lib/intake-reviews";
-import { smoobuCredentials } from "../lib/integrations-env";
+import { smoobuMode } from "../lib/integrations-env";
 import { handleSmoobuEvent, syncStays } from "../lib/stays";
 import { COMPANIES } from "./money";
 import {
@@ -79,7 +79,7 @@ router.post("/integrations/coho/unit-snapshot", requireSyncKey, async (req, res)
 // Smoobu webhooks reach n8n, which forwards each one here as it came ({ action, user, data }).
 // The booking is re-read from Smoobu, so a forged event can only cause a refresh.
 router.post("/integrations/smoobu/event", requireSyncKey, async (req, res): Promise<void> => {
-  if (!isDatabaseConfigured() || !smoobuCredentials()) {
+  if (!isDatabaseConfigured() || !smoobuMode()) {
     res.status(503).json({ error: "Smoobu or the database is not configured." });
     return;
   }
@@ -93,7 +93,7 @@ router.post("/integrations/smoobu/event", requireSyncKey, async (req, res): Prom
 
 // Hourly catch-up: bookings changed since the last good run, and the apartment list.
 router.post("/integrations/smoobu/sync", requireSyncKey, async (_req, res): Promise<void> => {
-  if (!isDatabaseConfigured() || !smoobuCredentials()) {
+  if (!isDatabaseConfigured() || !smoobuMode()) {
     res.status(503).json({ error: "Smoobu or the database is not configured." });
     return;
   }

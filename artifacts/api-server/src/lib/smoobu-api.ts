@@ -1,9 +1,13 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
-import { smoobuCredentials } from "./integrations-env";
+import { readSmoobuGatewayEnv, smoobuCredentials } from "./integrations-env";
 
 // Smoobu API client (Hinkley Homes Stays). Read-only on purpose: Smoobu is the
 // channel manager and PriceLabs writes prices and stay rules through it, so the
 // app never changes bookings, rates or availability there.
+//
+// With N8N_SMOOBU_GATEWAY_URL set, every read goes through the n8n gateway
+// (n8n/smoobu-gateway.workflow.json), which holds the Smoobu key. Otherwise the
+// app calls Smoobu itself with SMOOBU_API_KEY, as below.
 //
 // Requests are signed with HMAC-SHA256 once SMOOBU_API_SECRET is set; until then
 // the legacy Api-Key header is used (it stops working on 31 October 2026). Canonical string, one part per line: method,
@@ -58,39 +62,83 @@ function authHeaders(path: string, query: string): Record<string, string> {
   return { "X-API-Key": credentials.key, "X-Timestamp": timestamp, "X-Nonce": nonce, "X-Signature": signature };
 }
 
-async function send(path: string, query: string): Promise<Response> {
-  const headers = authHeaders(path, query);
+// What came back from Smoobu, whichever way it was asked.
+type Reply = { status: number; retryAt: number | null; payload: unknown };
+
+async function direct(path: string, query: SmoobuQuery): Promise<Reply> {
+  const qs = smoobuQueryString(query);
+  const headers = authHeaders(path, qs);
+  let response: Response;
   try {
-    return await fetch(`${SMOOBU}${path}${query ? `?${query}` : ""}`, {
+    response = await fetch(`${SMOOBU}${path}${qs ? `?${qs}` : ""}`, {
       headers: { Accept: "application/json", ...headers },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (error) {
     throw new SmoobuApiError(`Could not reach Smoobu: ${(error as Error).message}`);
   }
-}
-
-export async function smoobuGet(path: string, query: SmoobuQuery = {}): Promise<unknown> {
-  const qs = smoobuQueryString(query);
-  let response = await send(path, qs);
-  // 700 requests a minute; wait for the window to reset once (at most a minute).
-  if (response.status === 429) {
-    const resetAt = Number(response.headers.get("X-RateLimit-Retry-After")) * 1000;
-    const wait = Number.isFinite(resetAt) && resetAt > Date.now() ? Math.min(resetAt - Date.now(), 60_000) : 10_000;
-    await new Promise((resolve) => setTimeout(resolve, wait));
-    response = await send(path, qs);
-  }
   const text = await response.text();
-  let payload: unknown;
   try {
-    payload = text ? JSON.parse(text) : {};
+    return { status: response.status, retryAt: Number(response.headers.get("X-RateLimit-Retry-After")) * 1000 || null, payload: text ? JSON.parse(text) : {} };
   } catch {
     throw new SmoobuApiError(`Smoobu returned a non-JSON response (HTTP ${response.status}).`, response.status);
   }
-  if (!response.ok) {
-    const details = payload as { detail?: unknown; title?: unknown; message?: unknown };
-    const reason = [details.detail, details.message, details.title].find((value): value is string => typeof value === "string") ?? "";
-    throw new SmoobuApiError(`Smoobu returned HTTP ${response.status}${reason ? `: ${reason}` : ""}.`, response.status);
+}
+
+// The gateway answers { ok, status, retryAfter, data } or, when it rejects the
+// request itself, { ok: false, status: 400, error }.
+async function viaGateway(gateway: { url: string; key: string }, path: string, query: SmoobuQuery): Promise<Reply> {
+  const flat = Object.fromEntries(Object.entries(query).filter(([, value]) => value !== undefined && !Array.isArray(value)));
+  let response: Response;
+  try {
+    response = await fetch(gateway.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json", "X-Hinkley-Gateway-Key": gateway.key },
+      body: JSON.stringify({ path, query: flat }),
+      signal: AbortSignal.timeout(TIMEOUT_MS + 15_000),
+    });
+  } catch (error) {
+    throw new SmoobuApiError(`Could not reach the n8n Smoobu gateway: ${(error as Error).message}`);
   }
-  return payload;
+  const text = await response.text();
+  let reply: { status?: unknown; retryAfter?: unknown; data?: unknown; error?: unknown } | undefined;
+  try {
+    reply = text ? JSON.parse(text) : undefined;
+  } catch {
+    reply = undefined;
+  }
+  // n8n answers with its own body when the key is wrong, the workflow is
+  // inactive, or the workflow itself fails.
+  if (!reply || typeof reply !== "object" || typeof reply.status !== "number") {
+    throw new SmoobuApiError(
+      response.status === 401 || response.status === 403
+        ? "The n8n Smoobu gateway rejected the key (check N8N_SMOOBU_GATEWAY_KEY or N8N_XERO_GATEWAY_KEY)."
+        : response.status === 404
+          ? "The n8n Smoobu gateway workflow was not found or is not published."
+          : `The n8n Smoobu gateway returned an unexpected HTTP ${response.status} response.`,
+    );
+  }
+  const payload = reply.data ?? (typeof reply.error === "string" ? { message: reply.error } : {});
+  return { status: reply.status, retryAt: Number(reply.retryAfter) * 1000 || null, payload };
+}
+
+function ask(path: string, query: SmoobuQuery): Promise<Reply> {
+  const gateway = readSmoobuGatewayEnv();
+  return gateway ? viaGateway(gateway, path, query) : direct(path, query);
+}
+
+export async function smoobuGet(path: string, query: SmoobuQuery = {}): Promise<unknown> {
+  let reply = await ask(path, query);
+  // 700 requests a minute; wait for the window to reset once (at most a minute).
+  if (reply.status === 429) {
+    const wait = reply.retryAt && reply.retryAt > Date.now() ? Math.min(reply.retryAt - Date.now(), 60_000) : 10_000;
+    await new Promise((resolve) => setTimeout(resolve, wait));
+    reply = await ask(path, query);
+  }
+  if (reply.status >= 400) {
+    const details = (reply.payload ?? {}) as { detail?: unknown; title?: unknown; message?: unknown };
+    const reason = [details.detail, details.message, details.title].find((value): value is string => typeof value === "string") ?? "";
+    throw new SmoobuApiError(`Smoobu returned HTTP ${reply.status}${reason ? `: ${reason}` : ""}.`, reply.status);
+  }
+  return reply.payload;
 }

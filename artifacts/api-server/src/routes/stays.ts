@@ -1,15 +1,15 @@
 import { Router, type IRouter } from "express";
 import { isDatabaseConfigured } from "@workspace/db";
 import { GetStaysResponse, SyncStaysResponse } from "@workspace/api-zod";
-import { smoobuCredentials } from "../lib/integrations-env";
+import { smoobuMode } from "../lib/integrations-env";
 import { staysOverview, syncStays } from "../lib/stays";
 
 // Stays page (Hinkley Homes Stays, read-only from Smoobu). See lib/stays.ts.
 const router: IRouter = Router();
 
 router.get("/stays", async (req, res): Promise<void> => {
-  if (!isDatabaseConfigured() || !smoobuCredentials()) {
-    res.status(503).json({ error: "Smoobu isn't connected yet: add SMOOBU_API_KEY (and SMOOBU_API_SECRET for a signed HMAC key)." });
+  if (!isDatabaseConfigured() || !smoobuMode()) {
+    res.status(503).json({ error: "Smoobu isn't connected yet: add N8N_SMOOBU_GATEWAY_URL (or SMOOBU_API_KEY)." });
     return;
   }
   try {
@@ -21,8 +21,8 @@ router.get("/stays", async (req, res): Promise<void> => {
 });
 
 router.post("/stays/sync", async (_req, res): Promise<void> => {
-  if (!isDatabaseConfigured() || !smoobuCredentials()) {
-    res.status(503).json({ error: "Smoobu isn't connected yet: add SMOOBU_API_KEY (and SMOOBU_API_SECRET for a signed HMAC key)." });
+  if (!isDatabaseConfigured() || !smoobuMode()) {
+    res.status(503).json({ error: "Smoobu isn't connected yet: add N8N_SMOOBU_GATEWAY_URL (or SMOOBU_API_KEY)." });
     return;
   }
   const result = await syncStays("manual");
