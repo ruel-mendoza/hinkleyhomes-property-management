@@ -9,7 +9,7 @@ const router: IRouter = Router();
 
 router.get("/stays", async (req, res): Promise<void> => {
   if (!isDatabaseConfigured() || !smoobuCredentials()) {
-    res.status(503).json({ error: "Smoobu isn't connected yet: add SMOOBU_API_KEY and SMOOBU_API_SECRET." });
+    res.status(503).json({ error: "Smoobu isn't connected yet: add SMOOBU_API_KEY (and SMOOBU_API_SECRET for a signed HMAC key)." });
     return;
   }
   try {
@@ -22,7 +22,7 @@ router.get("/stays", async (req, res): Promise<void> => {
 
 router.post("/stays/sync", async (_req, res): Promise<void> => {
   if (!isDatabaseConfigured() || !smoobuCredentials()) {
-    res.status(503).json({ error: "Smoobu isn't connected yet: add SMOOBU_API_KEY and SMOOBU_API_SECRET." });
+    res.status(503).json({ error: "Smoobu isn't connected yet: add SMOOBU_API_KEY (and SMOOBU_API_SECRET for a signed HMAC key)." });
     return;
   }
   const result = await syncStays("manual");

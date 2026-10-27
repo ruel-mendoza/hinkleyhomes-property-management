@@ -29,7 +29,7 @@ app.listen(port, (err) => {
   logger.info(
     {
       coho: cohoApiKey() ? "configured" : "unconfigured",
-      smoobu: smoobuCredentials() ? "configured" : "unconfigured",
+      smoobu: !smoobuCredentials() ? "unconfigured" : smoobuCredentials()?.secret ? "signed key" : "old Api-Key (ends 31 Oct 2026)",
       xeroGateway: xeroGateway.status,
       xeroDirect: xero.status,
     },

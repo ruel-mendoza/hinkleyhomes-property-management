@@ -1,0 +1,246 @@
+{
+  "name": "Smoobu - Get all bookings",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f410e025-b617-4d6c-b92d-f3c4fda77564",
+      "name": "Run manually",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        6256,
+        2752
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3b1f6c2a-8d4e-4f5a-9b0c-1d2e3f4a5b6c",
+              "name": "useSignedKey",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5c2d7e8f-9a0b-4c1d-8e2f-3a4b5c6d7e8f",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6496,
+        2752
+      ],
+      "notes": "useSignedKey = false: the old Api-Key credential (works until 31 Oct 2026). Set to true once SMOOBU_API_KEY and SMOOBU_API_SECRET are in n8n Variables."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "7d8e9f0a-1b2c-4d3e-8f4a-5b6c7d8e9f0a",
+              "leftValue": "={{ $json.useSignedKey }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8e9f0a1b-2c3d-4e5f-9a6b-7c8d9e0f1a2b",
+      "name": "Use signed key?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        6736,
+        2752
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Smoobu: every booking, signed with the HMAC API key (the old Api-Key header\n// stops working on 31 October 2026). n8n credentials can't sign requests, so the\n// key and secret come from n8n Variables: SMOOBU_API_KEY and SMOOBU_API_SECRET.\nconst crypto = require('crypto');\n\n// Filters, as Smoobu query parameters. Add e.g. from / to (yyyy-mm-dd) for stays\n// in a range, arrivalFrom / arrivalTo, or apartmentId for one property.\nconst FILTERS = { showCancellation: true, excludeBlocked: true };\nconst PAGE_SIZE = 100;\n\nconst key = $vars.SMOOBU_API_KEY;\nconst secret = $vars.SMOOBU_API_SECRET;\nif (!key || !secret) throw new Error('Add the n8n Variables SMOOBU_API_KEY and SMOOBU_API_SECRET (Overview > Variables).');\n\nconst helpers = this.helpers;\nconst EMPTY_BODY_HASH = crypto.createHash('sha256').update('').digest('hex');\n// RFC 3986: spaces as %20, and ! ' ( ) * escaped too.\nconst encode = (value) => encodeURIComponent(value).replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());\nconst sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));\n\n// Canonical string, one part per line: method, path, query sorted by key,\n// timestamp, nonce, SHA-256 of the body (hex), API key. Signed with the secret.\nasync function smoobuGet(path, query) {\n  const qs = Object.entries(query)\n    .filter(([, value]) => value !== undefined && value !== '')\n    .map(([name, value]) => [encode(name), encode(String(value))])\n    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0))\n    .map(([name, value]) => name + '=' + value)\n    .join('&');\n  for (let attempt = 1; ; attempt += 1) {\n    const timestamp = new Date().toISOString().replace(/\\.\\d{3}Z$/, 'Z');\n    const nonce = crypto.randomUUID();\n    const canonical = ['GET', path, qs, timestamp, nonce, EMPTY_BODY_HASH, key].join('\\n');\n    const signature = crypto.createHmac('sha256', secret).update(canonical).digest('base64');\n    try {\n      return await helpers.httpRequest({\n        method: 'GET',\n        url: 'https://login.smoobu.com' + path + (qs ? '?' + qs : ''),\n        headers: { Accept: 'application/json', 'X-API-Key': key, 'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Signature': signature },\n        json: true,\n      });\n    } catch (error) {\n      const status = error.httpCode ?? error.response?.status ?? error.statusCode;\n      // 700 requests a minute: wait and try again, up to 3 times.\n      if (String(status) === '429' && attempt < 3) { await sleep(15000); continue; }\n      throw new Error('Smoobu ' + path + ' failed' + (status ? ' (HTTP ' + status + ')' : '') + ': ' + error.message);\n    }\n  }\n}\n\n// Pages of 100 until Smoobu's page_count is reached; one item per booking.\nconst out = [];\nfor (let page = 1; page <= 200; page += 1) {\n  const body = await smoobuGet('/api/reservations', { ...FILTERS, page, pageSize: PAGE_SIZE });\n  for (const booking of body.bookings || []) out.push({ json: booking });\n  if (!body.page_count || page >= body.page_count) break;\n  await sleep(200);\n}\nreturn out;\n"
+      },
+      "id": "9a74ad28-50cb-43aa-8247-cdeaa4ea1811",
+      "name": "Get bookings (signed key)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6976,
+        2656
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://login.smoobu.com/api/reservations",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpTemplatedCustomAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "page_size",
+              "value": "100"
+            },
+            {
+              "name": "showCancellation",
+              "value": "true"
+            },
+            {
+              "name": "excludeBlocked",
+              "value": "true"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "page",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !$response.body.page_count || $response.body.page >= $response.body.page_count }}",
+              "limitPagesFetched": true,
+              "maxRequests": 200,
+              "requestInterval": 200
+            }
+          }
+        }
+      },
+      "id": "bd0cb67f-6597-4c51-8f32-4b383784cc60",
+      "name": "Get bookings (old key)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6976,
+        2864
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpTemplatedCustomAuth": {
+          "id": "hFg3bM7L5fuf6jer",
+          "name": "Smoobu API Key (Ruel M)"
+        }
+      },
+      "notes": "Old Api-Key header. Stops working on 31 Oct 2026; set Settings > useSignedKey to true before then."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Each page from Smoobu comes back as one item with a 'bookings' list.\n// This turns them into one item per booking.\nconst out = [];\nfor (const page of $input.all()) {\n  for (const b of (page.json.bookings || [])) out.push({ json: b });\n}\nreturn out;"
+      },
+      "id": "2f3a4b5c-6d7e-4f8a-9b0c-1d2e3f4a5b6d",
+      "name": "One item per booking",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7216,
+        2864
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Smoobu: get all bookings\n**Which key** (node **Settings**, `useSignedKey`)\n- `false` (now): the old **Api-Key** credential \"Smoobu API Key (Ruel M)\". Smoobu switches it off on **31 Oct 2026**.\n- `true`: the new signed **HMAC** key.\n\n**Upgrade before 31 Oct**\n1. In Smoobu go to **Settings > Advanced > API Keys** and create an **HMAC** key. Tick **Guest Data (PII)** for guest names. Copy the key and the secret (shown once).\n2. In n8n go to **Overview > Variables** and add `SMOOBU_API_KEY` and `SMOOBU_API_SECRET`.\n3. In **Settings** set `useSignedKey` to `true` and run the workflow.\n\nBoth paths output one item per booking. Filters: query parameters on the old-key node, or `FILTERS` at the top of the signed-key node.",
+        "height": 460,
+        "width": 460,
+        "color": 5
+      },
+      "id": "fe1b6fb2-e68c-40e5-8835-8abb44c54055",
+      "name": "Setup notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        6256,
+        2944
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Run manually": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Use signed key?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use signed key?": {
+      "main": [
+        [
+          {
+            "node": "Get bookings (signed key)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get bookings (old key)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get bookings (old key)": {
+      "main": [
+        [
+          {
+            "node": "One item per booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "tags": []
+}

@@ -5,8 +5,8 @@ import { smoobuCredentials } from "./integrations-env";
 // channel manager and PriceLabs writes prices and stay rules through it, so the
 // app never changes bookings, rates or availability there.
 //
-// Every request is signed with HMAC-SHA256 (the legacy Api-Key header stops
-// working on 31 October 2026). Canonical string, one part per line: method,
+// Requests are signed with HMAC-SHA256 once SMOOBU_API_SECRET is set; until then
+// the legacy Api-Key header is used (it stops working on 31 October 2026). Canonical string, one part per line: method,
 // path, query sorted by key, timestamp, nonce, SHA-256 of the body (hex), API
 // key. The signature is the Base64 HMAC of that string with the API secret.
 const SMOOBU = "https://login.smoobu.com";
@@ -46,21 +46,23 @@ export function smoobuSignature(secret: string, parts: { method: string; path: s
   return createHmac("sha256", secret).update(canonical).digest("base64");
 }
 
-async function send(path: string, query: string): Promise<Response> {
+// Signed headers when there is a secret (HMAC key); the old Api-Key header until
+// it is added. The old header stops working on 31 October 2026.
+function authHeaders(path: string, query: string): Record<string, string> {
   const credentials = smoobuCredentials();
-  if (!credentials) throw new SmoobuApiError("SMOOBU_API_KEY and SMOOBU_API_SECRET are not configured.");
+  if (!credentials) throw new SmoobuApiError("SMOOBU_API_KEY is not configured.");
+  if (!credentials.secret) return { "Api-Key": credentials.key };
   const timestamp = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
   const nonce = randomUUID();
   const signature = smoobuSignature(credentials.secret, { method: "GET", path, query, timestamp, nonce, bodyHash: EMPTY_BODY_HASH, key: credentials.key });
+  return { "X-API-Key": credentials.key, "X-Timestamp": timestamp, "X-Nonce": nonce, "X-Signature": signature };
+}
+
+async function send(path: string, query: string): Promise<Response> {
+  const headers = authHeaders(path, query);
   try {
     return await fetch(`${SMOOBU}${path}${query ? `?${query}` : ""}`, {
-      headers: {
-        Accept: "application/json",
-        "X-API-Key": credentials.key,
-        "X-Timestamp": timestamp,
-        "X-Nonce": nonce,
-        "X-Signature": signature,
-      },
+      headers: { Accept: "application/json", ...headers },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (error) {

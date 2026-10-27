@@ -11,12 +11,12 @@ export function cohoApiKey(): string | undefined {
   return read("COHO_API_KEY");
 }
 
-// Smoobu (Hinkley Homes Stays) HMAC API key and secret, from Smoobu Settings >
-// Advanced > API Keys. Both are needed; the secret signs every request.
-export function smoobuCredentials(): { key: string; secret: string } | undefined {
+// Smoobu (Hinkley Homes Stays) API key, from Smoobu Settings > Advanced > API
+// Keys. With SMOOBU_API_SECRET (an HMAC key) every request is signed; without it
+// the old Api-Key header is sent, which Smoobu switches off on 31 October 2026.
+export function smoobuCredentials(): { key: string; secret?: string } | undefined {
   const key = read("SMOOBU_API_KEY");
-  const secret = read("SMOOBU_API_SECRET");
-  return key && secret ? { key, secret } : undefined;
+  return key ? { key, secret: read("SMOOBU_API_SECRET") } : undefined;
 }
 
 // Shared secret for scheduled n8n calls into the API (e.g. the COHO actions
