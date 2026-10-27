@@ -141,7 +141,7 @@ function BookingsPanel({ data }: { data: StaysOverview }) {
       <div className="panel-head"><div><div className="panel-title">Bookings</div><div className="panel-caption">In house now or arriving in the next 7 days{data.guestChecks ? ". Guest checks come from ChargeAutomation." : ""}</div></div></div>
       <div className="table-wrap">
         <table>
-          <thead><tr><th>Guest</th><th>Apartment</th><th>Stay</th><th>Channel</th><th>Price</th>{data.guestChecks && <th>Guest checks</th>}</tr></thead>
+          <thead><tr><th>Guest</th><th>Apartment</th><th>Stay</th><th>Channel</th><th>Price</th>{data.guestChecks && <th>Guest checks <small className="hh-stay-sub">ChargeAutomation</small></th>}</tr></thead>
           <tbody>
             {data.bookings.map((booking) => (
               <tr key={booking.id}>
@@ -153,7 +153,7 @@ function BookingsPanel({ data }: { data: StaysOverview }) {
                   {booking.price === null ? "—" : pounds.format(booking.price)}
                   {booking.pricePaid === false && <span className="status overdue hh-stay-unpaid">Unpaid</span>}
                 </td>
-                {data.guestChecks && <td><GuestChecksCell checks={booking.checks} /></td>}
+                {data.guestChecks && <td><GuestChecksCell checks={booking.checks} arrived={booking.arrival <= data.asOf} /></td>}
               </tr>
             ))}
             {!data.bookings.length && <tr><td colSpan={data.guestChecks ? 6 : 5}><div className="empty-state"><BedDouble size={21} /><h3>No bookings this week</h3><p>{data.lastSync ? "Smoobu has no stays in the next 7 days." : "Run Sync now to read bookings from Smoobu."}</p></div></td></tr>}
@@ -165,7 +165,7 @@ function BookingsPanel({ data }: { data: StaysOverview }) {
 }
 
 // ChargeAutomation guest checks: what to sort first, else ready, plus what passed.
-function GuestChecksCell({ checks }: { checks: StayBooking["checks"] }) {
+function GuestChecksCell({ checks, arrived }: { checks: StayBooking["checks"]; arrived: boolean }) {
   if (!checks) return <span className="secondary-text">—</span>;
   const passed = [
     checks.preCheckin && "Checked in online",
@@ -177,7 +177,7 @@ function GuestChecksCell({ checks }: { checks: StayBooking["checks"] }) {
     <>
       {checks.issues.length ? <div className="hh-stay-issues">{checks.issues.map((issue) => <span key={issue} className="status overdue">{issue}</span>)}</div>
         : checks.preCheckin ? <span className="status ready">Ready</span>
-          : <span className="secondary-text">Online check-in to do</span>}
+          : <span className="secondary-text">{arrived ? "No online check-in" : "Online check-in to do"}</span>}
       {passed && <small className="hh-stay-sub">{passed}</small>}
     </>
   );

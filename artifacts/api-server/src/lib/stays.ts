@@ -526,7 +526,7 @@ export async function staysOverview() {
     guestChecksReceived(),
   ]);
   const tomorrow = addDays(today, 1);
-  const checksOf = await guestChecksFor(rows.flatMap((row) => (row.smoobuBookingId ? [{ smoobuBookingId: row.smoobuBookingId, arrival: row.arrivalDate }] : [])), tomorrow);
+  const checksOf = await guestChecksFor(rows.flatMap((row) => (row.smoobuBookingId ? [{ smoobuBookingId: row.smoobuBookingId, arrival: row.arrivalDate }] : [])), today, tomorrow);
   const nameOf = new Map(apartments.map((apartment) => [apartment.id, apartment.name]));
   const bookings = rows.map((row) => ({
     id: row.smoobuBookingId ?? row.id,

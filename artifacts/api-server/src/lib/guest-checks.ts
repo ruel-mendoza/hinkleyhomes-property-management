@@ -205,13 +205,15 @@ export type StayGuestChecks = {
 
 const oneOf = <T extends string>(value: string | null, allowed: readonly T[]): T | null => (allowed.includes(value as T) ? (value as T) : null);
 
-// Checks for these Smoobu bookings, with what still needs sorting. Online
-// check-in only counts as missing once the guest is due within a day.
-export async function guestChecksFor(bookings: { smoobuBookingId: string; arrival: string }[], dueBy: string): Promise<Map<string, StayGuestChecks>> {
+// Checks for these Smoobu bookings, with what still needs sorting. Missing
+// online check-in only counts for guests arriving between today and dueBy;
+// once a guest has arrived it no longer needs doing.
+export async function guestChecksFor(bookings: { smoobuBookingId: string; arrival: string }[], today: string, dueBy: string): Promise<Map<string, StayGuestChecks>> {
   const ids = bookings.map((booking) => booking.smoobuBookingId);
   if (!ids.length) return new Map();
   const rows = await getDb().select().from(guestChecksTable).where(inArray(guestChecksTable.smoobuBookingId, ids));
   const arrivalOf = new Map(bookings.map((booking) => [booking.smoobuBookingId, booking.arrival]));
+  const dueSoon = (arrival: string | undefined) => arrival !== undefined && arrival >= today && arrival <= dueBy;
   return new Map(
     rows.map((row) => {
       const checks = {
@@ -227,7 +229,7 @@ export async function guestChecksFor(bookings: { smoobuBookingId: string; arriva
         checks.deposit === "failed" && "Deposit failed",
         checks.idVerification === "failed" && "ID check failed",
         checks.cardVerification === "failed" && "Card check failed",
-        !checks.preCheckin && (arrivalOf.get(row.smoobuBookingId) ?? "9999") <= dueBy && "Online check-in not done",
+        !checks.preCheckin && dueSoon(arrivalOf.get(row.smoobuBookingId)) && "Online check-in not done",
       ].filter((issue): issue is string => Boolean(issue));
       return [row.smoobuBookingId, { ...checks, issues }];
     }),

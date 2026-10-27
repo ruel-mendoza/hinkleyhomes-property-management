@@ -1,11 +1,12 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, gte, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import {
   cohoActionsTable,
   exceptionQueueTable,
   getDb,
   invoiceIntakeReviewsTable,
   isDatabaseConfigured,
+  shortStayBookingsTable,
   xeroOverdueTrackingTable,
 } from "@workspace/db";
 import { GetAttentionResponse } from "@workspace/api-zod";
@@ -13,6 +14,9 @@ import { latestReviews } from "../lib/bill-coding";
 import { clearResolvedIntakeReviews } from "../lib/intake-reviews";
 import { fetchComplianceOverview } from "../lib/coho-compliance";
 import { cohoApiKey } from "../lib/integrations-env";
+import { guestChecksFor, guestChecksReceived } from "../lib/guest-checks";
+import { ukToday } from "../lib/performance";
+import { addDays } from "../lib/stays";
 
 // Operations overview, "Needs attention": what someone should act on today,
 // from the app's own tables (alerts, reviews, held bills, overdue ranking, COHO
@@ -136,6 +140,31 @@ async function compliance(propertyReference: string | undefined): Promise<Item[]
   return items;
 }
 
+// Short-stay guests arriving today or tomorrow with a ChargeAutomation problem
+// (failed payment, deposit, ID or card check, or no online check-in).
+async function guestsNotReady(): Promise<Item[]> {
+  if (!(await guestChecksReceived())) return [];
+  const today = ukToday();
+  const tomorrow = addDays(today, 1);
+  const t = shortStayBookingsTable;
+  const rows = await getDb()
+    .select({ smoobuBookingId: t.smoobuBookingId, arrival: t.arrivalDate, apartment: t.apartmentName })
+    .from(t)
+    .where(and(ne(t.status, "cancelled"), isNotNull(t.smoobuBookingId), gte(t.arrivalDate, today), lte(t.arrivalDate, tomorrow)))
+    .orderBy(asc(t.arrivalDate));
+  const checks = await guestChecksFor(rows.map((row) => ({ smoobuBookingId: row.smoobuBookingId!, arrival: row.arrival })), today, tomorrow);
+  const notReady = rows.filter((row) => checks.get(row.smoobuBookingId!)?.issues.length);
+  if (!notReady.length) return [];
+  const arrivingToday = notReady.filter((row) => row.arrival === today).length;
+  const places = [...new Set(notReady.map((row) => row.apartment).filter((name): name is string => Boolean(name)))];
+  const where = places.length ? places.slice(0, 2).join(", ") + (places.length > 2 ? ` and ${places.length - 2} more` : "") : null;
+  return [{
+    key: "guests_not_ready", severity: arrivingToday ? "high" : "warn", label: "Guests not ready to arrive", count: notReady.length, amount: null,
+    detail: [arrivingToday ? `${arrivingToday} arriving today` : "arriving tomorrow", where].filter(Boolean).join(" · "),
+    href: "/stays",
+  }];
+}
+
 router.get("/overview/attention", async (req, res): Promise<void> => {
   const property = typeof req.query.property === "string" && req.query.property.trim() ? req.query.property.trim().slice(0, 100) : undefined;
   const sources: [string, () => Promise<Item[]>][] = [
@@ -147,6 +176,7 @@ router.get("/overview/attention", async (req, res): Promise<void> => {
         ["Bill coding", heldBills],
         ["Overdue ranking", actNowOverdue],
         ["COHO actions", () => cohoActions(property)],
+        ["Stays guest checks", guestsNotReady],
       ] as [string, () => Promise<Item[]>][])
       : []),
   ];
