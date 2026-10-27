@@ -19,6 +19,14 @@ export function smoobuCredentials(): { key: string; secret?: string } | undefine
   return key ? { key, secret: read("SMOOBU_API_SECRET") } : undefined;
 }
 
+// ChargeAutomation (guest payments and deposits for Hinkley Homes Stays) API
+// key and secret. Both are needed; until then the integration is off.
+export function chargeAutomationCredentials(): { key: string; secret: string } | undefined {
+  const key = read("CHARGEAUTOMATION_API_KEY");
+  const secret = read("CHARGEAUTOMATION_API_SECRET");
+  return key && secret ? { key, secret } : undefined;
+}
+
 // Smoobu through the n8n gateway workflow (n8n/smoobu-gateway.workflow.json),
 // which holds the Smoobu key. Uses the Xero gateway's key unless it has its own.
 export function readSmoobuGatewayEnv(): { url: string; key: string } | undefined {
