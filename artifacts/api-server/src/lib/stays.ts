@@ -12,6 +12,7 @@ import {
 import { aliasKey } from "./bill-coding-rules";
 import { fetchCohoProperties } from "./coho-properties";
 import { cohoApiKey } from "./integrations-env";
+import { guestChecksFor, guestChecksReceived } from "./guest-checks";
 import { logger } from "./logger";
 import { ukToday } from "./performance";
 import { SmoobuApiError, smoobuGet } from "./smoobu-api";
@@ -367,7 +368,7 @@ async function syncAllowance(booking: { id: string; status: string; cleaningFee:
 }
 
 // One booking, read fresh from Smoobu (after a webhook).
-async function refreshBooking(bookingId: number, properties?: Map<number, string>): Promise<"stored" | "skipped" | "cancelled"> {
+export async function refreshBooking(bookingId: number, properties?: Map<number, string>): Promise<"stored" | "skipped" | "cancelled"> {
   let raw: Raw;
   try {
     raw = obj(await smoobuGet(`/api/reservations/${bookingId}`));
@@ -506,7 +507,7 @@ export async function staysOverview() {
   const end = addDays(today, 7);
   const t = shortStayBookingsTable;
   const a = smoobuApartmentsTable;
-  const [rows, apartments, lastRun, messages] = await Promise.all([
+  const [rows, apartments, lastRun, messages, guestChecks] = await Promise.all([
     getDb()
       .select()
       .from(t)
@@ -515,7 +516,10 @@ export async function staysOverview() {
     getDb().select({ id: a.smoobuApartmentId, name: a.name, coho: a.cohoPropertyReference, propertyId: a.propertyId }).from(a),
     lastSyncRun(),
     guestMessages(),
+    guestChecksReceived(),
   ]);
+  const tomorrow = addDays(today, 1);
+  const checksOf = await guestChecksFor(rows.flatMap((row) => (row.smoobuBookingId ? [{ smoobuBookingId: row.smoobuBookingId, arrival: row.arrivalDate }] : [])), tomorrow);
   const nameOf = new Map(apartments.map((apartment) => [apartment.id, apartment.name]));
   const bookings = rows.map((row) => ({
     id: row.smoobuBookingId ?? row.id,
@@ -532,6 +536,7 @@ export async function staysOverview() {
     price: row.totalAmount === null ? null : Number(row.totalAmount),
     pricePaid: row.pricePaid,
     cleaningFee: row.cleaningFee === null ? null : Number(row.cleaningFee),
+    checks: (row.smoobuBookingId ? checksOf.get(row.smoobuBookingId) : undefined) ?? null,
   }));
   const changeovers = bookings
     .filter((booking) => booking.departure >= today && booking.departure <= end)
@@ -559,9 +564,11 @@ export async function staysOverview() {
       leavingToday: bookings.filter((booking) => booking.departure === today).length,
       inHouse: bookings.filter((booking) => booking.arrival <= today && booking.departure > today).length,
       changeoversThisWeek: changeovers.length,
+      notReady: bookings.filter((booking) => booking.arrival >= today && booking.arrival <= tomorrow && booking.checks?.issues.length).length,
     },
     bookings,
     changeovers,
     messages,
+    guestChecks,
   };
 }

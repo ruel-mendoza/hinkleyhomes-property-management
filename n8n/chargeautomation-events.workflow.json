@@ -1,0 +1,82 @@
+{
+  "name": "Hinkley PMS – ChargeAutomation events",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hinkley-chargeautomation-REPLACE-WITH-RANDOM-SECRET",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "6f7a8b9c-0d1e-4f2a-9b3c-5d6e7f8a9b0c",
+      "name": "ChargeAutomation webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "7a8b9c0d-1e2f-4a3b-8c4d-6e7f8a9b0c1d",
+      "notes": "ChargeAutomation doesn't sign its webhooks, so the path carries a secret. Replace REPLACE-WITH-RANDOM-SECRET with 32+ random characters, publish, then paste the production URL into ChargeAutomation: Integrations > Webhooks, for each event listed in the sticky note. Keep that URL private."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/chargeautomation/event",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "8b9c0d1e-2f3a-4b4c-9d5e-7f8a9b0c1d2e",
+      "name": "Forward event to PMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "notes": "Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret (the same one the Smoobu sync uses)."
+    },
+    {
+      "parameters": {
+        "content": "## ChargeAutomation events\nForwards guest payment, deposit and check events to the PMS (Stays page: \"Ready to arrive\").\n\nIn ChargeAutomation **Integrations > Webhooks**, add this workflow's production URL to:\n- New Booking Created\n- Online Check-in Completed\n- Reservation Payment Successful / Failed\n- Security Deposit Authorized / Failed\n- Card Verification Successful / Failed\n- ID Verification Succeeded / Failed\n\nThe PMS keeps no guest documents, contact details or card data from these events.",
+        "height": 360,
+        "width": 440,
+        "color": 5
+      },
+      "id": "9c0d1e2f-3a4b-4c5d-8e6f-8a9b0c1d2e3f",
+      "name": "Setup notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "ChargeAutomation webhook": {
+      "main": [
+        [
+          {
+            "node": "Forward event to PMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

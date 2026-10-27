@@ -22,4 +22,6 @@ export interface StaysOverview {
   bookings: StayBooking[];
   changeovers: StayChangeover[];
   messages: GuestMessages;
+  /** ChargeAutomation has sent guest check events (shows the Guest checks column) */
+  guestChecks: boolean;
 }

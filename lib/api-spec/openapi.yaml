@@ -1528,7 +1528,38 @@ components:
           type: ["boolean", "null"]
         cleaningFee:
           type: ["number", "null"]
-      required: [id, apartmentId, apartmentName, guestName, channel, arrival, departure, nights, guests, checkInTime, checkOutTime, price, pricePaid, cleaningFee]
+        checks:
+          description: What ChargeAutomation has reported for this booking; null when it has sent nothing
+          oneOf:
+            - $ref: "#/components/schemas/StayGuestChecks"
+            - type: "null"
+      required: [id, apartmentId, apartmentName, guestName, channel, arrival, departure, nights, guests, checkInTime, checkOutTime, price, pricePaid, cleaningFee, checks]
+    StayGuestChecks:
+      type: object
+      description: Online check-in, ID, card and deposit checks and the latest payment, from ChargeAutomation
+      properties:
+        preCheckin:
+          type: boolean
+        idVerification:
+          type: ["string", "null"]
+          enum: [succeeded, failed, null]
+        cardVerification:
+          type: ["string", "null"]
+          enum: [successful, failed, null]
+        deposit:
+          type: ["string", "null"]
+          enum: [authorized, failed, null]
+        depositAmount:
+          type: ["number", "null"]
+        payment:
+          type: ["string", "null"]
+          enum: [successful, failed, null]
+        issues:
+          description: Plain-English problems to sort before the guest arrives; empty when ready
+          type: array
+          items:
+            type: string
+      required: [preCheckin, idVerification, cardVerification, deposit, depositAmount, payment, issues]
     StayChangeover:
       type: object
       properties:
@@ -1610,7 +1641,10 @@ components:
               type: integer
             changeoversThisWeek:
               type: integer
-          required: [arrivingToday, leavingToday, inHouse, changeoversThisWeek]
+            notReady:
+              description: Guests arriving today or tomorrow with a ChargeAutomation issue
+              type: integer
+          required: [arrivingToday, leavingToday, inHouse, changeoversThisWeek, notReady]
         bookings:
           type: array
           items:
@@ -1621,7 +1655,10 @@ components:
             $ref: "#/components/schemas/StayChangeover"
         messages:
           $ref: "#/components/schemas/GuestMessages"
-      required: [asOf, apartments, unlinkedApartments, lastSync, counts, bookings, changeovers, messages]
+        guestChecks:
+          description: ChargeAutomation has sent guest check events (shows the Guest checks column)
+          type: boolean
+      required: [asOf, apartments, unlinkedApartments, lastSync, counts, bookings, changeovers, messages, guestChecks]
     StaysSyncResult:
       type: object
       properties:

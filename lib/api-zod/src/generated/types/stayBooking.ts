@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { StayGuestChecks } from './stayGuestChecks';
 
 export interface StayBooking {
   id: string;
@@ -30,4 +31,6 @@ export interface StayBooking {
   pricePaid: boolean | null;
   /** @nullable */
   cleaningFee: number | null;
+  /** What ChargeAutomation has reported for this booking; null when it has sent nothing */
+  checks: StayGuestChecks | null;
 }

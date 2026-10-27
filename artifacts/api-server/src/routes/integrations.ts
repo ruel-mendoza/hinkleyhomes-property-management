@@ -15,6 +15,7 @@ import type { XeroBill } from "../lib/bill-coding-rules";
 import { parseIntakeReview, recordIntakeReview } from "../lib/intake-reviews";
 import { smoobuMode } from "../lib/integrations-env";
 import { handleSmoobuEvent, syncStays } from "../lib/stays";
+import { handleChargeAutomationEvent } from "../lib/guest-checks";
 import { COMPANIES } from "./money";
 import {
   ALL_TENANT_IDS,
@@ -99,6 +100,23 @@ router.post("/integrations/smoobu/sync", requireSyncKey, async (_req, res): Prom
   }
   const result = await syncStays("schedule");
   res.status(result.status === "failed" ? 502 : 200).json(result);
+});
+
+// --- ChargeAutomation (n8n "Hinkley PMS – ChargeAutomation events") ---------------------
+// Guest payment, deposit, ID, card and online check-in events, forwarded as they
+// came (an array with one { event, data }). Only outcomes are kept; online
+// check-in is confirmed with ChargeAutomation through the gateway when it is set up.
+router.post("/integrations/chargeautomation/event", requireSyncKey, async (req, res): Promise<void> => {
+  if (!isDatabaseConfigured()) {
+    res.status(503).json({ error: "The database is not configured." });
+    return;
+  }
+  try {
+    res.json(await handleChargeAutomationEvent(req.body));
+  } catch (error) {
+    req.log.error({ err: error }, "ChargeAutomation event could not be handled");
+    res.status(500).json({ error: "The ChargeAutomation event could not be recorded." });
+  }
 });
 
 // --- Payment reminders (n8n "Xero overdue reminders" workflow) -----------------------

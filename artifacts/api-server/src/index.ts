@@ -1,5 +1,5 @@
 import app from "./app";
-import { chargeAutomationCredentials, cohoApiKey, readXeroEnv, readXeroGatewayEnv, smoobuMode } from "./lib/integrations-env";
+import { readChargeAutomationGatewayEnv, cohoApiKey, readXeroEnv, readXeroGatewayEnv, smoobuMode } from "./lib/integrations-env";
 import { logger } from "./lib/logger";
 
 const rawPort = process.env["PORT"];
@@ -29,7 +29,7 @@ app.listen(port, (err) => {
   logger.info(
     {
       coho: cohoApiKey() ? "configured" : "unconfigured",
-      chargeAutomation: chargeAutomationCredentials() ? "configured" : "unconfigured",
+      chargeAutomationGateway: readChargeAutomationGatewayEnv() ? "configured" : "unconfigured",
       smoobu: smoobuMode() === "old key" ? "old Api-Key (ends 31 Oct 2026)" : smoobuMode() ?? "unconfigured",
       xeroGateway: xeroGateway.status,
       xeroDirect: xero.status,

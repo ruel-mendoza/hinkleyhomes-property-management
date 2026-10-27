@@ -19,25 +19,29 @@ export function smoobuCredentials(): { key: string; secret?: string } | undefine
   return key ? { key, secret: read("SMOOBU_API_SECRET") } : undefined;
 }
 
-// ChargeAutomation (guest payments and deposits for Hinkley Homes Stays) API
-// key and secret. Both are needed; until then the integration is off.
-export function chargeAutomationCredentials(): { key: string; secret: string } | undefined {
-  const key = read("CHARGEAUTOMATION_API_KEY");
-  const secret = read("CHARGEAUTOMATION_API_SECRET");
-  return key && secret ? { key, secret } : undefined;
+// ChargeAutomation (guest payments, deposits and checks for Hinkley Homes
+// Stays) through the n8n gateway workflow (n8n/chargeautomation-gateway.workflow.json),
+// which holds the client id and secret as n8n Variables. Uses the Xero
+// gateway's key unless it has its own.
+export function readChargeAutomationGatewayEnv(): { url: string; key: string } | undefined {
+  return gatewayEnv("N8N_CHARGEAUTOMATION_GATEWAY_URL", "N8N_CHARGEAUTOMATION_GATEWAY_KEY");
 }
 
-// Smoobu through the n8n gateway workflow (n8n/smoobu-gateway.workflow.json),
-// which holds the Smoobu key. Uses the Xero gateway's key unless it has its own.
-export function readSmoobuGatewayEnv(): { url: string; key: string } | undefined {
-  const url = read("N8N_SMOOBU_GATEWAY_URL");
-  const key = read("N8N_SMOOBU_GATEWAY_KEY") ?? read("N8N_XERO_GATEWAY_KEY");
+function gatewayEnv(urlName: string, keyName: string): { url: string; key: string } | undefined {
+  const url = read(urlName);
+  const key = read(keyName) ?? read("N8N_XERO_GATEWAY_KEY");
   if (!url || !key || key.length < 32) return undefined;
   try {
     return new URL(url).protocol === "https:" ? { url, key } : undefined;
   } catch {
     return undefined;
   }
+}
+
+// Smoobu through the n8n gateway workflow (n8n/smoobu-gateway.workflow.json),
+// which holds the Smoobu key. Uses the Xero gateway's key unless it has its own.
+export function readSmoobuGatewayEnv(): { url: string; key: string } | undefined {
+  return gatewayEnv("N8N_SMOOBU_GATEWAY_URL", "N8N_SMOOBU_GATEWAY_KEY");
 }
 
 // Smoobu can be read: through the n8n gateway, or directly with SMOOBU_API_KEY.

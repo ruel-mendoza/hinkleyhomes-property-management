@@ -914,7 +914,8 @@ export const GetStaysResponse = zod.object({
   "arrivingToday": zod.number().int(),
   "leavingToday": zod.number().int(),
   "inHouse": zod.number().int(),
-  "changeoversThisWeek": zod.number().int()
+  "changeoversThisWeek": zod.number().int(),
+  "notReady": zod.number().int().describe('Guests arriving today or tomorrow with a ChargeAutomation issue')
 }),
   "bookings": zod.array(zod.object({
   "id": zod.string(),
@@ -930,7 +931,16 @@ export const GetStaysResponse = zod.object({
   "checkOutTime": zod.string().nullable(),
   "price": zod.number().nullable(),
   "pricePaid": zod.boolean().nullable(),
-  "cleaningFee": zod.number().nullable()
+  "cleaningFee": zod.number().nullable(),
+  "checks": zod.union([zod.object({
+  "preCheckin": zod.boolean(),
+  "idVerification": zod.union([zod.literal('succeeded'),zod.literal('failed'),zod.literal(null)]).nullable(),
+  "cardVerification": zod.union([zod.literal('successful'),zod.literal('failed'),zod.literal(null)]).nullable(),
+  "deposit": zod.union([zod.literal('authorized'),zod.literal('failed'),zod.literal(null)]).nullable(),
+  "depositAmount": zod.number().nullable(),
+  "payment": zod.union([zod.literal('successful'),zod.literal('failed'),zod.literal(null)]).nullable(),
+  "issues": zod.array(zod.string()).describe('Plain-English problems to sort before the guest arrives; empty when ready')
+}).describe('Online check-in, ID, card and deposit checks and the latest payment, from ChargeAutomation'),zod.null()]).describe('What ChargeAutomation has reported for this booking; null when it has sent nothing')
 })),
   "changeovers": zod.array(zod.object({
   "date": zod.string(),
@@ -954,7 +964,8 @@ export const GetStaysResponse = zod.object({
   "preview": zod.string().nullable()
 })),
   "error": zod.string().nullable()
-})
+}),
+  "guestChecks": zod.boolean().describe('ChargeAutomation has sent guest check events (shows the Guest checks column)')
 })
 
 

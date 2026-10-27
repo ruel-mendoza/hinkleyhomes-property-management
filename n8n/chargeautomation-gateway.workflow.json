@@ -1,0 +1,107 @@
+{
+  "name": "Hinkley PMS – ChargeAutomation gateway (read-only)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hinkley-chargeautomation-gateway",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+      "name": "PMS request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "uDbyYQyAvs2lagnq",
+          "name": "Header Auth account"
+        }
+      },
+      "notes": "Header Auth credential: \"Header Auth account\", the same one as the Xero gateway (Name = X-Hinkley-Gateway-Key). Not \"Header Auth account 2\", which belongs to the payment reminders. The app sends { path, query }."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Reads ChargeAutomation for the PMS. Read-only: only the GET paths below are\n// allowed, so the app can never charge, refund, release a deposit or change a\n// booking. The client id and secret come from n8n Variables\n// CHARGEAUTOMATION_API_KEY and CHARGEAUTOMATION_API_SECRET; the access token\n// (valid 24 hours) is kept in this workflow's static data between runs.\nconst BASE = 'https://api.chargeautomation.com';\nconst body = $json.body || {};\nconst path = typeof body.path === 'string' ? body.path : '';\nconst query = body.query && typeof body.query === 'object' && !Array.isArray(body.query) ? body.query : {};\n\nconst ALLOWED = [\n  { pattern: /^\\/api\\/v1\\/booking\\/\\d{1,20}$/, keys: [] },\n  { pattern: /^\\/api\\/v1\\/bookings$/, keys: ['property_id', 'status', 'from', 'to', 'created_from', 'created_to', 'page', 'page_size', 'sort_order'] },\n  { pattern: /^\\/api\\/v1\\/verify-payment-request\\/[A-Za-z0-9_-]{1,100}$/, keys: [] },\n];\nconst rule = ALLOWED.find((r) => r.pattern.test(path));\nconst badKey = rule && Object.keys(query).find((key) => !rule.keys.includes(key));\nif (!rule || badKey) {\n  return [{ json: { ok: false, status: 400, error: rule ? 'Query parameter not allowed: ' + badKey : 'Path not allowed: ' + path } }];\n}\n\nconst clientId = $vars.CHARGEAUTOMATION_API_KEY;\nconst clientSecret = $vars.CHARGEAUTOMATION_API_SECRET;\nif (!clientId || !clientSecret) {\n  return [{ json: { ok: false, status: 500, error: 'Add the n8n Variables CHARGEAUTOMATION_API_KEY and CHARGEAUTOMATION_API_SECRET.' } }];\n}\n\nconst store = $getWorkflowStaticData('global');\nconst tokenOf = (reply) => {\n  const b = reply && typeof reply === 'object' ? reply : {};\n  const d = b.data && typeof b.data === 'object' ? b.data : {};\n  const access = b.access_token || d.access_token;\n  if (!access) return null;\n  const seconds = Number(b.expires_in || d.expires_in) || 86400;\n  return { access, refresh: b.refresh_token || d.refresh_token || null, expiresAt: Date.now() + (seconds - 300) * 1000 };\n};\nconst post = (url, payload) =>\n  this.helpers.httpRequest({ method: 'POST', url, body: payload, json: true, returnFullResponse: true, ignoreHttpStatusErrors: true, timeout: 30000 });\n\nasync function login() {\n  // A refresh token avoids sending the secret; fall back to the secret if it fails.\n  if (store.caRefresh) {\n    const refreshed = await post(BASE + '/api/v1/oauth/token/refresh', { refresh_token: store.caRefresh });\n    const token = refreshed.statusCode < 400 ? tokenOf(refreshed.body) : null;\n    if (token) return token;\n  }\n  const reply = await post(BASE + '/api/v1/oauth/token', { client_id: clientId, client_secret: clientSecret });\n  const token = reply.statusCode < 400 ? tokenOf(reply.body) : null;\n  if (!token) throw new Error('ChargeAutomation login failed (HTTP ' + reply.statusCode + '). Check the client id and secret in n8n Variables.');\n  return token;\n}\nasync function accessToken(force) {\n  if (!force && store.caAccess && store.caExpiresAt > Date.now()) return store.caAccess;\n  const token = await login();\n  store.caAccess = token.access;\n  store.caRefresh = token.refresh || store.caRefresh || null;\n  store.caExpiresAt = token.expiresAt;\n  return token.access;\n}\n\nconst qs = Object.entries(query)\n  .map(([key, value]) => encodeURIComponent(key) + '=' + encodeURIComponent(String(value)))\n  .join('&');\nconst get = async (force) =>\n  this.helpers.httpRequest({\n    method: 'GET',\n    url: BASE + path + (qs ? '?' + qs : ''),\n    headers: { Accept: 'application/json', Authorization: 'Bearer ' + (await accessToken(force)) },\n    json: true,\n    returnFullResponse: true,\n    ignoreHttpStatusErrors: true,\n    timeout: 30000,\n  });\n\nlet response = await get(false);\n// Expired or revoked token (401, or ChargeAutomation's 1004): log in again once.\nif (response.statusCode === 401 || (response.body && Number(response.body.status_code) === 1004)) response = await get(true);\nreturn [{ json: { ok: response.statusCode < 400, status: response.statusCode, path, data: response.body ?? null } }];\n"
+      },
+      "id": "3c4d5e6f-7a8b-4c9d-8e0f-2a3b4c5d6e7f",
+      "name": "Call ChargeAutomation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "notes": "Logs in with n8n Variables CHARGEAUTOMATION_API_KEY (client id) and CHARGEAUTOMATION_API_SECRET, keeps the 24-hour token, and allows only the read paths listed at the top."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: $json.ok, status: $json.status, path: $json.path ?? null, data: $json.data ?? null, error: $json.error ?? null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "4d5e6f7a-8b9c-4d0e-9f1a-3b4c5d6e7f8a",
+      "name": "Return result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        0
+      ],
+      "notes": "Always HTTP 200: the real status is in the body. (n8n cloud sits behind Cloudflare, which replaces 5xx answers with its own error page.)"
+    },
+    {
+      "parameters": {
+        "content": "## ChargeAutomation gateway (read-only)\nThe PMS reads ChargeAutomation through this workflow, so the client id and secret stay in n8n.\n\n**Setup**\n1. n8n **Overview > Variables**: `CHARGEAUTOMATION_API_KEY` (client id) and `CHARGEAUTOMATION_API_SECRET` (client secret), from ChargeAutomation **Integrations > API**.\n2. **PMS request**: Header Auth credential = the Xero gateway one (`X-Hinkley-Gateway-Key`).\n3. Publish, and copy the production URL into Replit Secrets as `N8N_CHARGEAUTOMATION_GATEWAY_URL`.\n\nOnly reads are allowed: one booking, the booking list and a payment request. The app never charges, refunds or releases deposits.",
+        "height": 380,
+        "width": 460,
+        "color": 5
+      },
+      "id": "5e6f7a8b-9c0d-4e1f-8a2b-4c5d6e7f8a9b",
+      "name": "Setup notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "PMS request": {
+      "main": [
+        [
+          {
+            "node": "Call ChargeAutomation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call ChargeAutomation": {
+      "main": [
+        [
+          {
+            "node": "Return result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none"
+  },
+  "pinData": {}
+}

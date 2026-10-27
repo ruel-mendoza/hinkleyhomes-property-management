@@ -5,6 +5,69 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+/**
+ * @nullable
+ */
+export type StayGuestChecksIdVerification = typeof StayGuestChecksIdVerification[keyof typeof StayGuestChecksIdVerification] | null;
+
+
+export const StayGuestChecksIdVerification = {
+  succeeded: 'succeeded',
+  failed: 'failed',
+} as const;
+
+/**
+ * @nullable
+ */
+export type StayGuestChecksCardVerification = typeof StayGuestChecksCardVerification[keyof typeof StayGuestChecksCardVerification] | null;
+
+
+export const StayGuestChecksCardVerification = {
+  successful: 'successful',
+  failed: 'failed',
+} as const;
+
+/**
+ * @nullable
+ */
+export type StayGuestChecksDeposit = typeof StayGuestChecksDeposit[keyof typeof StayGuestChecksDeposit] | null;
+
+
+export const StayGuestChecksDeposit = {
+  authorized: 'authorized',
+  failed: 'failed',
+} as const;
+
+/**
+ * @nullable
+ */
+export type StayGuestChecksPayment = typeof StayGuestChecksPayment[keyof typeof StayGuestChecksPayment] | null;
+
+
+export const StayGuestChecksPayment = {
+  successful: 'successful',
+  failed: 'failed',
+} as const;
+
+/**
+ * Online check-in, ID, card and deposit checks and the latest payment, from ChargeAutomation
+ */
+export interface StayGuestChecks {
+  preCheckin: boolean;
+  /** @nullable */
+  idVerification: StayGuestChecksIdVerification;
+  /** @nullable */
+  cardVerification: StayGuestChecksCardVerification;
+  /** @nullable */
+  deposit: StayGuestChecksDeposit;
+  /** @nullable */
+  depositAmount: number | null;
+  /** @nullable */
+  payment: StayGuestChecksPayment;
+  /** Plain-English problems to sort before the guest arrives; empty when ready */
+  issues: string[];
+}
+
 export interface StayBooking {
   id: string;
   /** @nullable */
@@ -29,6 +92,8 @@ export interface StayBooking {
   pricePaid: boolean | null;
   /** @nullable */
   cleaningFee: number | null;
+  /** What ChargeAutomation has reported for this booking; null when it has sent nothing */
+  checks: StayGuestChecks | null;
 }
 
 export interface StayChangeover {
@@ -84,6 +149,8 @@ export type StaysOverviewCounts = {
   leavingToday: number;
   inHouse: number;
   changeoversThisWeek: number;
+  /** Guests arriving today or tomorrow with a ChargeAutomation issue */
+  notReady: number;
 };
 
 export interface StaysOverview {
@@ -97,6 +164,8 @@ export interface StaysOverview {
   bookings: StayBooking[];
   changeovers: StayChangeover[];
   messages: GuestMessages;
+  /** ChargeAutomation has sent guest check events (shows the Guest checks column) */
+  guestChecks: boolean;
 }
 
 export type StaysSyncResultStatus = typeof StaysSyncResultStatus[keyof typeof StaysSyncResultStatus];

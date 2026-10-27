@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeftRight, BedDouble, ExternalLink, LogIn, LogOut, MessageSquare, PlugZap, RefreshCw } from "lucide-react";
-import { getGetStaysQueryKey, useGetStays, useSyncStays, type StaysOverview } from "@workspace/api-client-react";
+import { AlertTriangle, ArrowLeftRight, BedDouble, ExternalLink, LogIn, LogOut, MessageSquare, PlugZap, RefreshCw, ShieldCheck } from "lucide-react";
+import { getGetStaysQueryKey, useGetStays, useSyncStays, type StayBooking, type StaysOverview } from "@workspace/api-client-react";
 import { errorText } from "@/components/action-modals";
 import { formatDate } from "@/services/properties";
 import "./stays.css";
@@ -67,6 +67,7 @@ export default function StaysPage() {
             <div><LogOut size={17} /><strong>{data.counts.leavingToday}</strong> leaving today</div>
             <div className="good"><BedDouble size={17} /><strong>{data.counts.inHouse}</strong> in house</div>
             <div className={data.messages.unreadMessages ? "warn" : ""}><MessageSquare size={17} /><strong>{data.messages.unreadMessages}</strong> unread {data.messages.unreadMessages === 1 ? "message" : "messages"}</div>
+            {data.guestChecks && <div className={data.counts.notReady ? "warn" : ""}><ShieldCheck size={17} /><strong>{data.counts.notReady}</strong> not ready to arrive</div>}
           </div>
           <GuestMessagesPanel messages={data.messages} />
           <ChangeoversPanel data={data} />
@@ -137,10 +138,10 @@ function ChangeoversPanel({ data }: { data: StaysOverview }) {
 function BookingsPanel({ data }: { data: StaysOverview }) {
   return (
     <section className="panel table-panel hh-stay-panel">
-      <div className="panel-head"><div><div className="panel-title">Bookings</div><div className="panel-caption">In house now or arriving in the next 7 days</div></div></div>
+      <div className="panel-head"><div><div className="panel-title">Bookings</div><div className="panel-caption">In house now or arriving in the next 7 days{data.guestChecks ? ". Guest checks come from ChargeAutomation." : ""}</div></div></div>
       <div className="table-wrap">
         <table>
-          <thead><tr><th>Guest</th><th>Apartment</th><th>Stay</th><th>Channel</th><th>Price</th></tr></thead>
+          <thead><tr><th>Guest</th><th>Apartment</th><th>Stay</th><th>Channel</th><th>Price</th>{data.guestChecks && <th>Guest checks</th>}</tr></thead>
           <tbody>
             {data.bookings.map((booking) => (
               <tr key={booking.id}>
@@ -152,13 +153,33 @@ function BookingsPanel({ data }: { data: StaysOverview }) {
                   {booking.price === null ? "—" : pounds.format(booking.price)}
                   {booking.pricePaid === false && <span className="status overdue hh-stay-unpaid">Unpaid</span>}
                 </td>
+                {data.guestChecks && <td><GuestChecksCell checks={booking.checks} /></td>}
               </tr>
             ))}
-            {!data.bookings.length && <tr><td colSpan={5}><div className="empty-state"><BedDouble size={21} /><h3>No bookings this week</h3><p>{data.lastSync ? "Smoobu has no stays in the next 7 days." : "Run Sync now to read bookings from Smoobu."}</p></div></td></tr>}
+            {!data.bookings.length && <tr><td colSpan={data.guestChecks ? 6 : 5}><div className="empty-state"><BedDouble size={21} /><h3>No bookings this week</h3><p>{data.lastSync ? "Smoobu has no stays in the next 7 days." : "Run Sync now to read bookings from Smoobu."}</p></div></td></tr>}
           </tbody>
         </table>
       </div>
     </section>
+  );
+}
+
+// ChargeAutomation guest checks: what to sort first, else ready, plus what passed.
+function GuestChecksCell({ checks }: { checks: StayBooking["checks"] }) {
+  if (!checks) return <span className="secondary-text">—</span>;
+  const passed = [
+    checks.preCheckin && "Checked in online",
+    checks.idVerification === "succeeded" && "ID checked",
+    checks.deposit === "authorized" && (checks.depositAmount === null ? "Deposit held" : `${pounds.format(checks.depositAmount)} deposit held`),
+    checks.payment === "successful" && "Paid",
+  ].filter(Boolean).join(" · ");
+  return (
+    <>
+      {checks.issues.length ? <div className="hh-stay-issues">{checks.issues.map((issue) => <span key={issue} className="status overdue">{issue}</span>)}</div>
+        : checks.preCheckin ? <span className="status ready">Ready</span>
+          : <span className="secondary-text">Online check-in to do</span>}
+      {passed && <small className="hh-stay-sub">{passed}</small>}
+    </>
   );
 }
 
@@ -180,6 +201,7 @@ export function StaysStrip() {
                 {stat("In house", data.counts.inHouse)}
                 {stat("Changeovers this week", data.counts.changeoversThisWeek)}
                 {stat("Unread guest messages", data.messages.unreadMessages, data.messages.unreadMessages ? "warn" : "")}
+                {data.guestChecks && stat("Not ready to arrive", data.counts.notReady, data.counts.notReady ? "warn" : "")}
                 {data.unlinkedApartments > 0 && stat("Apartments not linked", data.unlinkedApartments, "warn")}
               </>
             )}

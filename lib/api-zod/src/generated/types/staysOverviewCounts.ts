@@ -11,4 +11,6 @@ export type StaysOverviewCounts = {
   leavingToday: number;
   inHouse: number;
   changeoversThisWeek: number;
+  /** Guests arriving today or tomorrow with a ChargeAutomation issue */
+  notReady: number;
 };

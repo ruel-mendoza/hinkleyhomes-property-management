@@ -126,6 +126,31 @@ export const shortStayBookingsTable = pgTable(
   ],
 ).enableRLS();
 
+// What ChargeAutomation reports for a short-stay booking: online check-in, ID,
+// card and security deposit checks and the latest payment, from its webhooks.
+// Keyed by the Smoobu booking id (the same number as ChargeAutomation's own booking
+// id and pms_booking_id for bookings Smoobu sent it), so an
+// event that arrives before the booking is synced still counts. No guest
+// documents, contact details or card data are kept.
+export const guestChecksTable = pgTable("guest_checks", {
+  id: id(),
+  smoobuBookingId: text("smoobu_booking_id").notNull().unique(),
+  chargeAutomationBookingId: text("charge_automation_booking_id"),
+  preCheckinCompletedAt: timestamp("pre_checkin_completed_at", { withTimezone: true }),
+  // "succeeded" | "failed"
+  idVerification: text("id_verification"),
+  idVerificationNote: text("id_verification_note"),
+  // "successful" | "failed"
+  cardVerification: text("card_verification"),
+  // "authorized" | "failed"
+  depositStatus: text("deposit_status"),
+  depositAmount: money("deposit_amount"),
+  // "successful" | "failed" (the latest payment event)
+  paymentStatus: text("payment_status"),
+  lastEventAt: timestamp("last_event_at", { withTimezone: true }).notNull().defaultNow(),
+  ...timestamps,
+}).enableRLS();
+
 export const paymentSourceEnum = pgEnum("payment_source", [
   "coho",
   "smoobu",
@@ -180,3 +205,4 @@ export type InsertShortStayBooking = z.infer<typeof insertShortStayBookingSchema
 export type Payment = typeof paymentsTable.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type SmoobuApartment = typeof smoobuApartmentsTable.$inferSelect;
+export type GuestCheck = typeof guestChecksTable.$inferSelect;
