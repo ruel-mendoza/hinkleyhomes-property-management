@@ -1,5 +1,6 @@
-import { and, desc, eq, gte, isNotNull, like, lte, ne } from "drizzle-orm";
+import { and, desc, eq, gt, gte, isNotNull, like, lte, ne, or } from "drizzle-orm";
 import {
+  auditLogTable,
   cleaningAllowancesTable,
   getDb,
   integrationSyncRunsTable,
@@ -82,11 +83,111 @@ async function syncApartments(): Promise<number> {
   return count;
 }
 
-// Register properties linked to a Smoobu apartment (properties.smoobu_property_id).
+// The register property each Smoobu apartment's bookings belong to: the one
+// staff linked it to (directly, or through its COHO reference), else an older
+// link on properties.smoobu_property_id. COHO-only properties have no register
+// row, so their bookings keep property_id null and are found by apartment.
 async function linkedProperties(): Promise<Map<number, string>> {
   const p = propertiesTable;
-  const rows = await getDb().select({ id: p.id, smoobuId: p.smoobuPropertyId }).from(p).where(isNotNull(p.smoobuPropertyId));
-  return new Map(rows.flatMap((row) => (num(row.smoobuId) === null ? [] : [[num(row.smoobuId)!, row.id] as [number, string]])));
+  const a = smoobuApartmentsTable;
+  const [apartments, register] = await Promise.all([
+    getDb().select({ apartmentId: a.smoobuApartmentId, propertyId: a.propertyId, coho: a.cohoPropertyReference }).from(a),
+    getDb().select({ id: p.id, coho: p.cohoPropertyReference, smoobuId: p.smoobuPropertyId }).from(p).where(or(isNotNull(p.cohoPropertyReference), isNotNull(p.smoobuPropertyId))),
+  ]);
+  const byCoho = new Map(register.flatMap((row) => (row.coho ? [[row.coho, row.id] as [string, string]] : [])));
+  const linked = new Map(register.flatMap((row) => (num(row.smoobuId) === null ? [] : [[num(row.smoobuId)!, row.id] as [number, string]])));
+  for (const apartment of apartments) {
+    const propertyId = apartment.propertyId ?? (apartment.coho ? byCoho.get(apartment.coho) : undefined);
+    if (propertyId) linked.set(apartment.apartmentId, propertyId);
+  }
+  return linked;
+}
+
+export class StaysError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
+// Smoobu apartments for the Properties page, with whether someone is staying
+// tonight and the next arrival.
+export async function listApartments(onlyApartmentId?: number) {
+  const today = ukToday();
+  const a = smoobuApartmentsTable;
+  const t = shortStayBookingsTable;
+  const [apartments, upcoming, lastSync] = await Promise.all([
+    getDb().select().from(a).where(onlyApartmentId === undefined ? undefined : eq(a.smoobuApartmentId, onlyApartmentId)).orderBy(a.name),
+    getDb()
+      .select({ apartmentId: t.smoobuApartmentId, arrival: t.arrivalDate })
+      .from(t)
+      .where(and(ne(t.status, "cancelled"), gt(t.departureDate, today), onlyApartmentId === undefined ? undefined : eq(t.smoobuApartmentId, onlyApartmentId)))
+      .orderBy(t.arrivalDate),
+    lastSyncRun(),
+  ]);
+  const items = apartments.map((apartment) => {
+    const stays = upcoming.filter((booking) => booking.apartmentId === apartment.smoobuApartmentId);
+    return {
+      smoobuApartmentId: apartment.smoobuApartmentId,
+      name: apartment.name,
+      address: [apartment.street, apartment.city, apartment.postcode].filter(Boolean).join(", ") || null,
+      bedrooms: apartment.bedrooms,
+      maxOccupancy: apartment.maxOccupancy,
+      cohoReference: apartment.cohoPropertyReference,
+      propertyId: apartment.propertyId,
+      inHouse: stays.some((booking) => booking.arrival <= today),
+      nextArrival: stays.find((booking) => booking.arrival > today)?.arrival ?? null,
+    };
+  });
+  return { items, lastSync: lastSync?.status === "succeeded" ? (lastSync.finishedAt ?? lastSync.startedAt).toISOString() : null };
+}
+
+// Links a Smoobu apartment to the property it is in (only in this app; Smoobu
+// is never changed) and moves its bookings to that property.
+export async function linkApartment(
+  apartmentId: number,
+  link: { cohoReference: string | null; propertyId: string | null },
+  actor: { email: string | null; userId: string | null; requestId: string | null; ipAddress: string | null },
+) {
+  const cohoReference = link.cohoReference?.trim() || null;
+  const propertyId = link.propertyId || null;
+  if (cohoReference && propertyId) throw new StaysError("Link the apartment to one property only.", 400);
+  const db = getDb();
+  const a = smoobuApartmentsTable;
+  const [before] = await db.select().from(a).where(eq(a.smoobuApartmentId, apartmentId));
+  if (!before) throw new StaysError("That Smoobu apartment isn't in the app yet. Sync Stays first.", 404);
+  if (propertyId) {
+    const [property] = await db.select({ id: propertiesTable.id }).from(propertiesTable).where(eq(propertiesTable.id, propertyId));
+    if (!property) throw new StaysError("That property isn't in the register.", 404);
+  }
+  await db.transaction(async (tx) => {
+    await tx.update(a).set({ cohoPropertyReference: cohoReference, propertyId }).where(eq(a.smoobuApartmentId, apartmentId));
+    await tx.insert(auditLogTable).values({
+      actorEmail: actor.email,
+      actorUserId: actor.userId,
+      action: cohoReference || propertyId ? "smoobu_apartment.link" : "smoobu_apartment.unlink",
+      tableName: "smoobu_apartments",
+      recordId: String(apartmentId),
+      before: { name: before.name, cohoReference: before.cohoPropertyReference, propertyId: before.propertyId },
+      after: { name: before.name, cohoReference, propertyId },
+      requestId: actor.requestId,
+      ipAddress: actor.ipAddress,
+    });
+  });
+  const t = shortStayBookingsTable;
+  await db.update(t).set({ propertyId: (await linkedProperties()).get(apartmentId) ?? null }).where(eq(t.smoobuApartmentId, apartmentId));
+  const [item] = (await listApartments(apartmentId)).items;
+  return item;
+}
+
+function lastSyncRun() {
+  const r = integrationSyncRunsTable;
+  return getDb()
+    .select({ startedAt: r.startedAt, finishedAt: r.finishedAt, status: r.status, error: r.error })
+    .from(r)
+    .where(and(eq(r.integration, "smoobu"), like(r.trigger, `${SYNC_TRIGGER}:%`)))
+    .orderBy(desc(r.startedAt))
+    .limit(1)
+    .then(([row]) => row);
 }
 
 // --- Bookings -----------------------------------------------------------------
@@ -292,20 +393,15 @@ export async function staysOverview() {
   const today = ukToday();
   const end = addDays(today, 7);
   const t = shortStayBookingsTable;
-  const r = integrationSyncRunsTable;
-  const [rows, apartments, [lastRun], messages] = await Promise.all([
+  const a = smoobuApartmentsTable;
+  const [rows, apartments, lastRun, messages] = await Promise.all([
     getDb()
       .select()
       .from(t)
       .where(and(ne(t.status, "cancelled"), lte(t.arrivalDate, end), gte(t.departureDate, today)))
       .orderBy(t.arrivalDate),
-    getDb().select({ id: smoobuApartmentsTable.smoobuApartmentId, name: smoobuApartmentsTable.name }).from(smoobuApartmentsTable),
-    getDb()
-      .select({ startedAt: r.startedAt, finishedAt: r.finishedAt, status: r.status, error: r.error })
-      .from(r)
-      .where(and(eq(r.integration, "smoobu"), like(r.trigger, `${SYNC_TRIGGER}:%`)))
-      .orderBy(desc(r.startedAt))
-      .limit(1),
+    getDb().select({ id: a.smoobuApartmentId, name: a.name, coho: a.cohoPropertyReference, propertyId: a.propertyId }).from(a),
+    lastSyncRun(),
     guestMessages(),
   ]);
   const nameOf = new Map(apartments.map((apartment) => [apartment.id, apartment.name]));
@@ -344,6 +440,7 @@ export async function staysOverview() {
   return {
     asOf: today,
     apartments: apartments.length,
+    unlinkedApartments: apartments.filter((apartment) => !apartment.coho && !apartment.propertyId).length,
     lastSync: lastRun ? { at: (lastRun.finishedAt ?? lastRun.startedAt).toISOString(), status: lastRun.status, error: lastRun.error } : null,
     counts: {
       arrivingToday: bookings.filter((booking) => booking.arrival === today).length,

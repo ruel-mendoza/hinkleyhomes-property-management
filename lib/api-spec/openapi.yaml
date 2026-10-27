@@ -659,6 +659,51 @@ paths:
           description: The sync failed
         "503":
           description: Smoobu or the database is not configured
+  /stays/apartments:
+    get:
+      operationId: listStayApartments
+      tags: [smoobu]
+      summary: Smoobu apartments and the COHO or register property each one is linked to
+      responses:
+        "200":
+          description: Apartments, by name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StayApartmentList"
+        "503":
+          description: Smoobu or the database is not configured
+  /stays/apartments/{apartmentId}/link:
+    put:
+      operationId: linkStayApartment
+      tags: [smoobu]
+      summary: Link a Smoobu apartment to a COHO property or a register property, or unlink it (only changes this app, never Smoobu)
+      parameters:
+        - name: apartmentId
+          in: path
+          required: true
+          description: Smoobu apartment id
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StayApartmentLink"
+      responses:
+        "200":
+          description: The apartment with its new link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StayApartment"
+        "400":
+          description: Both a COHO reference and a register property were given
+        "404":
+          description: Apartment or register property not found
+        "503":
+          description: Smoobu or the database is not configured
   /overview/attention:
     get:
       operationId: getAttention
@@ -1527,6 +1572,9 @@ components:
           type: string
         apartments:
           type: integer
+        unlinkedApartments:
+          description: Apartments not yet linked to a property
+          type: integer
         lastSync:
           type: ["object", "null"]
           properties:
@@ -1559,7 +1607,7 @@ components:
             $ref: "#/components/schemas/StayChangeover"
         messages:
           $ref: "#/components/schemas/GuestMessages"
-      required: [asOf, apartments, lastSync, counts, bookings, changeovers, messages]
+      required: [asOf, apartments, unlinkedApartments, lastSync, counts, bookings, changeovers, messages]
     StaysSyncResult:
       type: object
       properties:
@@ -1575,6 +1623,52 @@ components:
         error:
           type: ["string", "null"]
       required: [status, runId, apartments, bookings, error]
+    StayApartment:
+      type: object
+      properties:
+        smoobuApartmentId:
+          type: integer
+        name:
+          type: string
+        address:
+          type: ["string", "null"]
+        bedrooms:
+          type: ["integer", "null"]
+        maxOccupancy:
+          type: ["integer", "null"]
+        cohoReference:
+          description: COHO property the apartment is in, when linked to one
+          type: ["string", "null"]
+        propertyId:
+          description: Register-only property the apartment is in, when linked to one
+          type: ["string", "null"]
+        inHouse:
+          description: A guest is staying tonight
+          type: boolean
+        nextArrival:
+          type: ["string", "null"]
+      required: [smoobuApartmentId, name, address, bedrooms, maxOccupancy, cohoReference, propertyId, inHouse, nextArrival]
+    StayApartmentList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/StayApartment"
+        lastSync:
+          type: ["string", "null"]
+      required: [items, lastSync]
+    StayApartmentLink:
+      type: object
+      description: At most one of the two; both null unlinks the apartment
+      properties:
+        cohoReference:
+          type: ["string", "null"]
+          maxLength: 200
+        propertyId:
+          type: ["string", "null"]
+          format: uuid
+      required: [cohoReference, propertyId]
     OccupancyStatus:
       type: string
       enum: [fixed_term, becoming_periodic, periodic, ending, future, vacant]

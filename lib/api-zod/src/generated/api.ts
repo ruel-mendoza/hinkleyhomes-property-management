@@ -904,6 +904,7 @@ export const GetOccupancyResponse = zod.object({
 export const GetStaysResponse = zod.object({
   "asOf": zod.string(),
   "apartments": zod.number().int(),
+  "unlinkedApartments": zod.number().int().describe('Apartments not yet linked to a property'),
   "lastSync": zod.object({
   "at": zod.string(),
   "status": zod.string(),
@@ -966,6 +967,54 @@ export const SyncStaysResponse = zod.object({
   "apartments": zod.number().int(),
   "bookings": zod.number().int(),
   "error": zod.string().nullable()
+})
+
+
+/**
+ * @summary Smoobu apartments and the COHO or register property each one is linked to
+ */
+export const ListStayApartmentsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "smoobuApartmentId": zod.number().int(),
+  "name": zod.string(),
+  "address": zod.string().nullable(),
+  "bedrooms": zod.number().int().nullable(),
+  "maxOccupancy": zod.number().int().nullable(),
+  "cohoReference": zod.string().nullable().describe('COHO property the apartment is in, when linked to one'),
+  "propertyId": zod.string().nullable().describe('Register-only property the apartment is in, when linked to one'),
+  "inHouse": zod.boolean().describe('A guest is staying tonight'),
+  "nextArrival": zod.string().nullable()
+})),
+  "lastSync": zod.string().nullable()
+})
+
+
+/**
+ * @summary Link a Smoobu apartment to a COHO property or a register property, or unlink it (only changes this app, never Smoobu)
+ */
+export const LinkStayApartmentParams = zod.object({
+  "apartmentId": zod.coerce.number().int().describe('Smoobu apartment id')
+})
+
+export const linkStayApartmentBodyCohoReferenceMax = 200;
+
+
+
+export const LinkStayApartmentBody = zod.object({
+  "cohoReference": zod.string().max(linkStayApartmentBodyCohoReferenceMax).nullable(),
+  "propertyId": zod.string().uuid().nullable()
+}).describe('At most one of the two; both null unlinks the apartment')
+
+export const LinkStayApartmentResponse = zod.object({
+  "smoobuApartmentId": zod.number().int(),
+  "name": zod.string(),
+  "address": zod.string().nullable(),
+  "bedrooms": zod.number().int().nullable(),
+  "maxOccupancy": zod.number().int().nullable(),
+  "cohoReference": zod.string().nullable().describe('COHO property the apartment is in, when linked to one'),
+  "propertyId": zod.string().nullable().describe('Register-only property the apartment is in, when linked to one'),
+  "inHouse": zod.boolean().describe('A guest is staying tonight'),
+  "nextArrival": zod.string().nullable()
 })
 
 

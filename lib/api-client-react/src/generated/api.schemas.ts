@@ -89,6 +89,8 @@ export type StaysOverviewCounts = {
 export interface StaysOverview {
   asOf: string;
   apartments: number;
+  /** Apartments not yet linked to a property */
+  unlinkedApartments: number;
   /** @nullable */
   lastSync: StaysOverviewLastSync;
   counts: StaysOverviewCounts;
@@ -114,6 +116,50 @@ export interface StaysSyncResult {
   bookings: number;
   /** @nullable */
   error: string | null;
+}
+
+export interface StayApartment {
+  smoobuApartmentId: number;
+  name: string;
+  /** @nullable */
+  address: string | null;
+  /** @nullable */
+  bedrooms: number | null;
+  /** @nullable */
+  maxOccupancy: number | null;
+  /**
+     * COHO property the apartment is in, when linked to one
+     * @nullable
+     */
+  cohoReference: string | null;
+  /**
+     * Register-only property the apartment is in, when linked to one
+     * @nullable
+     */
+  propertyId: string | null;
+  /** A guest is staying tonight */
+  inHouse: boolean;
+  /** @nullable */
+  nextArrival: string | null;
+}
+
+export interface StayApartmentList {
+  items: StayApartment[];
+  /** @nullable */
+  lastSync: string | null;
+}
+
+/**
+ * At most one of the two; both null unlinks the apartment
+ */
+export interface StayApartmentLink {
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  cohoReference: string | null;
+  /** @nullable */
+  propertyId: string | null;
 }
 
 export type OccupancyStatus = typeof OccupancyStatus[keyof typeof OccupancyStatus];

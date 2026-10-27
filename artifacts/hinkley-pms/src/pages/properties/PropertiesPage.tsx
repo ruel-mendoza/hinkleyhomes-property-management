@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { AlertTriangle, Download, FileBarChart } from "lucide-react";
-import { getListPropertiesQueryKey, useListProperties } from "@workspace/api-client-react";
+import { getListPropertiesQueryKey, getListStayApartmentsQueryKey, useListProperties, useListStayApartments } from "@workspace/api-client-react";
 import {
   DEFAULT_FILTERS,
   allTags,
@@ -23,6 +23,7 @@ import { NewPropertyModal } from "@/components/properties/NewPropertyModal";
 import { NewBuildingModal } from "@/components/properties/NewBuildingModal";
 import { WebsiteWidgetModal } from "@/components/properties/WebsiteWidgetModal";
 import { ReportModal } from "@/components/properties/ReportModal";
+import { SmoobuApartmentsTab } from "./SmoobuApartmentsTab";
 import "./properties.css";
 
 type Modal = "property" | "building" | "widget" | "report" | null;
@@ -36,9 +37,12 @@ export default function PropertiesPage() {
     navigate(`/properties${query ? `?${query}` : ""}`, { replace: true });
   };
   const clearFilters = () => setFilters({ ...DEFAULT_FILTERS, view: filters.view });
+  // COHO and register properties, or the Smoobu apartments (?tab=smoobu).
+  const tab = new URLSearchParams(search).get("tab") === "smoobu" ? "smoobu" : "properties";
 
   const listQuery = useListProperties({ query: { queryKey: getListPropertiesQueryKey(), refetchInterval: 120_000 } });
   const all = listQuery.data?.items ?? [];
+  const apartmentsQuery = useListStayApartments({ query: { queryKey: getListStayApartmentsQueryKey(), retry: false } });
   const visible = useMemo(() => filterProperties(all, filters), [all, filters]);
   const tags = useMemo(() => allTags(all), [all]);
   const [modal, setModal] = useState<Modal>(null);
@@ -59,7 +63,13 @@ export default function PropertiesPage() {
 
   return (
     <>
-      <PropertiesHeader view={filters.view} onViewChange={(view) => setFilters({ view })} count={listQuery.data ? visible.length : null} />
+      <PropertiesHeader view={filters.view} onViewChange={tab === "properties" ? (view) => setFilters({ view }) : undefined} count={tab === "properties" && listQuery.data ? visible.length : null} />
+      <div className="hh-inv-tabs" role="tablist" aria-label="Kind of property">
+        <button type="button" role="tab" aria-selected={tab === "properties"} className={tab === "properties" ? "active" : ""} onClick={() => navigate("/properties")} data-testid="tab-properties">COHO and register {listQuery.data && <span>{all.filter((property) => !property.deactivated).length}</span>}</button>
+        <button type="button" role="tab" aria-selected={tab === "smoobu"} className={tab === "smoobu" ? "active" : ""} onClick={() => navigate("/properties?tab=smoobu")} data-testid="tab-smoobu">Smoobu apartments {apartmentsQuery.data && <span>{apartmentsQuery.data.items.length}</span>}</button>
+      </div>
+
+      {tab === "smoobu" ? <SmoobuApartmentsTab query={apartmentsQuery} properties={all} onToast={setToast} /> : <>
       <ActionBar onNewProperty={() => setModal("property")} onNewBuilding={() => setModal("building")} onWidget={() => setModal("widget")} />
       <FilterPanel filters={filters} tags={tags} onChange={setFilters} />
 
@@ -74,6 +84,7 @@ export default function PropertiesPage() {
         <button type="button" className="button" onClick={exportCsv} disabled={loading || !visible.length} data-testid="button-export-csv"><Download size={14} /> Export (CSV)</button>
         <button type="button" className="button" onClick={() => setModal("report")} disabled={loading} data-testid="button-report"><FileBarChart size={14} /> Report</button>
       </div>
+      </>}
 
       {modal === "property" && (
         <NewPropertyModal

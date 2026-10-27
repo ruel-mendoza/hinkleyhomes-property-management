@@ -58,19 +58,29 @@ export const bookingStatusEnum = pgEnum("booking_status", [
   "cancelled",
 ]);
 
-// Smoobu apartments (Hinkley Homes Stays). A register property is linked to
-// one by properties.smoobu_property_id; most short-stay apartments are only here.
-export const smoobuApartmentsTable = pgTable("smoobu_apartments", {
-  id: id(),
-  smoobuApartmentId: integer("smoobu_apartment_id").notNull().unique(),
-  name: text("name").notNull(),
-  street: text("street"),
-  city: text("city"),
-  postcode: text("postcode"),
-  maxOccupancy: integer("max_occupancy"),
-  bedrooms: integer("bedrooms"),
-  ...timestamps,
-}).enableRLS();
+// Smoobu apartments (Hinkley Homes Stays). Staff link each one to the property
+// it sits in on the Properties page: a COHO property (by reference) or a
+// register-only one. Several apartments (rooms) can share one property.
+export const smoobuApartmentsTable = pgTable(
+  "smoobu_apartments",
+  {
+    id: id(),
+    smoobuApartmentId: integer("smoobu_apartment_id").notNull().unique(),
+    name: text("name").notNull(),
+    street: text("street"),
+    city: text("city"),
+    postcode: text("postcode"),
+    maxOccupancy: integer("max_occupancy"),
+    bedrooms: integer("bedrooms"),
+    cohoPropertyReference: text("coho_property_reference"),
+    propertyId: uuid("property_id").references(() => propertiesTable.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [
+    index("smoobu_apartments_property_id_idx").on(t.propertyId),
+    check("smoobu_apartments_one_link", sql`${t.cohoPropertyReference} is null or ${t.propertyId} is null`),
+  ],
+).enableRLS();
 
 // Short-stay bookings, synced read-only from Smoobu (the source of truth for
 // serviced accommodation; PriceLabs and the OTAs connect to it). Blocked dates

@@ -35,3 +35,5 @@
 .hh-stay-strip-stats strong.warn{color:#edc16b}
 
 @media(max-width:760px){.hh-stay-sum{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.hh-stay-strip-links{display:flex;gap:8px}
+.hh-stay-foot a{color:#79cdb0}

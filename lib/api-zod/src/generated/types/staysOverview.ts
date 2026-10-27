@@ -14,6 +14,8 @@ import type { StaysOverviewLastSync } from './staysOverviewLastSync';
 export interface StaysOverview {
   asOf: string;
   apartments: number;
+  /** Apartments not yet linked to a property */
+  unlinkedApartments: number;
   /** @nullable */
   lastSync: StaysOverviewLastSync;
   counts: StaysOverviewCounts;

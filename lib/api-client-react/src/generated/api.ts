@@ -101,6 +101,9 @@ import type {
   ReminderSettingsUpdate,
   SignupEmailCheckRequest,
   SignupEmailCheckResult,
+  StayApartment,
+  StayApartmentLink,
+  StayApartmentList,
   StaysOverview,
   StaysSyncResult,
   SyncCohoActionsParams,
@@ -2453,6 +2456,172 @@ export const useSyncStays = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getSyncStaysMutationOptions(options));
+    }
+
+export const getListStayApartmentsUrl = () => {
+
+
+
+
+  return `/api/stays/apartments`
+}
+
+/**
+ * @summary Smoobu apartments and the COHO or register property each one is linked to
+ */
+export const listStayApartments = async ( options?: Parameters<typeof customFetch>[1]): Promise<StayApartmentList> => {
+
+  return customFetch<StayApartmentList>(getListStayApartmentsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStayApartmentsQueryKey = () => {
+    return [
+    `/api/stays/apartments`
+    ] as const;
+    }
+
+
+export const getListStayApartmentsQueryOptions = <TData = Awaited<ReturnType<typeof listStayApartments>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStayApartments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStayApartmentsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStayApartments>>> = ({ signal }) => listStayApartments({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStayApartments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListStayApartmentsQueryResult = NonNullable<Awaited<ReturnType<typeof listStayApartments>>>
+export type ListStayApartmentsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Smoobu apartments and the COHO or register property each one is linked to
+ */
+
+export function useListStayApartments<TData = Awaited<ReturnType<typeof listStayApartments>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStayApartments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListStayApartmentsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getLinkStayApartmentUrl = (apartmentId: number,) => {
+
+
+
+
+  return `/api/stays/apartments/${apartmentId}/link`
+}
+
+/**
+ * @summary Link a Smoobu apartment to a COHO property or a register property, or unlink it (only changes this app, never Smoobu)
+ */
+export const linkStayApartment = async (apartmentId: number,
+    stayApartmentLink: StayApartmentLink, options?: Parameters<typeof customFetch>[1]): Promise<StayApartment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StayApartment>(getLinkStayApartmentUrl(apartmentId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(stayApartmentLink)
+  }
+);}
+
+
+
+
+
+export const getLinkStayApartmentMutationKey = () => ['linkStayApartment'] as const;
+
+export const getLinkStayApartmentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkStayApartment>>, TError,LinkStayApartmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkStayApartment>>, TError,LinkStayApartmentMutationVariables, TContext> => {
+
+const mutationKey = getLinkStayApartmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkStayApartment>>, LinkStayApartmentMutationVariables> = (props) => {
+          const {apartmentId,data} = props ?? {};
+
+          return  linkStayApartment(apartmentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LinkStayApartmentMutationResult = NonNullable<Awaited<ReturnType<typeof linkStayApartment>>>
+    export type LinkStayApartmentMutationBody = BodyType<StayApartmentLink>
+    export type LinkStayApartmentMutationError = ErrorType<void>
+    export type LinkStayApartmentMutationVariables = {apartmentId: number;data: BodyType<StayApartmentLink>}
+
+    /**
+ * @summary Link a Smoobu apartment to a COHO property or a register property, or unlink it (only changes this app, never Smoobu)
+ */
+export const useLinkStayApartment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkStayApartment>>, TError,LinkStayApartmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof linkStayApartment>>,
+        TError,
+        LinkStayApartmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLinkStayApartmentMutationOptions(options));
     }
 
 export const getGetAttentionUrl = (params?: GetAttentionParams,) => {

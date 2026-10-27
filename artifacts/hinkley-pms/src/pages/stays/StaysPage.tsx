@@ -72,7 +72,7 @@ export default function StaysPage() {
           <ChangeoversPanel data={data} />
           <BookingsPanel data={data} />
           <p className="hh-stay-foot">
-            Read-only from Smoobu across {data.apartments} {data.apartments === 1 ? "apartment" : "apartments"}. Prices and availability are set in Smoobu by PriceLabs, and replies to guests are sent from Smoobu. Only guest names are kept here.
+            Read-only from Smoobu across <Link href="/properties?tab=smoobu">{data.apartments} {data.apartments === 1 ? "apartment" : "apartments"}</Link>. Prices and availability are set in Smoobu by PriceLabs, and replies to guests are sent from Smoobu. Only guest names are kept here.
           </p>
         </>
       )}
@@ -180,10 +180,14 @@ export function StaysStrip() {
                 {stat("In house", data.counts.inHouse)}
                 {stat("Changeovers this week", data.counts.changeoversThisWeek)}
                 {stat("Unread guest messages", data.messages.unreadMessages, data.messages.unreadMessages ? "warn" : "")}
+                {data.unlinkedApartments > 0 && stat("Apartments not linked", data.unlinkedApartments, "warn")}
               </>
             )}
       </div>
-      <Link href="/stays" className="button">Open stays</Link>
+      <div className="hh-stay-strip-links">
+        <Link href="/properties?tab=smoobu" className="button">Apartments</Link>
+        <Link href="/stays" className="button">Open stays</Link>
+      </div>
     </section>
   );
 }

@@ -164,3 +164,17 @@
 .hh-widget-rooms{display:inline-flex;align-items:center;gap:5px;color:#1f6f5c!important;font-weight:600}
 .hh-widget-note{font-size:14px;color:#5b6b7c}
 .hh-widget-brand{font-size:12px;color:#8a95a2;margin:14px 0 0;text-align:right}
+
+/* Smoobu apartments tab (SmoobuApartmentsTab.tsx) */
+.hh-apt-note{padding:14px 16px;color:#95a2b5;font-size:13px}
+.hh-apt-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hh-apt-actions .button{text-decoration:none}
+.hh-apt-filter{display:inline-flex;align-items:center;gap:6px;margin-right:4px;font-size:12px;color:#b7c2d1;cursor:pointer}
+.hh-apt-table td{vertical-align:top}
+.hh-apt-sub{display:block;margin-top:2px;font-size:12px;color:#95a2b5}
+.hh-apt-link{display:flex;align-items:center;gap:6px}
+.hh-apt-link select{min-width:0;width:100%;max-width:300px;height:32px;padding:0 8px;border:1px solid #33425a;border-radius:6px;background:#141f30;color:#dce4ed;font:inherit;font-size:13px}
+.hh-apt-link select.unlinked{border-color:#5a4626;color:#f0d29b}
+.hh-apt-link select:focus-visible{outline:2px solid #79cdb0;outline-offset:1px}
+.hh-apt-link .icon-btn{flex:none;text-decoration:none}
+@media(max-width:760px){.hh-apt-actions{width:100%}.hh-apt-link select{max-width:none}}
