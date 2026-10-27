@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { getDb, guestChecksTable, paymentsTable, shortStayBookingsTable, type GuestCheck } from "@workspace/db";
 import { readChargeAutomationGatewayEnv, smoobuMode } from "./integrations-env";
 import { logger } from "./logger";
@@ -161,6 +161,36 @@ export async function handleChargeAutomationEvent(body: unknown): Promise<{ even
   return { event, result: stay ? "recorded" : "recorded (booking not in Smoobu yet)" };
 }
 
+// --- Catch-up with every Stays sync ---------------------------------------------
+
+// ChargeAutomation's booking list says whether each guest has done online
+// check-in, so that is read for recent and coming stays without waiting for a
+// webhook. The other checks (payments, deposits, ID) only come by webhook.
+export async function syncGuestChecks(from: string, to: string): Promise<number> {
+  if (!readChargeAutomationGatewayEnv()) return 0;
+  const g = guestChecksTable;
+  let stored = 0;
+  // 25 a page (ChargeAutomation's maximum); 60 reads a minute allowed.
+  for (let page = 1; page <= 10; page += 1) {
+    const payload = obj(await chargeAutomationGet("/api/v1/bookings", { from, to, page, page_size: 25 }));
+    const items = Array.isArray(payload.data) ? payload.data.map(obj) : [];
+    for (const item of items) {
+      const caBookingId = text(item.id);
+      const smoobuBookingId = text(item.external_id) ?? caBookingId;
+      if (!smoobuBookingId || num(item.status) === 0) continue;
+      const done = item.pre_checkin_completed === true || item.pre_checkin_completed === 1;
+      const values = { chargeAutomationBookingId: caBookingId, preCheckinCompletedAt: done ? sql`coalesce(${g.preCheckinCompletedAt}, now())` : null };
+      await getDb()
+        .insert(g)
+        .values({ smoobuBookingId, chargeAutomationBookingId: caBookingId, preCheckinCompletedAt: done ? new Date() : null })
+        .onConflictDoUpdate({ target: g.smoobuBookingId, set: values });
+      stored += 1;
+    }
+    if (page >= (num(obj(payload.meta).last_page) ?? 1)) break;
+  }
+  return stored;
+}
+
 // --- Page data --------------------------------------------------------------------
 
 export type StayGuestChecks = {
@@ -204,6 +234,8 @@ export async function guestChecksFor(bookings: { smoobuBookingId: string; arriva
   );
 }
 
+// Show guest checks once ChargeAutomation is connected or has sent anything.
 export async function guestChecksReceived(): Promise<boolean> {
+  if (readChargeAutomationGatewayEnv()) return true;
   return (await getDb().select({ id: guestChecksTable.id }).from(guestChecksTable).limit(1)).length > 0;
 }

@@ -12,7 +12,7 @@ import {
 import { aliasKey } from "./bill-coding-rules";
 import { fetchCohoProperties } from "./coho-properties";
 import { cohoApiKey } from "./integrations-env";
-import { guestChecksFor, guestChecksReceived } from "./guest-checks";
+import { guestChecksFor, guestChecksReceived, syncGuestChecks } from "./guest-checks";
 import { logger } from "./logger";
 import { ukToday } from "./performance";
 import { SmoobuApiError, smoobuGet } from "./smoobu-api";
@@ -430,7 +430,14 @@ async function runSync(trigger: "schedule" | "manual"): Promise<StaysSyncResult>
       for (const raw of listIn(payload, "bookings")) if ((await storeBooking(raw, properties)) === "stored") bookings += 1;
       if (page >= (num(payload.page_count) ?? 1)) break;
     }
-    await db.update(r).set({ status: "succeeded", finishedAt: new Date(), recordsProcessed: bookings, details: { apartments, bookings } }).where(eq(r.id, run.id));
+    // Online check-in from ChargeAutomation for stays in the last fortnight and
+    // the next week. A failure here doesn't fail the Smoobu sync.
+    const today = ukToday();
+    const guestChecks = await syncGuestChecks(addDays(today, -14), addDays(today, 7)).catch((error: unknown) => {
+      logger.warn({ err: error }, "ChargeAutomation online check-ins could not be read");
+      return null;
+    });
+    await db.update(r).set({ status: "succeeded", finishedAt: new Date(), recordsProcessed: bookings, details: { apartments, bookings, guestChecks } }).where(eq(r.id, run.id));
     return { status: "succeeded", runId: run.id, apartments, bookings, error: null };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
