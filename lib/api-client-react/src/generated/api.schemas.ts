@@ -1801,21 +1801,10 @@ export interface FinanceAlertUpdate {
   note?: string | null;
 }
 
-export type IntakeReviewFilter = typeof IntakeReviewFilter[keyof typeof IntakeReviewFilter];
+export type IntakeReviewOutcome = typeof IntakeReviewOutcome[keyof typeof IntakeReviewOutcome];
 
 
-export const IntakeReviewFilter = {
-  open: 'open',
-  done: 'done',
-  dismissed: 'dismissed',
-  all: 'all',
-} as const;
-
-export type IntakeReviewStatus = typeof IntakeReviewStatus[keyof typeof IntakeReviewStatus];
-
-
-export const IntakeReviewStatus = {
-  open: 'open',
+export const IntakeReviewOutcome = {
   done: 'done',
   dismissed: 'dismissed',
 } as const;
@@ -1903,7 +1892,6 @@ export interface IntakeCheckList {
 
 export interface IntakeReview {
   id: string;
-  status: IntakeReviewStatus;
   /** @nullable */
   receivedAt: string | null;
   /** @nullable */
@@ -1931,12 +1919,6 @@ export interface IntakeReview {
   reasons: IntakeReviewReason[];
   issues: IntakeReviewIssue[];
   createdAt: string;
-  /** @nullable */
-  resolvedBy: string | null;
-  /** @nullable */
-  resolvedAt: string | null;
-  /** @nullable */
-  resolution: string | null;
   files: IntakeFile[];
 }
 
@@ -1945,13 +1927,17 @@ export interface IntakeReviewList {
   openCount: number;
 }
 
-export interface IntakeReviewUpdate {
-  status: IntakeReviewStatus;
+export interface IntakeReviewResolve {
+  outcome: IntakeReviewOutcome;
   /**
      * @maxLength 1000
      * @nullable
      */
   note?: string | null;
+}
+
+export interface IntakeReviewResolved {
+  id: string;
 }
 
 export type ReminderLogEntryKind = typeof ReminderLogEntryKind[keyof typeof ReminderLogEntryKind];
@@ -2459,10 +2445,6 @@ status?: ComplianceFilter;
 
 export type ListFinanceAlertsParams = {
 status?: FinanceAlertFilter;
-};
-
-export type ListIntakeReviewsParams = {
-status?: IntakeReviewFilter;
 };
 
 export type ListIntakeChecksParams = {

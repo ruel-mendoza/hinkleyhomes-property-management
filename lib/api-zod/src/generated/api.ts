@@ -1593,16 +1593,11 @@ export const UpdateFinanceAlertResponse = zod.object({
 
 
 /**
- * @summary Emails to the accounts inbox the intake check sent for a person to review
+ * @summary Emails to the accounts inbox the intake check sent for a person to review (open ones only; any already in Xero are cleared first)
  */
-export const ListIntakeReviewsQueryParams = zod.object({
-  "status": zod.enum(['open', 'done', 'dismissed', 'all']).optional()
-})
-
 export const ListIntakeReviewsResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.string(),
-  "status": zod.enum(['open', 'done', 'dismissed']),
   "receivedAt": zod.string().nullable(),
   "senderEmail": zod.string().nullable(),
   "senderName": zod.string().nullable(),
@@ -1628,9 +1623,6 @@ export const ListIntakeReviewsResponse = zod.object({
 }))
 })),
   "createdAt": zod.string(),
-  "resolvedBy": zod.string().nullable(),
-  "resolvedAt": zod.string().nullable(),
-  "resolution": zod.string().nullable(),
   "files": zod.array(zod.object({
   "kind": zod.enum(['file', 'link']),
   "name": zod.string().nullable(),
@@ -1678,57 +1670,23 @@ export const ListIntakeChecksResponse = zod.object({
 
 
 /**
- * @summary Mark an intake review done or dismissed, or reopen it (written to the audit log)
+ * @summary Mark an intake review done or dismissed; the review is deleted and a summary kept in the audit log
  */
-export const UpdateIntakeReviewParams = zod.object({
+export const ResolveIntakeReviewParams = zod.object({
   "id": zod.coerce.string().uuid()
 })
 
-export const updateIntakeReviewBodyNoteMax = 1000;
+export const resolveIntakeReviewBodyNoteMax = 1000;
 
 
 
-export const UpdateIntakeReviewBody = zod.object({
-  "status": zod.enum(['open', 'done', 'dismissed']),
-  "note": zod.string().max(updateIntakeReviewBodyNoteMax).nullish()
+export const ResolveIntakeReviewBody = zod.object({
+  "outcome": zod.enum(['done', 'dismissed']),
+  "note": zod.string().max(resolveIntakeReviewBodyNoteMax).nullish()
 })
 
-export const UpdateIntakeReviewResponse = zod.object({
-  "id": zod.string(),
-  "status": zod.enum(['open', 'done', 'dismissed']),
-  "receivedAt": zod.string().nullable(),
-  "senderEmail": zod.string().nullable(),
-  "senderName": zod.string().nullable(),
-  "subject": zod.string().nullable(),
-  "webLink": zod.string().nullable(),
-  "supplierName": zod.string().nullable(),
-  "invoiceNumber": zod.string().nullable(),
-  "invoiceDate": zod.string().nullable(),
-  "total": zod.number().nullable(),
-  "currency": zod.string().nullable(),
-  "billTo": zod.string().nullable(),
-  "billToCompany": zod.string().nullable(),
-  "reasons": zod.array(zod.object({
-  "code": zod.string(),
-  "message": zod.string()
-})),
-  "issues": zod.array(zod.object({
-  "code": zod.string(),
-  "message": zod.string(),
-  "lines": zod.array(zod.object({
-  "text": zod.string(),
-  "amount": zod.number().nullable()
-}))
-})),
-  "createdAt": zod.string(),
-  "resolvedBy": zod.string().nullable(),
-  "resolvedAt": zod.string().nullable(),
-  "resolution": zod.string().nullable(),
-  "files": zod.array(zod.object({
-  "kind": zod.enum(['file', 'link']),
-  "name": zod.string().nullable(),
-  "url": zod.string()
-}))
+export const ResolveIntakeReviewResponse = zod.object({
+  "id": zod.string()
 })
 
 

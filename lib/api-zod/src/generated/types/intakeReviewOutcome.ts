@@ -6,11 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type IntakeReviewStatus = typeof IntakeReviewStatus[keyof typeof IntakeReviewStatus];
+export type IntakeReviewOutcome = typeof IntakeReviewOutcome[keyof typeof IntakeReviewOutcome];
 
 
-export const IntakeReviewStatus = {
-  open: 'open',
+export const IntakeReviewOutcome = {
   done: 'done',
   dismissed: 'dismissed',
 } as const;

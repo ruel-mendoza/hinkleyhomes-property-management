@@ -1,9 +1,21 @@
-import { asc, inArray, sql } from "drizzle-orm";
-import { getDb, invoiceIntakeFilesTable, invoiceIntakeReviewsTable, type InvoiceIntakeReview } from "@workspace/db";
+import { and, asc, eq, inArray, sql, type AnyColumn } from "drizzle-orm";
+import {
+  auditLogTable,
+  billCodingReviewsTable,
+  getDb,
+  invoiceIntakeFilesTable,
+  invoiceIntakeReviewsTable,
+  xeroBillHistoryTable,
+  type InvoiceIntakeReview,
+} from "@workspace/db";
+import { supplierKey } from "./bill-checks";
+import { logger } from "./logger";
 
 // Inbox intake check (n8n "Hinkley Intake check"): emails to accounts@ it sent
 // for review are posted here and listed on the Invoices page ("For review").
-// The workflow decides the verdict; the app only keeps the queue.
+// The workflow decides the verdict; the app only keeps the queue, and only
+// while a review is open: once it is done, dismissed or found in Xero the row
+// is deleted and a short summary kept in the audit log.
 
 export type IntakeReviewIssue = { code: string; message: string; lines: { text: string; amount: number | null }[] };
 
@@ -80,9 +92,17 @@ export function parseIntakeReview(body: unknown): IncomingIntakeReview | null {
   };
 }
 
-// The same email sent again refreshes what was read but keeps the review's status.
-export async function recordIntakeReview(review: IncomingIntakeReview): Promise<{ id: string; created: boolean }> {
+// The same email sent again refreshes what was read. An email whose review was
+// already resolved (and so deleted) is not added back.
+export async function recordIntakeReview(review: IncomingIntakeReview): Promise<{ id: string | null; created: boolean }> {
   const t = invoiceIntakeReviewsTable;
+  const a = auditLogTable;
+  const [resolved] = await getDb()
+    .select({ id: a.id })
+    .from(a)
+    .where(and(eq(a.tableName, AUDIT_TABLE), sql`${a.before}->>'internetMessageId' = ${review.internetMessageId}`))
+    .limit(1);
+  if (resolved) return { id: null, created: false };
   const values = { ...review, total: review.total === null ? null : review.total.toFixed(2) };
   const { internetMessageId: _key, ...update } = values;
   const [row] = await getDb()
@@ -126,7 +146,6 @@ export async function intakeFilesFor(messageIds: string[]): Promise<Map<string, 
 export function intakeReviewView(row: InvoiceIntakeReview, files: IntakeFileView[] = []) {
   return {
     id: row.id,
-    status: row.status,
     receivedAt: row.receivedAt?.toISOString() ?? null,
     senderEmail: row.senderEmail,
     senderName: row.senderName,
@@ -142,9 +161,122 @@ export function intakeReviewView(row: InvoiceIntakeReview, files: IntakeFileView
     reasons: row.reasons,
     issues: row.issues as IntakeReviewIssue[],
     createdAt: row.createdAt.toISOString(),
-    resolvedBy: row.resolvedBy,
-    resolvedAt: row.resolvedAt?.toISOString() ?? null,
-    resolution: row.resolution,
     files,
   };
+}
+
+// --- Removing resolved reviews ---------------------------------------------------
+
+const AUDIT_TABLE = "invoice_intake_reviews";
+
+type Actor = { email: string | null; userId?: string | null; requestId?: string | null; ipAddress?: string | null };
+
+// Deletes the review and writes what it was to the audit log in one go, so a
+// review never disappears without a trace. False when it was already gone.
+export async function removeIntakeReview(row: InvoiceIntakeReview, action: string, after: Record<string, unknown>, actor: Actor): Promise<boolean> {
+  const t = invoiceIntakeReviewsTable;
+  return getDb().transaction(async (tx) => {
+    const [gone] = await tx.delete(t).where(eq(t.id, row.id)).returning({ id: t.id });
+    if (!gone) return false;
+    await tx.insert(auditLogTable).values({
+      actorEmail: actor.email,
+      actorUserId: actor.userId ?? null,
+      action,
+      tableName: AUDIT_TABLE,
+      recordId: row.id,
+      before: {
+        internetMessageId: row.internetMessageId,
+        receivedAt: row.receivedAt?.toISOString() ?? null,
+        senderEmail: row.senderEmail,
+        subject: row.subject,
+        supplierName: row.supplierName,
+        invoiceNumber: row.invoiceNumber,
+        invoiceDate: row.invoiceDate,
+        total: row.total,
+        billToCompany: row.billToCompany,
+      },
+      after,
+      requestId: actor.requestId ?? null,
+      ipAddress: actor.ipAddress ?? null,
+    });
+    return true;
+  });
+}
+
+// "INV-00123" and "inv 123" are the same invoice number.
+const invoiceKey = (value: string): string => value.toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/^0+/, "");
+const invoiceKeySql = (column: AnyColumn) => sql<string>`ltrim(regexp_replace(upper(${column}), '[^A-Z0-9]', '', 'g'), '0')`;
+
+type XeroBill = { source: "xero_bill_history" | "bill_coding"; xeroBillId: string; company: string; supplierName: string | null; billNumber: string | null; total: number | null; status: string | null };
+
+// Same invoice number, and the same supplier or the same total. A number on its
+// own is not enough: different suppliers reuse "INV-001".
+export function findXeroBill(review: Pick<InvoiceIntakeReview, "invoiceNumber" | "supplierName" | "total">, bills: XeroBill[]): XeroBill | null {
+  const key = review.invoiceNumber ? invoiceKey(review.invoiceNumber) : "";
+  if (!key) return null;
+  const supplier = review.supplierName ? supplierKey(review.supplierName) : "";
+  const total = review.total === null ? null : Number(review.total);
+  return bills.find((bill) =>
+    bill.billNumber !== null && invoiceKey(bill.billNumber) === key &&
+    ((supplier !== "" && bill.supplierName !== null && supplierKey(bill.supplierName) === supplier) ||
+      (total !== null && bill.total !== null && Math.abs(bill.total - total) < 0.005)),
+  ) ?? null;
+}
+
+// Bills Xero has with these invoice numbers: those the daily checks stored
+// (submitted, approved or paid) and drafts bill coding has read or written.
+// Bills since voided or deleted in Xero don't count.
+async function xeroBillsNumbered(keys: string[]): Promise<XeroBill[]> {
+  const h = xeroBillHistoryTable;
+  const b = billCodingReviewsTable;
+  const [history, coded] = await Promise.all([
+    getDb()
+      .select({ xeroBillId: h.xeroBillId, company: h.company, supplierName: h.supplierName, billNumber: h.billNumber, total: h.total, status: h.status })
+      .from(h)
+      .where(inArray(invoiceKeySql(h.billNumber), keys)),
+    getDb()
+      .select({ xeroBillId: b.xeroBillId, company: b.company, supplierName: b.supplierName, billNumber: b.invoiceNumber, total: b.total })
+      .from(b)
+      .where(inArray(invoiceKeySql(b.invoiceNumber), keys)),
+  ]);
+  const gone = new Set(history.filter((bill) => bill.status === "VOIDED" || bill.status === "DELETED").map((bill) => bill.xeroBillId));
+  const amount = (value: string | null) => (value === null ? null : Number(value));
+  return [
+    ...history.filter((bill) => !gone.has(bill.xeroBillId)).map((bill) => ({ ...bill, source: "xero_bill_history" as const, total: amount(bill.total) })),
+    ...coded.filter((bill) => !gone.has(bill.xeroBillId)).map((bill) => ({ ...bill, source: "bill_coding" as const, total: amount(bill.total), status: null })),
+  ];
+}
+
+async function clearReviews(): Promise<number> {
+  const t = invoiceIntakeReviewsTable;
+  const rows = await getDb().select().from(t);
+  let cleared = 0;
+  // Reviews marked done or dismissed before resolving deleted them.
+  for (const row of rows.filter((item) => item.status !== "open")) {
+    const after = { outcome: row.status, note: row.resolution, resolvedAt: row.resolvedAt?.toISOString() ?? null };
+    if (await removeIntakeReview(row, `intake_review.${row.status}`, after, { email: row.resolvedBy })) cleared += 1;
+  }
+  const open = rows.filter((item) => item.status === "open" && item.invoiceNumber && invoiceKey(item.invoiceNumber));
+  if (!open.length) return cleared;
+  const bills = await xeroBillsNumbered([...new Set(open.map((item) => invoiceKey(item.invoiceNumber!)))]);
+  for (const row of open) {
+    const bill = findXeroBill(row, bills);
+    if (bill && (await removeIntakeReview(row, "intake_review.in_xero", { inXero: bill }, { email: null }))) cleared += 1;
+  }
+  if (cleared) logger.info({ cleared }, "Intake reviews cleared");
+  return cleared;
+}
+
+// Run when the list or the overview is read (at most once a minute) and after
+// the daily checks have fetched new bills (force).
+let lastRun = 0;
+let running: Promise<number> | null = null;
+export function clearResolvedIntakeReviews(force = false): Promise<number> {
+  if (running) return running;
+  if (!force && Date.now() - lastRun < 60_000) return Promise.resolve(0);
+  running = clearReviews().finally(() => {
+    lastRun = Date.now();
+    running = null;
+  });
+  return running;
 }

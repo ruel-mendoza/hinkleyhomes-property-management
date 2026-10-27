@@ -1,20 +1,19 @@
 import { Router, type IRouter } from "express";
 import { desc, eq, inArray, ne, sql } from "drizzle-orm";
-import { auditLogTable, getDb, invoiceIntakeChecksTable, invoiceIntakeReviewsTable, isDatabaseConfigured } from "@workspace/db";
+import { getDb, invoiceIntakeChecksTable, invoiceIntakeReviewsTable, isDatabaseConfigured } from "@workspace/db";
 import {
   ListIntakeChecksQueryParams,
   ListIntakeChecksResponse,
-  ListIntakeReviewsQueryParams,
   ListIntakeReviewsResponse,
-  UpdateIntakeReviewBody,
-  UpdateIntakeReviewParams,
-  UpdateIntakeReviewResponse,
+  ResolveIntakeReviewBody,
+  ResolveIntakeReviewParams,
+  ResolveIntakeReviewResponse,
 } from "@workspace/api-zod";
-import { intakeFilesFor, intakeReviewView } from "../lib/intake-reviews";
+import { clearResolvedIntakeReviews, intakeFilesFor, intakeReviewView, removeIntakeReview } from "../lib/intake-reviews";
 
 // Invoices page, "Inbox" and "For review" tabs: what the n8n intake check made
 // of each email to accounts@, and the ones it could not pass or bounce on its
-// own. See lib/intake-reviews.ts.
+// own. Only open reviews are kept; see lib/intake-reviews.ts.
 
 const router: IRouter = Router();
 
@@ -23,17 +22,11 @@ router.get("/invoices/intake-reviews", async (req, res): Promise<void> => {
     res.status(503).json({ error: "The database is not configured." });
     return;
   }
-  const query = ListIntakeReviewsQueryParams.safeParse(req.query);
-  const status = query.success ? query.data.status ?? "open" : "open";
   const t = invoiceIntakeReviewsTable;
   try {
+    await clearResolvedIntakeReviews().catch((error: unknown) => req.log.warn({ err: error }, "Intake reviews already in Xero could not be cleared"));
     const [rows, [counts]] = await Promise.all([
-      getDb()
-        .select()
-        .from(t)
-        .where(status === "all" ? undefined : eq(t.status, status))
-        .orderBy(desc(t.createdAt))
-        .limit(500),
+      getDb().select().from(t).where(eq(t.status, "open")).orderBy(desc(t.createdAt)).limit(500),
       getDb().select({ open: sql<number>`count(*)::int` }).from(t).where(eq(t.status, "open")),
     ]);
     const files = await intakeFilesFor(rows.map((row) => row.internetMessageId));
@@ -86,51 +79,34 @@ router.get("/invoices/intake-checks", async (req, res): Promise<void> => {
   }
 });
 
-router.put("/invoices/intake-reviews/:id", async (req, res): Promise<void> => {
+// Done or dismissed: the review is deleted; who, the outcome and the note go to the audit log.
+router.post("/invoices/intake-reviews/:id/resolve", async (req, res): Promise<void> => {
   if (!isDatabaseConfigured()) {
     res.status(503).json({ error: "The database is not configured." });
     return;
   }
-  const params = UpdateIntakeReviewParams.safeParse(req.params);
-  const body = UpdateIntakeReviewBody.safeParse(req.body);
+  const params = ResolveIntakeReviewParams.safeParse(req.params);
+  const body = ResolveIntakeReviewBody.safeParse(req.body);
   if (!params.success || !body.success) {
-    res.status(400).json({ error: "Choose open, done or dismissed; a note can be up to 1,000 characters." });
+    res.status(400).json({ error: "Choose done or dismissed; a note can be up to 1,000 characters." });
     return;
   }
   const t = invoiceIntakeReviewsTable;
-  const [before] = await getDb().select().from(t).where(eq(t.id, params.data.id)).limit(1);
-  if (!before) {
-    res.status(404).json({ error: "Review not found." });
-    return;
-  }
+  const [review] = await getDb().select().from(t).where(eq(t.id, params.data.id)).limit(1);
   const staff = res.locals.staff as { userId?: string; email?: string } | undefined;
-  const reopened = body.data.status === "open";
-  const [after] = await getDb()
-    .update(t)
-    .set({
-      status: body.data.status,
-      resolvedBy: reopened ? null : staff?.email ?? null,
-      resolvedAt: reopened ? null : new Date(),
-      resolution: reopened ? null : body.data.note?.trim() || null,
-    })
-    .where(eq(t.id, before.id))
-    .returning();
-  await getDb()
-    .insert(auditLogTable)
-    .values({
-      actorEmail: staff?.email ?? null,
-      actorUserId: staff?.userId ?? null,
-      action: `intake_review.${body.data.status}`,
-      tableName: "invoice_intake_reviews",
-      recordId: before.id,
-      before: { status: before.status, resolution: before.resolution },
-      after: { status: after.status, resolution: after.resolution },
+  const removed = review
+    ? await removeIntakeReview(review, `intake_review.${body.data.outcome}`, { outcome: body.data.outcome, note: body.data.note?.trim() || null }, {
+      email: staff?.email ?? null,
+      userId: staff?.userId ?? null,
       requestId: req.id !== undefined && req.id !== null ? String(req.id) : null,
       ipAddress: req.ip ?? null,
     })
-    .catch((error: unknown) => req.log.error({ err: error }, "Could not write the audit log entry"));
-  const files = await intakeFilesFor([after.internetMessageId]);
-  res.json(UpdateIntakeReviewResponse.parse(intakeReviewView(after, files.get(after.internetMessageId))));
+    : false;
+  if (!removed) {
+    res.status(404).json({ error: "This review has already been dealt with." });
+    return;
+  }
+  res.json(ResolveIntakeReviewResponse.parse({ id: params.data.id }));
 });
 
 export default router;

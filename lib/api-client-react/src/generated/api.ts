@@ -65,9 +65,9 @@ import type {
   GetPerformanceParams,
   HealthStatus,
   IntakeCheckList,
-  IntakeReview,
   IntakeReviewList,
-  IntakeReviewUpdate,
+  IntakeReviewResolve,
+  IntakeReviewResolved,
   InvoiceActionRequest,
   InvoiceActionResult,
   InvoiceFollowUp,
@@ -80,7 +80,6 @@ import type {
   ListCohoPropertiesParams,
   ListFinanceAlertsParams,
   ListIntakeChecksParams,
-  ListIntakeReviewsParams,
   MoneyOverview,
   Occupancy,
   OkResult,
@@ -3707,27 +3706,20 @@ export const useUpdateFinanceAlert = <TError = ErrorType<void>,
       return useMutation(getUpdateFinanceAlertMutationOptions(options));
     }
 
-export const getListIntakeReviewsUrl = (params?: ListIntakeReviewsParams,) => {
-  const normalizedParams = new URLSearchParams();
+export const getListIntakeReviewsUrl = () => {
 
-  Object.entries(params || {}).forEach(([key, value]) => {
 
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
 
-  const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/invoices/intake-reviews?${stringifiedParams}` : `/api/invoices/intake-reviews`
+  return `/api/invoices/intake-reviews`
 }
 
 /**
- * @summary Emails to the accounts inbox the intake check sent for a person to review
+ * @summary Emails to the accounts inbox the intake check sent for a person to review (open ones only; any already in Xero are cleared first)
  */
-export const listIntakeReviews = async (params?: ListIntakeReviewsParams, options?: Parameters<typeof customFetch>[1]): Promise<IntakeReviewList> => {
+export const listIntakeReviews = async ( options?: Parameters<typeof customFetch>[1]): Promise<IntakeReviewList> => {
 
-  return customFetch<IntakeReviewList>(getListIntakeReviewsUrl(params),
+  return customFetch<IntakeReviewList>(getListIntakeReviewsUrl(),
   {
     ...options,
     method: 'GET'
@@ -3740,23 +3732,23 @@ export const listIntakeReviews = async (params?: ListIntakeReviewsParams, option
 
 
 
-export const getListIntakeReviewsQueryKey = (params?: ListIntakeReviewsParams,) => {
+export const getListIntakeReviewsQueryKey = () => {
     return [
-    `/api/invoices/intake-reviews`, ...(params ? [params] : [])
+    `/api/invoices/intake-reviews`
     ] as const;
     }
 
 
-export const getListIntakeReviewsQueryOptions = <TData = Awaited<ReturnType<typeof listIntakeReviews>>, TError = ErrorType<void>>(params?: ListIntakeReviewsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIntakeReviews>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListIntakeReviewsQueryOptions = <TData = Awaited<ReturnType<typeof listIntakeReviews>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIntakeReviews>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListIntakeReviewsQueryKey(params);
+  const queryKey =  queryOptions?.queryKey ?? getListIntakeReviewsQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listIntakeReviews>>> = ({ signal }) => listIntakeReviews(params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listIntakeReviews>>> = ({ signal }) => listIntakeReviews({ signal, ...requestOptions });
 
 
 
@@ -3770,15 +3762,15 @@ export type ListIntakeReviewsQueryError = ErrorType<void>
 
 
 /**
- * @summary Emails to the accounts inbox the intake check sent for a person to review
+ * @summary Emails to the accounts inbox the intake check sent for a person to review (open ones only; any already in Xero are cleared first)
  */
 
 export function useListIntakeReviews<TData = Awaited<ReturnType<typeof listIntakeReviews>>, TError = ErrorType<void>>(
- params?: ListIntakeReviewsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIntakeReviews>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIntakeReviews>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListIntakeReviewsQueryOptions(params,options)
+  const queryOptions = getListIntakeReviewsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -3875,19 +3867,19 @@ export function useListIntakeChecks<TData = Awaited<ReturnType<typeof listIntake
 
 
 
-export const getUpdateIntakeReviewUrl = (id: string,) => {
+export const getResolveIntakeReviewUrl = (id: string,) => {
 
 
 
 
-  return `/api/invoices/intake-reviews/${id}`
+  return `/api/invoices/intake-reviews/${id}/resolve`
 }
 
 /**
- * @summary Mark an intake review done or dismissed, or reopen it (written to the audit log)
+ * @summary Mark an intake review done or dismissed; the review is deleted and a summary kept in the audit log
  */
-export const updateIntakeReview = async (id: string,
-    intakeReviewUpdate: IntakeReviewUpdate, options?: Parameters<typeof customFetch>[1]): Promise<IntakeReview> => {
+export const resolveIntakeReview = async (id: string,
+    intakeReviewResolve: IntakeReviewResolve, options?: Parameters<typeof customFetch>[1]): Promise<IntakeReviewResolved> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -3903,12 +3895,12 @@ export const updateIntakeReview = async (id: string,
     }
     return headers;
   };
-return customFetch<IntakeReview>(getUpdateIntakeReviewUrl(id),
+return customFetch<IntakeReviewResolved>(getResolveIntakeReviewUrl(id),
   {
     ...options,
-    method: 'PUT',
+    method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(intakeReviewUpdate)
+    body: JSON.stringify(intakeReviewResolve)
   }
 );}
 
@@ -3916,13 +3908,13 @@ return customFetch<IntakeReview>(getUpdateIntakeReviewUrl(id),
 
 
 
-export const getUpdateIntakeReviewMutationKey = () => ['updateIntakeReview'] as const;
+export const getResolveIntakeReviewMutationKey = () => ['resolveIntakeReview'] as const;
 
-export const getUpdateIntakeReviewMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateIntakeReview>>, TError,UpdateIntakeReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof updateIntakeReview>>, TError,UpdateIntakeReviewMutationVariables, TContext> => {
+export const getResolveIntakeReviewMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveIntakeReview>>, TError,ResolveIntakeReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveIntakeReview>>, TError,ResolveIntakeReviewMutationVariables, TContext> => {
 
-const mutationKey = getUpdateIntakeReviewMutationKey();
+const mutationKey = getResolveIntakeReviewMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -3932,10 +3924,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateIntakeReview>>, UpdateIntakeReviewMutationVariables> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveIntakeReview>>, ResolveIntakeReviewMutationVariables> = (props) => {
           const {id,data} = props ?? {};
 
-          return  updateIntakeReview(id,data,requestOptions)
+          return  resolveIntakeReview(id,data,requestOptions)
         }
 
 
@@ -3945,23 +3937,23 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type UpdateIntakeReviewMutationResult = NonNullable<Awaited<ReturnType<typeof updateIntakeReview>>>
-    export type UpdateIntakeReviewMutationBody = BodyType<IntakeReviewUpdate>
-    export type UpdateIntakeReviewMutationError = ErrorType<void>
-    export type UpdateIntakeReviewMutationVariables = {id: string;data: BodyType<IntakeReviewUpdate>}
+    export type ResolveIntakeReviewMutationResult = NonNullable<Awaited<ReturnType<typeof resolveIntakeReview>>>
+    export type ResolveIntakeReviewMutationBody = BodyType<IntakeReviewResolve>
+    export type ResolveIntakeReviewMutationError = ErrorType<void>
+    export type ResolveIntakeReviewMutationVariables = {id: string;data: BodyType<IntakeReviewResolve>}
 
     /**
- * @summary Mark an intake review done or dismissed, or reopen it (written to the audit log)
+ * @summary Mark an intake review done or dismissed; the review is deleted and a summary kept in the audit log
  */
-export const useUpdateIntakeReview = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateIntakeReview>>, TError,UpdateIntakeReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useResolveIntakeReview = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveIntakeReview>>, TError,ResolveIntakeReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof updateIntakeReview>>,
+        Awaited<ReturnType<typeof resolveIntakeReview>>,
         TError,
-        UpdateIntakeReviewMutationVariables,
+        ResolveIntakeReviewMutationVariables,
         TContext
       > => {
-      return useMutation(getUpdateIntakeReviewMutationOptions(options));
+      return useMutation(getResolveIntakeReviewMutationOptions(options));
     }
 
 export const getListReminderLogUrl = () => {

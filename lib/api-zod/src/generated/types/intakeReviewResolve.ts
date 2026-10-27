@@ -5,10 +5,10 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { IntakeReviewStatus } from './intakeReviewStatus';
+import type { IntakeReviewOutcome } from './intakeReviewOutcome';
 
-export interface IntakeReviewUpdate {
-  status: IntakeReviewStatus;
+export interface IntakeReviewResolve {
+  outcome: IntakeReviewOutcome;
   /**
      * @maxLength 1000
      * @nullable

@@ -10,6 +10,7 @@ import {
 } from "@workspace/db";
 import { GetAttentionResponse } from "@workspace/api-zod";
 import { latestReviews } from "../lib/bill-coding";
+import { clearResolvedIntakeReviews } from "../lib/intake-reviews";
 import { fetchComplianceOverview } from "../lib/coho-compliance";
 import { cohoApiKey } from "../lib/integrations-env";
 
@@ -48,6 +49,8 @@ async function financeAlerts(): Promise<Item[]> {
 }
 
 async function intakeReviews(): Promise<Item[]> {
+  // Not worth failing the item over: uncleared reviews just stay counted until next time.
+  await clearResolvedIntakeReviews().catch(() => undefined);
   const t = invoiceIntakeReviewsTable;
   const rows = await getDb().select({ createdAt: t.createdAt, supplier: t.supplierName, sender: t.senderEmail }).from(t).where(eq(t.status, "open")).orderBy(asc(t.createdAt));
   if (!rows.length) return [];

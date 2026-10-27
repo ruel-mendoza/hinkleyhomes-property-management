@@ -10,6 +10,7 @@ import { COMPANIES } from "../routes/money";
 import { receivablesSnapshot, type Snapshot } from "../routes/receivables";
 import { DEFAULT_OPTIONS, type IncomingBill } from "./bill-checks";
 import { checkAndRecordBills, raiseExceptions, type ExceptionDraft } from "./bill-checks-store";
+import { clearResolvedIntakeReviews } from "./intake-reviews";
 import { logger } from "./logger";
 import { rankOverdue, type OverdueInput, type RankedOverdue } from "./overdue-ranking";
 import { spendFlags, DEFAULT_SPEND_OPTIONS } from "./spend-trends";
@@ -316,6 +317,8 @@ export async function runDailyChecks(trigger: "schedule" | "manual", requestId: 
       details.billFlags = flags.length;
       details.newBillFlags = flags.filter((flag) => flag.isNew).length;
     }
+    // Invoices for review that have now reached Xero drop off the list.
+    await clearResolvedIntakeReviews(true).catch((error: unknown) => problems.push(`Invoices for review: ${(error as Error).message}`));
 
     // 3. Monthly spend trends over the stored history.
     const trends = await runSpendTrends(today);

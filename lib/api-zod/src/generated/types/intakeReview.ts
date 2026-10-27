@@ -8,11 +8,9 @@
 import type { IntakeFile } from './intakeFile';
 import type { IntakeReviewIssue } from './intakeReviewIssue';
 import type { IntakeReviewReason } from './intakeReviewReason';
-import type { IntakeReviewStatus } from './intakeReviewStatus';
 
 export interface IntakeReview {
   id: string;
-  status: IntakeReviewStatus;
   /** @nullable */
   receivedAt: string | null;
   /** @nullable */
@@ -40,11 +38,5 @@ export interface IntakeReview {
   reasons: IntakeReviewReason[];
   issues: IntakeReviewIssue[];
   createdAt: string;
-  /** @nullable */
-  resolvedBy: string | null;
-  /** @nullable */
-  resolvedAt: string | null;
-  /** @nullable */
-  resolution: string | null;
   files: IntakeFile[];
 }

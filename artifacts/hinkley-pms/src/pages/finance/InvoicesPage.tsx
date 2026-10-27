@@ -87,7 +87,7 @@ export default function InvoicesPage() {
 
   const query = useGetReceivables(receivablesQueryOptions);
   const data = query.data;
-  const reviewOpen = useListIntakeReviews({ status: "open" }, intakeReviewsQueryOptions("open")).data?.openCount;
+  const reviewOpen = useListIntakeReviews(intakeReviewsQueryOptions()).data?.openCount;
   const [editing, setEditing] = useState<ReceivableInvoice | null>(null);
   const [sending, setSending] = useState<ReceivableInvoice | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -160,7 +160,7 @@ export default function InvoicesPage() {
       {intake ? (
         <>
           {tabBar}
-          {tab === "inbox" ? <IntakeChecksTab get={get} setParams={setParams} /> : <IntakeReviewsTab get={get} setParams={setParams} flash={flash} />}
+          {tab === "inbox" ? <IntakeChecksTab get={get} setParams={setParams} /> : <IntakeReviewsTab flash={flash} />}
         </>
       ) : <>
       {query.isLoading && <section className="panel hh-fin-note">Loading invoices from Xero for all five companies…</section>}

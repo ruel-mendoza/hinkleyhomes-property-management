@@ -991,16 +991,10 @@ paths:
     get:
       operationId: listIntakeReviews
       tags: [xero]
-      summary: Emails to the accounts inbox the intake check sent for a person to review
-      parameters:
-        - name: status
-          in: query
-          required: false
-          schema:
-            $ref: "#/components/schemas/IntakeReviewFilter"
+      summary: Emails to the accounts inbox the intake check sent for a person to review (open ones only; any already in Xero are cleared first)
       responses:
         "200":
-          description: Reviews, newest first
+          description: Open reviews, newest first
           content:
             application/json:
               schema:
@@ -1027,11 +1021,11 @@ paths:
                 $ref: "#/components/schemas/IntakeCheckList"
         "503":
           description: Database is not configured
-  /invoices/intake-reviews/{id}:
-    put:
-      operationId: updateIntakeReview
+  /invoices/intake-reviews/{id}/resolve:
+    post:
+      operationId: resolveIntakeReview
       tags: [xero]
-      summary: Mark an intake review done or dismissed, or reopen it (written to the audit log)
+      summary: Mark an intake review done or dismissed; the review is deleted and a summary kept in the audit log
       parameters:
         - name: id
           in: path
@@ -1044,16 +1038,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/IntakeReviewUpdate"
+              $ref: "#/components/schemas/IntakeReviewResolve"
       responses:
         "200":
-          description: The updated review
+          description: The review was resolved and deleted
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IntakeReview"
+                $ref: "#/components/schemas/IntakeReviewResolved"
         "400":
-          description: Invalid update
+          description: Invalid request
         "404":
           description: Review not found
         "503":
@@ -3519,12 +3513,9 @@ components:
           type: ["string", "null"]
           maxLength: 1000
       required: [status]
-    IntakeReviewFilter:
+    IntakeReviewOutcome:
       type: string
-      enum: [open, done, dismissed, all]
-    IntakeReviewStatus:
-      type: string
-      enum: [open, done, dismissed]
+      enum: [done, dismissed]
     IntakeReviewReason:
       type: object
       properties:
@@ -3624,8 +3615,6 @@ components:
       properties:
         id:
           type: string
-        status:
-          $ref: "#/components/schemas/IntakeReviewStatus"
         receivedAt:
           type: ["string", "null"]
         senderEmail:
@@ -3660,17 +3649,11 @@ components:
             $ref: "#/components/schemas/IntakeReviewIssue"
         createdAt:
           type: string
-        resolvedBy:
-          type: ["string", "null"]
-        resolvedAt:
-          type: ["string", "null"]
-        resolution:
-          type: ["string", "null"]
         files:
           type: array
           items:
             $ref: "#/components/schemas/IntakeFile"
-      required: [id, status, receivedAt, senderEmail, senderName, subject, webLink, supplierName, invoiceNumber, invoiceDate, total, currency, billTo, billToCompany, reasons, issues, createdAt, resolvedBy, resolvedAt, resolution, files]
+      required: [id, receivedAt, senderEmail, senderName, subject, webLink, supplierName, invoiceNumber, invoiceDate, total, currency, billTo, billToCompany, reasons, issues, createdAt, files]
     IntakeReviewList:
       type: object
       properties:
@@ -3681,15 +3664,21 @@ components:
         openCount:
           type: integer
       required: [items, openCount]
-    IntakeReviewUpdate:
+    IntakeReviewResolve:
       type: object
       properties:
-        status:
-          $ref: "#/components/schemas/IntakeReviewStatus"
+        outcome:
+          $ref: "#/components/schemas/IntakeReviewOutcome"
         note:
           type: ["string", "null"]
           maxLength: 1000
-      required: [status]
+      required: [outcome]
+    IntakeReviewResolved:
+      type: object
+      properties:
+        id:
+          type: string
+      required: [id]
     ReminderLogEntry:
       type: object
       properties:
