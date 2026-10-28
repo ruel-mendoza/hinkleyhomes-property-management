@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { AlertTriangle, ArrowLeftRight, BedDouble, DoorOpen, Download, Search, Users, X } from "lucide-react";
 import { getGetOccupancyQueryKey, useGetOccupancy, useGetPerformance, useGetStayAvailability } from "@workspace/api-client-react";
@@ -159,42 +159,58 @@ export default function OccupancyPage({ selectedPropertyReference }: { selectedP
   );
 }
 
-// Overview card: rooms let today (COHO, via Performance) and Stays apartments free tonight (Smoobu).
+// Overview card: HMO rooms let today (COHO, via Performance) and Stays apartments
+// booked tonight (Smoobu availability; blocked nights count as taken).
 export function OccupancyCard({ propertyReference }: { propertyReference?: string }) {
   const { params, options } = performanceQuery(propertyReference);
   const performance = useGetPerformance(params, options);
   const stays = useGetStayAvailability(undefined, availabilityQueryOptions);
   const data = performance.data;
-  const percent = data?.occupancyTodayPercent ?? null;
   const tonight = stays.data?.dates[0];
   const apartments = (stays.data?.apartments ?? []).filter((apartment) => !propertyReference || apartment.cohoPropertyReference === propertyReference);
   const freeTonight = apartments.filter((apartment) => apartment.nights.find((night) => night.date === tonight)?.available).length;
+  const bookedTonight = apartments.length - freeTonight;
   return (
     <section className="panel" aria-label="Occupancy">
       <div className="panel-head">
-        <div><div className="panel-title">Occupancy</div><div className="panel-caption">Rooms let today, from COHO</div></div>
+        <div><div className="panel-title">Occupancy</div><div className="panel-caption">{propertyReference ? "Selected property" : "All properties"} · rooms from COHO, Stays from Smoobu</div></div>
         <Link href="/occupancy">Occupancy →</Link>
       </div>
       <div className="hh-occ-card">
-        {performance.isLoading ? <p className="hh-fin-note">Loading from COHO…</p>
-          : !data ? <p className="hh-fin-note">Occupancy could not be loaded from COHO.</p>
-            : (
-              <>
-                <div className="hh-occ-card-top">
-                  <div><span>Let today</span><strong>{percent === null ? "—" : `${percent.toFixed(1)}%`}</strong></div>
-                  <div className="right"><span>{propertyReference ? "Selected property" : "All properties"}</span><strong>{data.units} {data.units === 1 ? "room" : "rooms"}</strong></div>
-                </div>
-                <div className="hh-meter-bar" role="img" aria-label={`${data.occupiedToday} of ${data.units} rooms let`}><span style={{ width: data.units ? `${(data.occupiedToday / data.units) * 100}%` : "0%", background: "#3aa889" }} /></div>
-                <div className="hh-occ-card-split">
-                  <Link href="/occupancy?status=occupied"><span>Let</span><strong>{data.occupiedToday}</strong></Link>
-                  <Link href="/occupancy?status=vacant"><span>Vacant</span><strong className={data.units - data.occupiedToday ? "warn" : ""}>{data.units - data.occupiedToday}</strong></Link>
-                </div>
-              </>
-            )}
-        {stays.data && apartments.length > 0 && (
-          <Link href="/stays" className="hh-occ-card-stays"><BedDouble size={13} /> Stays tonight<b>{freeTonight} of {apartments.length} apartments free</b></Link>
-        )}
+        <OccupancyRow
+          title="HMO rooms let today" icon={<DoorOpen size={13} />}
+          state={performance.isLoading ? "Loading from COHO…" : !data ? "Occupancy could not be loaded from COHO." : data.units === 0 ? "No rooms in COHO for this property." : null}
+          taken={data?.occupiedToday ?? 0} total={data?.units ?? 0} unit="room"
+          takenLink={{ href: "/occupancy?status=occupied", label: "Let" }} freeLink={{ href: "/occupancy?status=vacant", label: "Vacant" }}
+        />
+        <OccupancyRow
+          title="Stays apartments booked tonight" icon={<BedDouble size={13} />}
+          state={stays.isLoading ? "Loading from Smoobu…" : stays.isError ? `Smoobu availability could not be loaded: ${errorText(stays.error)}` : apartments.length === 0 ? (propertyReference ? "No Stays apartments are linked to this property." : "No Stays apartments in Smoobu.") : null}
+          taken={bookedTonight} total={apartments.length} unit="apartment"
+          takenLink={{ href: "/stays", label: "Booked" }} freeLink={{ href: "/stays", label: "Free" }}
+        />
       </div>
     </section>
+  );
+}
+
+function OccupancyRow({ title, icon, state, taken, total, unit, takenLink, freeLink }: { title: string; icon: ReactNode; state: string | null; taken: number; total: number; unit: string; takenLink: { href: string; label: string }; freeLink: { href: string; label: string } }) {
+  const percent = total ? (taken / total) * 100 : 0;
+  return (
+    <div className="hh-occ-card-row">
+      <div className="hh-occ-card-top">
+        <div><span>{icon} {title}</span><strong>{state ? "—" : `${percent.toFixed(1)}%`}</strong></div>
+        {!state && <div className="right"><span>Capacity</span><strong>{total} {total === 1 ? unit : `${unit}s`}</strong></div>}
+      </div>
+      {state ? <p className="hh-fin-note">{state}</p> : (
+        <>
+          <div className="hh-meter-bar" role="img" aria-label={`${taken} of ${total} ${unit}s taken`}><span style={{ width: `${percent}%`, background: "#3aa889" }} /></div>
+          <div className="hh-occ-card-split">
+            <Link href={takenLink.href}><span>{takenLink.label}</span><strong>{taken}</strong></Link>
+            <Link href={freeLink.href}><span>{freeLink.label}</span><strong className={total - taken ? "warn" : ""}>{total - taken}</strong></Link>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
