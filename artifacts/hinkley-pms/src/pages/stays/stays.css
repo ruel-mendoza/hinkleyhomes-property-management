@@ -6,10 +6,14 @@
 .hh-stay-note{padding:14px 16px;color:#95a2b5;font-size:13px}
 
 .hh-stay-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
-.hh-stay-sum div{display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:8px;background:#25324a;border:1px solid #33425a;color:#dce4ed;font-size:14px}
+.hh-stay-sum button{display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:8px;background:#25324a;border:1px solid #33425a;color:#dce4ed;font:inherit;font-size:14px;text-align:left;cursor:pointer;transition:border-color .15s,filter .15s}
+.hh-stay-sum button:hover{filter:brightness(1.12)}
+.hh-stay-sum button:focus-visible{outline:2px solid #79cdb0;outline-offset:2px}
 .hh-stay-sum strong{font-size:18px;font-weight:800}
 .hh-stay-sum .good{background:#173d35;border-color:#24584b;color:#bfeadb}
 .hh-stay-sum .warn{background:#403421;border-color:#5a4626;color:#f0d29b}
+.hh-stay-sum button.active{border-color:#79cdb0;box-shadow:inset 0 0 0 1px #79cdb0}
+.hh-stay-panel{scroll-margin-top:72px}
 
 .hh-stay-panel{margin-bottom:14px}
 .hh-stay-panel .panel-head .button{text-decoration:none}

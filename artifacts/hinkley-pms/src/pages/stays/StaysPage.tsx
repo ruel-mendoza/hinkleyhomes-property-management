@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowLeftRight, BedDouble, ExternalLink, LogIn, LogOut, MessageSquare, PlugZap, RefreshCw, ShieldCheck } from "lucide-react";
@@ -16,13 +16,36 @@ const pounds = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GB
 const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const dayLabel = (date: string, today: string) => (date === today ? "Today" : formatDate(date));
 const staysQueryOptions = { query: { queryKey: getGetStaysQueryKey(), refetchInterval: 5 * 60_000, retry: false } };
+const nextDay = (date: string) => new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+
+// The summary tiles filter the bookings table; same rules as the server's counts.
+type BookingFilter = "arriving" | "leaving" | "inHouse" | "notReady";
+const FILTERS: Record<BookingFilter, { label: string; test: (booking: StayBooking, today: string) => boolean }> = {
+  arriving: { label: "Arriving today", test: (b, today) => b.arrival === today },
+  leaving: { label: "Leaving today", test: (b, today) => b.departure === today },
+  inHouse: { label: "In house", test: (b, today) => b.arrival <= today && b.departure > today },
+  notReady: { label: "Not ready to arrive", test: (b, today) => b.arrival >= today && b.arrival <= nextDay(today) && !!b.checks?.issues.length },
+};
+const scrollToId = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
 export default function StaysPage() {
   const queryClient = useQueryClient();
   const query = useGetStays(staysQueryOptions);
   const sync = useSyncStays();
   const [syncMessage, setSyncMessage] = useState("");
+  const [filter, setFilter] = useState<BookingFilter | null>(null);
   const data = query.data;
+
+  const pick = (next: BookingFilter) => {
+    const turnOff = filter === next;
+    setFilter(turnOff ? null : next);
+    if (!turnOff) requestAnimationFrame(() => scrollToId("stays-bookings"));
+  };
+  const tile = (key: BookingFilter, icon: ReactNode, count: number, label: string, tone = "") => (
+    <button type="button" className={`${tone}${filter === key ? " active" : ""}`} aria-pressed={filter === key} onClick={() => pick(key)} title={filter === key ? "Show all bookings" : `Show only these in Bookings`}>
+      {icon}<strong>{count}</strong> {label}
+    </button>
+  );
 
   const runSync = async () => {
     setSyncMessage("");
@@ -63,15 +86,15 @@ export default function StaysPage() {
       {data && (
         <>
           <div className="hh-stay-sum">
-            <div><LogIn size={17} /><strong>{data.counts.arrivingToday}</strong> arriving today</div>
-            <div><LogOut size={17} /><strong>{data.counts.leavingToday}</strong> leaving today</div>
-            <div className="good"><BedDouble size={17} /><strong>{data.counts.inHouse}</strong> in house</div>
-            <div><MessageSquare size={17} /><strong>{data.messages.threadsToday}</strong> guest {data.messages.threadsToday === 1 ? "conversation" : "conversations"} today</div>
-            {data.guestChecks && <div className={data.counts.notReady ? "warn" : ""}><ShieldCheck size={17} /><strong>{data.counts.notReady}</strong> not ready to arrive</div>}
+            {tile("arriving", <LogIn size={17} />, data.counts.arrivingToday, "arriving today")}
+            {tile("leaving", <LogOut size={17} />, data.counts.leavingToday, "leaving today")}
+            {tile("inHouse", <BedDouble size={17} />, data.counts.inHouse, "in house", "good")}
+            <button type="button" onClick={() => scrollToId("stays-messages")} title="Go to guest messages"><MessageSquare size={17} /><strong>{data.messages.threadsToday}</strong> guest {data.messages.threadsToday === 1 ? "conversation" : "conversations"} today</button>
+            {data.guestChecks && tile("notReady", <ShieldCheck size={17} />, data.counts.notReady, "not ready to arrive", data.counts.notReady ? "warn" : "")}
           </div>
           <GuestMessagesPanel messages={data.messages} />
           <ChangeoversPanel data={data} />
-          <BookingsPanel data={data} />
+          <BookingsPanel data={data} filter={filter} onClear={() => setFilter(null)} />
           <p className="hh-stay-foot">
             Read-only from Smoobu across <Link href="/properties?tab=smoobu">{data.apartments} {data.apartments === 1 ? "apartment" : "apartments"}</Link>. Prices and availability are set in Smoobu by PriceLabs, and replies to guests are sent from Smoobu. Only guest names are kept here.
           </p>
@@ -83,7 +106,7 @@ export default function StaysPage() {
 
 function GuestMessagesPanel({ messages }: { messages: StaysOverview["messages"] }) {
   return (
-    <section className="panel hh-stay-panel">
+    <section className="panel hh-stay-panel" id="stays-messages">
       <div className="panel-head">
         <div><div className="panel-title">Latest guest messages</div><div className="panel-caption">Newest Airbnb, Booking.com and direct conversations in Smoobu{messages.unreadMessages ? ` · ${messages.unreadMessages.toLocaleString("en-GB")} unread there` : ""}</div></div>
         <a className="button" href={SMOOBU_URL} target="_blank" rel="noreferrer">Reply in Smoobu <ExternalLink size={13} /></a>
@@ -134,15 +157,19 @@ function ChangeoversPanel({ data }: { data: StaysOverview }) {
   );
 }
 
-function BookingsPanel({ data }: { data: StaysOverview }) {
+function BookingsPanel({ data, filter, onClear }: { data: StaysOverview; filter: BookingFilter | null; onClear: () => void }) {
+  const bookings = filter ? data.bookings.filter((booking) => FILTERS[filter].test(booking, data.asOf)) : data.bookings;
   return (
-    <section className="panel table-panel hh-stay-panel">
-      <div className="panel-head"><div><div className="panel-title">Bookings</div><div className="panel-caption">In house now or arriving in the next 7 days{data.guestChecks ? ". Guest checks come from ChargeAutomation." : ""}</div></div></div>
+    <section className="panel table-panel hh-stay-panel" id="stays-bookings">
+      <div className="panel-head">
+        <div><div className="panel-title">Bookings{filter && ` · ${FILTERS[filter].label}`}</div><div className="panel-caption">{filter ? `${bookings.length} of ${data.bookings.length} bookings` : "In house now or arriving in the next 7 days"}{data.guestChecks ? ". Guest checks come from ChargeAutomation." : ""}</div></div>
+        {filter && <button type="button" className="button" onClick={onClear}>Show all</button>}
+      </div>
       <div className="table-wrap">
         <table>
           <thead><tr><th>Guest</th><th>Apartment</th><th>Stay</th><th>Channel</th><th>Price</th>{data.guestChecks && <th>Guest checks <small className="hh-stay-sub">ChargeAutomation</small></th>}</tr></thead>
           <tbody>
-            {data.bookings.map((booking) => (
+            {bookings.map((booking) => (
               <tr key={booking.id}>
                 <td><strong>{booking.guestName ?? "Guest"}</strong>{booking.guests !== null && <small className="hh-stay-sub">{booking.guests} {booking.guests === 1 ? "guest" : "guests"}</small>}</td>
                 <td>{booking.apartmentName}</td>
@@ -155,7 +182,8 @@ function BookingsPanel({ data }: { data: StaysOverview }) {
                 {data.guestChecks && <td><GuestChecksCell checks={booking.checks} arrived={booking.arrival <= data.asOf} /></td>}
               </tr>
             ))}
-            {!data.bookings.length && <tr><td colSpan={data.guestChecks ? 6 : 5}><div className="empty-state"><BedDouble size={21} /><h3>No bookings this week</h3><p>{data.lastSync ? "Smoobu has no stays in the next 7 days." : "Run Sync now to read bookings from Smoobu."}</p></div></td></tr>}
+            {!bookings.length && filter && <tr><td colSpan={data.guestChecks ? 6 : 5}><div className="empty-state"><BedDouble size={21} /><h3>No bookings to show</h3><p>Nothing matches "{FILTERS[filter].label}" right now.</p></div></td></tr>}
+            {!data.bookings.length && !filter && <tr><td colSpan={data.guestChecks ? 6 : 5}><div className="empty-state"><BedDouble size={21} /><h3>No bookings this week</h3><p>{data.lastSync ? "Smoobu has no stays in the next 7 days." : "Run Sync now to read bookings from Smoobu."}</p></div></td></tr>}
           </tbody>
         </table>
       </div>
