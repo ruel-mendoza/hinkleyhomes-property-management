@@ -473,37 +473,44 @@ export async function handleSmoobuEvent(body: unknown): Promise<{ action: string
 
 // --- Guest messages -------------------------------------------------------------
 
-export type GuestThread = { bookingId: string | null; guestName: string | null; apartmentName: string | null; unread: number; lastMessageAt: string | null; preview: string | null };
-export type GuestMessages = { unreadThreads: number; unreadMessages: number; threads: GuestThread[]; error: string | null };
+export type GuestThread = { bookingId: string | null; guestName: string | null; apartmentName: string | null; lastMessageAt: string | null; preview: string | null };
+export type GuestMessages = { threadsToday: number; unreadMessages: number; threads: GuestThread[]; error: string | null };
 
 const THREADS_TTL_MS = 2 * 60_000;
 let threadsCache: { at: number; value: GuestMessages } | null = null;
 
 const plain = (value: string | null) => (value ? value.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim().slice(0, 160) || null : null);
 
-// Airbnb, Booking.com and direct-booking conversations with unread guest messages.
+// The newest Airbnb, Booking.com and direct-booking conversations. Smoobu lists
+// threads newest first, 25 a page, and only gives an unread total for the whole
+// account: no unread count or sender per thread (checked October 2026).
 export async function guestMessages(): Promise<GuestMessages> {
   if (threadsCache && Date.now() - threadsCache.at < THREADS_TTL_MS) return threadsCache.value;
   try {
-    const threads = listIn(await smoobuGet("/api/threads", { page_number: 1, page_size: 100 }), "threads", "data", "items")
-      .map((thread): GuestThread => {
-        const booking = obj(thread.booking);
-        const latest = obj(thread.latest_message ?? thread.latestMessage);
-        return {
-          bookingId: text(booking.id),
-          guestName: text(booking["guest-name"] ?? booking.guest_name ?? booking.guestName ?? thread.guest_name),
-          apartmentName: text(obj(thread.apartment).name ?? obj(booking.apartment).name),
-          unread: num(thread.unread_messages ?? thread.unreadMessages) ?? 0,
-          lastMessageAt: text(latest.created_at ?? latest.createdAt ?? latest.date),
-          preview: plain(text(latest.message ?? latest.subject)),
-        };
-      })
-      .filter((thread) => thread.unread > 0);
-    const value = { unreadThreads: threads.length, unreadMessages: threads.reduce((sum, thread) => sum + thread.unread, 0), threads, error: null };
+    const payload = await smoobuGet("/api/threads", { page_number: 1, page_size: 25 });
+    const threads = listIn(payload, "threads", "data", "items").map((thread): GuestThread => {
+      const booking = obj(thread.booking);
+      const latest = obj(thread.latest_message ?? thread.latestMessage);
+      return {
+        bookingId: text(booking.id),
+        guestName: text(booking.guest_name ?? booking["guest-name"] ?? booking.guestName),
+        apartmentName: text(obj(thread.apartment).name ?? obj(booking.apartment).name),
+        // "YYYY-MM-DD HH:MM:SS", UK time.
+        lastMessageAt: text(latest.created_at)?.replace(" ", "T") ?? null,
+        preview: plain(text(latest.text_content) ?? text(latest.html_content) ?? text(latest.subject)),
+      };
+    });
+    const today = ukToday();
+    const value = {
+      threadsToday: threads.filter((thread) => thread.lastMessageAt?.startsWith(today)).length,
+      unreadMessages: num(obj(payload).unread_messages) ?? 0,
+      threads: threads.slice(0, 8),
+      error: null,
+    };
     threadsCache = { at: Date.now(), value };
     return value;
   } catch (error) {
-    return { unreadThreads: 0, unreadMessages: 0, threads: [], error: error instanceof Error ? error.message : String(error) };
+    return { threadsToday: 0, unreadMessages: 0, threads: [], error: error instanceof Error ? error.message : String(error) };
   }
 }
 

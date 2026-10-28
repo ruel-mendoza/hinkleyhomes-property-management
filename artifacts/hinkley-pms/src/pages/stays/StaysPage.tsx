@@ -66,7 +66,7 @@ export default function StaysPage() {
             <div><LogIn size={17} /><strong>{data.counts.arrivingToday}</strong> arriving today</div>
             <div><LogOut size={17} /><strong>{data.counts.leavingToday}</strong> leaving today</div>
             <div className="good"><BedDouble size={17} /><strong>{data.counts.inHouse}</strong> in house</div>
-            <div className={data.messages.unreadMessages ? "warn" : ""}><MessageSquare size={17} /><strong>{data.messages.unreadMessages}</strong> unread {data.messages.unreadMessages === 1 ? "message" : "messages"}</div>
+            <div><MessageSquare size={17} /><strong>{data.messages.threadsToday}</strong> guest {data.messages.threadsToday === 1 ? "conversation" : "conversations"} today</div>
             {data.guestChecks && <div className={data.counts.notReady ? "warn" : ""}><ShieldCheck size={17} /><strong>{data.counts.notReady}</strong> not ready to arrive</div>}
           </div>
           <GuestMessagesPanel messages={data.messages} />
@@ -85,11 +85,11 @@ function GuestMessagesPanel({ messages }: { messages: StaysOverview["messages"] 
   return (
     <section className="panel hh-stay-panel">
       <div className="panel-head">
-        <div><div className="panel-title">Guest messages waiting</div><div className="panel-caption">Airbnb, Booking.com and direct guests with unread messages in Smoobu</div></div>
+        <div><div className="panel-title">Latest guest messages</div><div className="panel-caption">Newest Airbnb, Booking.com and direct conversations in Smoobu{messages.unreadMessages ? ` · ${messages.unreadMessages.toLocaleString("en-GB")} unread there` : ""}</div></div>
         <a className="button" href={SMOOBU_URL} target="_blank" rel="noreferrer">Reply in Smoobu <ExternalLink size={13} /></a>
       </div>
       {messages.error ? <div className="empty-state"><MessageSquare size={21} /><h3>Messages could not be loaded</h3><p>{messages.error}</p></div>
-        : !messages.threads.length ? <div className="empty-state"><MessageSquare size={21} /><h3>No unread guest messages</h3></div>
+        : !messages.threads.length ? <div className="empty-state"><MessageSquare size={21} /><h3>No guest messages yet</h3></div>
           : (
             <ul className="hh-stay-threads">
               {messages.threads.map((thread, index) => (
@@ -99,7 +99,6 @@ function GuestMessagesPanel({ messages }: { messages: StaysOverview["messages"] 
                     <small>{[thread.apartmentName, thread.lastMessageAt ? when(thread.lastMessageAt) : null].filter(Boolean).join(" · ")}</small>
                     {thread.preview && <p>{thread.preview}</p>}
                   </div>
-                  <span className="status pending">{thread.unread} unread</span>
                 </li>
               ))}
             </ul>
@@ -200,7 +199,7 @@ export function StaysStrip() {
                 {stat("Leaving", data.counts.leavingToday)}
                 {stat("In house", data.counts.inHouse)}
                 {stat("Changeovers this week", data.counts.changeoversThisWeek)}
-                {stat("Unread guest messages", data.messages.unreadMessages, data.messages.unreadMessages ? "warn" : "")}
+                {stat("Guest conversations today", data.messages.threadsToday)}
                 {data.guestChecks && stat("Not ready to arrive", data.counts.notReady, data.counts.notReady ? "warn" : "")}
                 {data.unlinkedApartments > 0 && stat("Apartments not linked", data.unlinkedApartments, "warn")}
               </>

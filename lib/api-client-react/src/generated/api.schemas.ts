@@ -119,7 +119,6 @@ export interface GuestThread {
   guestName: string | null;
   /** @nullable */
   apartmentName: string | null;
-  unread: number;
   /** @nullable */
   lastMessageAt: string | null;
   /** @nullable */
@@ -127,7 +126,9 @@ export interface GuestThread {
 }
 
 export interface GuestMessages {
-  unreadThreads: number;
+  /** Conversations among the newest 25 with a message today. */
+  threadsToday: number;
+  /** Smoobu's unread total for the whole account. */
   unreadMessages: number;
   threads: GuestThread[];
   /** @nullable */

@@ -8,7 +8,9 @@
 import type { GuestThread } from './guestThread';
 
 export interface GuestMessages {
-  unreadThreads: number;
+  /** Conversations among the newest 25 with a message today. */
+  threadsToday: number;
+  /** Smoobu's unread total for the whole account. */
   unreadMessages: number;
   threads: GuestThread[];
   /** @nullable */

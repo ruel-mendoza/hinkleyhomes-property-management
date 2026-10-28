@@ -1589,27 +1589,27 @@ components:
           type: ["string", "null"]
         apartmentName:
           type: ["string", "null"]
-        unread:
-          type: integer
         lastMessageAt:
           type: ["string", "null"]
         preview:
           type: ["string", "null"]
-      required: [bookingId, guestName, apartmentName, unread, lastMessageAt, preview]
+      required: [bookingId, guestName, apartmentName, lastMessageAt, preview]
     GuestMessages:
       type: object
       properties:
-        unreadThreads:
+        threadsToday:
           type: integer
+          description: Conversations among the newest 25 with a message today.
         unreadMessages:
           type: integer
+          description: Smoobu's unread total for the whole account.
         threads:
           type: array
           items:
             $ref: "#/components/schemas/GuestThread"
         error:
           type: ["string", "null"]
-      required: [unreadThreads, unreadMessages, threads, error]
+      required: [threadsToday, unreadMessages, threads, error]
     StaysOverview:
       type: object
       properties:

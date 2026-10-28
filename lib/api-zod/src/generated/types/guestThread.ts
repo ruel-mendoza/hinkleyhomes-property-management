@@ -13,7 +13,6 @@ export interface GuestThread {
   guestName: string | null;
   /** @nullable */
   apartmentName: string | null;
-  unread: number;
   /** @nullable */
   lastMessageAt: string | null;
   /** @nullable */

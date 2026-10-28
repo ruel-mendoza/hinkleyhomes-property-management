@@ -953,13 +953,12 @@ export const GetStaysResponse = zod.object({
   "cleaningFee": zod.number().nullable()
 })),
   "messages": zod.object({
-  "unreadThreads": zod.number().int(),
-  "unreadMessages": zod.number().int(),
+  "threadsToday": zod.number().int().describe('Conversations among the newest 25 with a message today.'),
+  "unreadMessages": zod.number().int().describe('Smoobu\'s unread total for the whole account.'),
   "threads": zod.array(zod.object({
   "bookingId": zod.string().nullable(),
   "guestName": zod.string().nullable(),
   "apartmentName": zod.string().nullable(),
-  "unread": zod.number().int(),
   "lastMessageAt": zod.string().nullable(),
   "preview": zod.string().nullable()
 })),

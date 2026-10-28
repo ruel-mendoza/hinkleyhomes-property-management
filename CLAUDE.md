@@ -38,6 +38,8 @@ pnpm --filter @workspace/db run seed:entities        # seed the Xero companies i
 pnpm --filter @workspace/db run import:route-a       # import old Route A CSVs from import/
 ```
 
+If `pnpm` isn't on PATH (some local Windows machines), run the workspace binaries directly: `lib/api-spec/node_modules/.bin/orval --config ./orval.config.ts` from `lib/api-spec`, then `node_modules/.bin/tsc --build` at the root and `tsc -p tsconfig.json --noEmit` in each artifact.
+
 Env names are documented in `.env.example`, and the values go in Replit Secrets. The DB uses `SUPABASE_DATABASE_URL` with the **session pooler** host. `DATABASE_URL` is reserved by Replit and isn't used.
 
 ## How a feature is built (follow this order)
@@ -57,7 +59,16 @@ Env names are documented in `.env.example`, and the values go in Replit Secrets.
 - **COHO.** Called server-side only (`lib/coho-api.ts`, `COHO_API_KEY`). Most reads are cached in memory for 5–60 min. COHO wants SCREAMING_SNAKE statuses on write but returns camelCase. Its dates are UK midnight, so read them in Europe/London time.
 - **Xero.** The app never holds Xero tokens. Every read goes through the n8n gateway webhook (`lib/xero-gateway.ts`, `N8N_XERO_GATEWAY_URL` / `N8N_XERO_GATEWAY_KEY`). Writes (draft bills, reminders, notes) are done by n8n, after the app plans them. Shadow and test modes are on by default. Keep it that way unless the user asks otherwise.
 - **Smoobu** (Hinkley Homes Stays) is the source of truth for serviced accommodation; PriceLabs, ChargeAutomation, RentalNinja and the OTAs all connect to it. The app reads it through the n8n Smoobu gateway (like Xero) and is **read-only** towards it (`lib/smoobu-api.ts` only does GETs; the gateway allowlists the paths): never write bookings, rates, availability or guest messages. Webhooks arrive through n8n and are re-read from Smoobu, never trusted.
+  - Docs: https://docs.smoobu.com/ (one long page). The old `Api-Key` header ended on 31 Oct 2026. The gateway signs every call with the HMAC key in the n8n Variables `SMOOBU_API_KEY` / `SMOOBU_API_SECRET` (Settings node `useSignedKey: true`, live and tested 28 Oct 2026). The key needs the **Guest Data (PII)** permission, or guest names come back blank.
+  - `/api/threads` returns 25 threads a page, newest first, whatever `page_size` says. It has one account-wide `unread_messages` total and no unread count or sender per thread. The message text is `latest_message.text_content`. Bookings return `modifiedAt` (camelCase).
+  - `n8n/smoobu-get-all-bookings.workflow.json` is a manual export tool that the app doesn't use. It can't be published because it only has a manual trigger.
 - **ChargeAutomation** (guest payments, deposits, ID and online check-in for Stays) is also **read-only**: its webhooks come through n8n into `guest_checks` / `payments` (`lib/guest-checks.ts`), and reads go through the n8n ChargeAutomation gateway, which holds the credentials as n8n Variables. Never charge, refund, release deposits or create bookings in it, and don't sync bookings or properties from it (Smoobu feeds it).
+  - Docs: https://api.chargeautomation.com/docs (the root URL 404s). Booking ids can contain hyphens (`1079-14567017`).
+  - Open issues from the 28 Oct 2026 audit:
+    - The gateway's `\d{1,20}` booking-id pattern blocks those ids, so online check-in is recorded without the confirming read.
+    - Whether `pms_booking_id` really holds the Smoobu booking id is unverified, and the webhook and list-sync paths pick the id differently.
+    - Payment and deposit webhooks aren't re-checked with `verify-payment-request`.
+    - There are no events for deposit release, refunds or cancellations.
 - **Postgres (Supabase)** holds operational state: the property register and aliases, `coho_actions` / `coho_unit_snapshots` mirrors, follow-ups, reminders, bill coding reviews, `exception_queue`, `integration_sync_runs`, `audit_log`, `staff_presence`.
 - **Audit logging.** Any staff change to follow-ups, aliases, settings, COHO actions or supplier bank details writes to `audit_log` with the staff email.
 - **Privacy.** Only send the browser what a page needs. That means tenant names but not contact details, bank account numbers cut to the last 4 digits, and no house numbers on the public widget.
