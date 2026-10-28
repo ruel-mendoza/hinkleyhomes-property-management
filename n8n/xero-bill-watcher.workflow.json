@@ -1,0 +1,794 @@
+{
+  "name": "Hinkley Xero watcher: bill exception checks (read-only)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Hinkley Xero watcher (read-only exception checks)\nReads supplier bills (ACCPAY) from every connected Xero organisation and emails Ruel and accounts@ a digest of exceptions. It changes nothing in Xero.\n**Before activating**\n1. Select your existing **Xero OAuth2** credential on the three Xero HTTP nodes. It must be authorised for all five organisations.\n2. Select the Outlook credential on **Send digest to Ruel**.\n3. Edit **Config**: `digest_to` (comma-separated list of recipients), `property_tracking_category` (the Xero tracking category that holds the property; to be agreed with Jenny), and the thresholds (placeholders): `dup_window_days` (looser duplicate rule), `vat_rates` (allowed VAT %), `old_bill_days`.\n4. Run **Manual test** once, then activate. The first run looks back `lookback_hours`; later runs ask each organisation only for changes since its last successful check.\nMemory (last check, issues already reported) is workflow static data, saved only on active runs, not on manual tests.\nXero Starter tier: 5 connections and 1,000 calls per organisation per day. This workflow makes 2 calls per organisation per run, plus one more for each extra page of 100 bills (up to 10 pages per query; keep `xero_max_pages` in Config equal to \"Max pages\" on the two Xero bill nodes).\n\n**Overlap with Route A:** Route A already checks property coding on DRAFT and SUBMITTED bills and emails its own [New invoice record]. So the watcher skips its missing_property check for those statuses (`route_a_statuses` in Config) and reports it only for approved bills. All other checks still run on every bill. Set `route_a_statuses` to empty to check every bill again.",
+        "height": 430,
+        "width": 560
+      },
+      "id": "4b1ff741-f60f-4c50-a94d-5bf765e033e1",
+      "name": "Setup notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        19104,
+        6480
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "3bbe4738-c9e3-451d-bb21-a8fec98944b5",
+      "name": "Every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        19136,
+        6928
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f2ae1ee4-b7e2-428d-b55e-3623a87fb153",
+      "name": "Manual test",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        19136,
+        7104
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0dc8c2a1-7cad-4d80-8efa-7bc6fbf09fbf",
+              "name": "digest_to",
+              "value": "ruel@hinkleyhomes.co.uk",
+              "type": "string"
+            },
+            {
+              "id": "d0896d08-a064-497e-b110-215fd0518d08",
+              "name": "expected_org_count",
+              "value": 5,
+              "type": "number"
+            },
+            {
+              "id": "a36b559c-3fd3-49f1-b3c1-d509ec99b8ee",
+              "name": "lookback_hours",
+              "value": 48,
+              "type": "number"
+            },
+            {
+              "id": "bf5dda9b-7ef2-4118-886b-c34b351c878e",
+              "name": "property_tracking_category",
+              "value": "Property",
+              "type": "string"
+            },
+            {
+              "id": "83e098c4-abba-404a-84d9-7ec01d190b6e",
+              "name": "base_currency",
+              "value": "GBP",
+              "type": "string"
+            },
+            {
+              "id": "7aadce4b-bde1-4efa-8a38-8c9a7595b439",
+              "name": "large_amount",
+              "value": 1000,
+              "type": "number"
+            },
+            {
+              "id": "b54498d4-d630-4e8d-a31d-c5ddbf4bb443",
+              "name": "stale_days",
+              "value": 3,
+              "type": "number"
+            },
+            {
+              "id": "6fb7db33-f95b-4816-b9b0-674a668e8099",
+              "name": "due_soon_days",
+              "value": 3,
+              "type": "number"
+            },
+            {
+              "id": "b2cd40e9-39dc-4f77-add2-21fec6cc8c9a",
+              "name": "dup_window_days",
+              "value": 6,
+              "type": "number"
+            },
+            {
+              "id": "61fa8cc8-a574-4f82-965f-173b55b409c2",
+              "name": "vat_rates",
+              "value": "0,5,20",
+              "type": "string"
+            },
+            {
+              "id": "05a2018e-d0d7-40a1-9d60-2e9400e46a72",
+              "name": "old_bill_days",
+              "value": 180,
+              "type": "number"
+            },
+            {
+              "id": "aabf32bc-54f3-478e-9a59-634d150048a8",
+              "name": "xero_max_pages",
+              "value": 10,
+              "type": "number"
+            },
+            {
+              "id": "767da4f7-1bb9-4a22-9bc0-aa598fdea9ae",
+              "name": "route_a_statuses",
+              "value": "DRAFT,SUBMITTED",
+              "type": "string"
+            },
+            {
+              "id": "3f12f2f2-585c-4a4d-ab8b-2a070bb7574c",
+              "name": "run_started_at",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            },
+            {
+              "id": "51fc9026-d3c0-49ab-ad26-0e9e18e9e5ee",
+              "name": "noreply_address",
+              "value": "no-reply@hinkleyhomes.co.uk",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a4f4648b-26ba-4171-8d95-ca2b3c82e26d",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        19456,
+        6944
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.xero.com/connections",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xeroOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "c5ab3477-3cf1-4204-8653-f3943920b1aa",
+      "name": "Get Xero organisations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        19696,
+        6944
+      ],
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8688df15-a82d-4544-8090-715ac26bc192",
+              "leftValue": "={{ $json.tenantType }}",
+              "rightValue": "ORGANISATION",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "be7c24e7-af2b-43e7-980f-d3607d6d04d4",
+      "name": "Only organisations",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        19936,
+        6944
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Work out, for each Xero organisation, which changes to ask for (since its last successful check).\nconst cfg = $('Config').first().json;\nconst sd = $getWorkflowStaticData('global');\nconst last = sd.lastRunByTenant || {};\nconst fallback = new Date(Date.now() - Number(cfg.lookback_hours || 48) * 3600 * 1000);\nconst fmt = d => d.toISOString().slice(0, 19);\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json;\n  const since = last[j.tenantId] ? new Date(last[j.tenantId]) : fallback;\n  const withOverlap = new Date(since.getTime() - 5 * 60 * 1000); // 5 minute overlap so nothing falls between runs\n  out.push({ json: { tenantId: j.tenantId, tenantName: j.tenantName, tenantType: j.tenantType, since_utc: fmt(withOverlap) }, pairedItem: { item: i } });\n}\nreturn out;"
+      },
+      "id": "9650dd02-288e-4794-b6db-11eedd941214",
+      "name": "Add window to each organisation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20176,
+        6944
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.xero.com/api.xro/2.0/Invoices",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xeroOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "where",
+              "value": "Type==\"ACCPAY\""
+            },
+            {
+              "name": "Statuses",
+              "value": "DRAFT,SUBMITTED,AUTHORISED"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xero-tenant-id",
+              "value": "={{ $json.tenantId }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "If-Modified-Since",
+              "value": "={{ $json.since_utc }}"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "page",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ (($response.body || {}).Invoices || []).length < 100 }}",
+              "limitPagesFetched": true,
+              "maxRequests": 10,
+              "requestInterval": 1000
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "5560a867-421e-4c1e-b609-8021acfe9663",
+      "name": "Get new or changed bills",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        20432,
+        6848
+      ],
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c98ff593-bcf7-4520-92da-eef57b3de796",
+              "name": "tenant_id",
+              "value": "={{ $('Add window to each organisation').item.json.tenantId }}",
+              "type": "string"
+            },
+            {
+              "id": "710bfd6e-e133-4517-8ca9-ff77083f390b",
+              "name": "tenant_name",
+              "value": "={{ $('Add window to each organisation').item.json.tenantName }}",
+              "type": "string"
+            },
+            {
+              "id": "7aff50f0-4a58-4312-9638-35edd5809b2c",
+              "name": "source_query",
+              "value": "changed",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "1f93f13c-f304-474d-9508-558cb773b25e",
+      "name": "Tag: changed bills",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        20688,
+        6848
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.xero.com/api.xro/2.0/Invoices",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xeroOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "where",
+              "value": "Type==\"ACCPAY\""
+            },
+            {
+              "name": "Statuses",
+              "value": "DRAFT,SUBMITTED"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xero-tenant-id",
+              "value": "={{ $json.tenantId }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "page",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ (($response.body || {}).Invoices || []).length < 100 }}",
+              "limitPagesFetched": true,
+              "maxRequests": 10,
+              "requestInterval": 1000
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "fd851b41-b6d4-4fbb-885e-fa017497d7ea",
+      "name": "Get unapproved bills",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        20432,
+        7072
+      ],
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "GmvU6JDduIJTlUjR",
+          "name": "Xero account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "53b6e32c-aab9-444a-bc14-afab0b433d56",
+              "name": "tenant_id",
+              "value": "={{ $('Add window to each organisation').item.json.tenantId }}",
+              "type": "string"
+            },
+            {
+              "id": "dfda1e0c-5cde-4783-a59b-5e9a95991d79",
+              "name": "tenant_name",
+              "value": "={{ $('Add window to each organisation').item.json.tenantName }}",
+              "type": "string"
+            },
+            {
+              "id": "6da67778-153f-46f7-9496-caf6866b6a05",
+              "name": "source_query",
+              "value": "unapproved",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "cb6b974d-36a8-4d16-a0bc-2927831151bc",
+      "name": "Tag: unapproved bills",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        20688,
+        7072
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "57db6a71-db4a-4c66-8823-c3a0b410b2ec",
+      "name": "Combine both queries",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        20944,
+        6960
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalise the bills from every organisation, run the exception checks, and prepare one digest.\n// Nothing is changed in Xero or in the workflow memory here; \"Remember this run\" saves state after the digest is sent.\nconst cfg = $('Config').first().json;\nconst sd = $getWorkflowStaticData('global');\nconst reportedSeen = sd.reported || {};\nconst billIndex = sd.billIndex || {};\nconst now = Date.now();\nconst DAY = 86400000;\nconst PAGE_SIZE = 100; // Xero returns at most 100 bills per page\nconst MAX_PAGES = Number(cfg.xero_max_pages || 10); // keep equal to \"Max pages\" in the pagination settings of both Xero bill nodes\nconst num = v => (v === null || v === undefined || v === '') ? null : Number(v);\nconst norm = v => String(v === null || v === undefined ? '' : v).toLowerCase().replace(/[^a-z0-9]/g, '');\n// Bill number for matching: ignore punctuation, a leading letter prefix and leading zeros, so INV-0042, inv42 and 42 match.\nconst normNo = v => norm(v).replace(/^[a-z]+(?=\\d)/, '').replace(/^0+(?=\\d)/, '');\nconst toDate = s => {\n  if (!s) return null;\n  const m = /\\/Date\\((-?\\d+)/.exec(String(s));\n  if (m) return new Date(Number(m[1]));\n  const d = new Date(s);\n  return isNaN(d.getTime()) ? null : d;\n};\nconst dayOf = (str, obj) => str ? String(str).slice(0, 10) : (toDate(obj) ? toDate(obj).toISOString().slice(0, 10) : '');\nconst dayMs = s => { const t = s ? new Date(String(s).slice(0, 10) + 'T00:00:00Z').getTime() : NaN; return isNaN(t) ? null : t; };\nconst r2 = n => Math.round(n * 100) / 100;\n\nconst orgs = $('Only organisations').all().map(i => i.json);\nconst orgNames = orgs.map(o => o.tenantName);\nconst expected = Number(cfg.expected_org_count || 0);\nconst orgWarning = expected > 0 && orgs.length !== expected\n  ? 'Xero returned ' + orgs.length + ' connected organisations; expected ' + expected + '.' : '';\n\n// ---- read every page from both queries ----\nconst errors = [];\nconst fetchState = {}; // tenant|query -> { tenant, name, query, bills, failed }\nconst bills = {};\nfor (const it of $input.all()) {\n  const j = it.json || {};\n  const tenant = j.tenant_id || '';\n  const tname = j.tenant_name || '';\n  const src = j.source_query || '';\n  const fk = tenant + '|' + src;\n  const st = fetchState[fk] = fetchState[fk] || { tenant: tenant, name: tname, query: src, bills: 0, failed: false };\n  const invs = Array.isArray(j.Invoices) ? j.Invoices : null;\n  if (j.error || invs === null) {\n    st.failed = true;\n    errors.push({ tenant: tname, query: src, message: String((j.error && (j.error.message || j.error.description)) || JSON.stringify(j.error || 'No invoice list returned')).slice(0, 300) });\n    continue;\n  }\n  st.bills += invs.length;\n  for (const inv of invs) {\n    const key = tenant + '|' + inv.InvoiceID;\n    if (!bills[key]) {\n      const inclusive = String(inv.LineAmountTypes || '').toLowerCase() === 'inclusive';\n      bills[key] = {\n        tenant_id: tenant, company: tname, id: inv.InvoiceID, number: inv.InvoiceNumber || '',\n        supplier: (inv.Contact && inv.Contact.Name) || '', status: inv.Status || '',\n        date: dayOf(inv.DateString, inv.Date), due: dayOf(inv.DueDateString, inv.DueDate),\n        total: num(inv.Total), subtotal: num(inv.SubTotal), tax: num(inv.TotalTax),\n        currency: inv.CurrencyCode || '', reference: inv.Reference || '',\n        has_attachments: inv.HasAttachments === true,\n        updated: toDate(inv.UpdatedDateUTC) ? toDate(inv.UpdatedDateUTC).toISOString() : '',\n        lines: (inv.LineItems || []).map(l => {\n          const amount = num(l.LineAmount);\n          const taxAmt = num(l.TaxAmount);\n          return {\n            description: l.Description || '', amount: amount, account: l.AccountCode || '',\n            tax_type: l.TaxType || '', tax_amount: taxAmt,\n            net: amount === null ? null : (inclusive && taxAmt !== null ? amount - taxAmt : amount),\n            tracking: (l.Tracking || []).map(t => ({ name: t.Name || '', option: t.Option || '' }))\n          };\n        }),\n        sources: []\n      };\n    }\n    if (!bills[key].sources.includes(src)) bills[key].sources.push(src);\n  }\n}\n\n// A query that filled every page it was allowed may have more bills waiting: report it and do not move that organisation's\n// \"checked up to\" time forward, so the next run asks for the same window again instead of skipping the rest.\nconst changedOk = new Set();\nfor (const st of Object.values(fetchState)) {\n  const truncated = !st.failed && st.bills >= MAX_PAGES * PAGE_SIZE;\n  if (truncated) errors.push({ tenant: st.name, query: st.query, message: st.bills + ' bills returned, the most ' + MAX_PAGES + ' pages allow. Some bills were not checked this run; they will be asked for again next run. Raise \"Max pages\" on the Xero bill nodes and xero_max_pages in Config if this repeats.' });\n  if (st.query === 'changed' && !st.failed && !truncated) changedOk.add(st.tenant);\n}\n\nconst propName = norm(cfg.property_tracking_category);\nconst largeAmount = Number(cfg.large_amount || 0);\nconst staleDays = Number(cfg.stale_days || 3);\nconst dueSoonDays = Number(cfg.due_soon_days || 3);\nconst dupWindowDays = Number(cfg.dup_window_days || 6);\nconst oldBillDays = Number(cfg.old_bill_days || 180);\nconst vatRates = String(cfg.vat_rates || '0,5,20').split(',').map(s => Number(s.trim()) / 100).filter(r => !isNaN(r));\nconst routeAStatuses = String(cfg.route_a_statuses === undefined ? 'DRAFT,SUBMITTED' : cfg.route_a_statuses).split(',').map(s => s.trim().toUpperCase()).filter(Boolean);\nconst baseCurrency = String(cfg.base_currency || 'GBP').toUpperCase();\nconst orgNorm = new Set(orgNames.map(norm));\nconst runSeen = {};\nconst exceptions = [];\nconst reportedUpdates = {};\nconst indexUpdates = {};\nconst bucket = Math.floor(now / (3 * DAY));\nconst todayMs = dayMs(new Date(now).toISOString());\n\nconst propsOf = b => Array.from(new Set(b.lines.map(l => (l.tracking.find(t => norm(t.name) === propName && t.option) || {}).option).filter(Boolean).map(norm))).sort();\n\n// Bills already known for the looser duplicate rule: earlier runs (memory) plus this run.\nconst amountEntries = Object.keys(billIndex).filter(k => k.indexOf('amt|') === 0).map(k => billIndex[k]);\nconst thisRun = Object.values(bills).filter(b => b.total !== null && b.total !== 0).map(b => ({ id: b.id, tenant_id: b.tenant_id, company: b.company, supplier_key: norm(b.supplier), total: r2(b.total), date: b.date, number: b.number, props: propsOf(b) }));\n\nfor (const b of Object.values(bills)) {\n  const flags = [];\n  const props = propsOf(b);\n  // 1. Property on every line. Skipped for bills Route A already checks (route_a_statuses), since Route A emails those itself.\n  if (b.lines.length && !routeAStatuses.includes(String(b.status || '').toUpperCase())) {\n    const missing = b.lines.filter(l => !l.tracking.some(t => norm(t.name) === propName && t.option)).length;\n    if (missing) flags.push({ code: 'missing_property', severity: 'high', message: missing + ' of ' + b.lines.length + ' lines have no \"' + cfg.property_tracking_category + '\" tracking option.' });\n  }\n  // 2. Source document attached\n  if (!b.has_attachments) flags.push({ code: 'no_attachment', severity: 'warn', message: 'No invoice file is attached to this bill.' });\n  // 3. Currency\n  if (b.currency && b.currency.toUpperCase() !== baseCurrency) flags.push({ code: 'foreign_currency', severity: 'warn', message: 'Bill is in ' + b.currency + ': keep out of the GBP payment batch.' });\n  // 4. Large amount\n  if (largeAmount > 0 && b.total !== null && b.total >= largeAmount) flags.push({ code: 'large_amount', severity: 'warn', message: 'Total ' + b.total.toFixed(2) + ' is at or above ' + largeAmount + '.' });\n  // 5. Supplier is another group company\n  if (b.supplier && orgNorm.has(norm(b.supplier)) && norm(b.supplier) !== norm(b.company)) flags.push({ code: 'intercompany_counterparty', severity: 'info', message: 'Supplier is another group company: check the intercompany entry.' });\n\n  // 6a. Duplicate: same supplier, bill number (INV-0042 = 42) and total, in any organisation\n  let exactDup = false;\n  if (b.number && b.total !== null) {\n    const dk = norm(b.supplier) + '|' + normNo(b.number) + '|' + b.total.toFixed(2);\n    const seen = billIndex[dk] || runSeen[dk];\n    if (seen && (seen.id !== b.id || seen.tenant_id !== b.tenant_id)) {\n      exactDup = true;\n      flags.push({ code: 'possible_duplicate', severity: 'high', message: 'Same supplier, bill number and total already seen in ' + (seen.company || 'another bill') + (seen.number && seen.number !== b.number ? ' (as ' + seen.number + ')' : '') + '.' });\n    }\n    if (!seen) { indexUpdates[dk] = { ts: now, id: b.id, tenant_id: b.tenant_id, company: b.company, number: b.number }; runSeen[dk] = indexUpdates[dk]; }\n  }\n  // 6b. Looser duplicate: same supplier and total within dup_window_days, different bill number.\n  //     Skipped when both bills name different properties (e.g. the same cleaning price for two flats).\n  if (!exactDup && b.total !== null && b.total !== 0 && b.date) {\n    const sk = norm(b.supplier), tot = r2(b.total), bMs = dayMs(b.date);\n    const match = amountEntries.concat(thisRun).find(o =>\n      !(o.id === b.id && o.tenant_id === b.tenant_id) && o.supplier_key === sk && o.total === tot && o.date &&\n      Math.abs(dayMs(o.date) - bMs) <= dupWindowDays * DAY &&\n      !(props.length && (o.props || []).length && props.join('|') !== (o.props || []).join('|')));\n    if (match) flags.push({ code: 'possible_duplicate_similar', severity: 'warn', message: 'Same supplier and total as bill ' + (match.number || '(no number)') + ' dated ' + match.date + (match.company ? ' in ' + match.company : '') + '. Check it is not entered twice.' });\n    const ak = 'amt|' + b.tenant_id + '|' + b.id;\n    indexUpdates[ak] = { ts: now, id: b.id, tenant_id: b.tenant_id, company: b.company, supplier_key: sk, total: tot, date: b.date, number: b.number, props: props };\n  }\n\n  // 7. VAT\n  if (b.subtotal !== null && b.tax !== null && b.total !== null && Math.abs(b.subtotal + b.tax - b.total) > 0.02) {\n    flags.push({ code: 'vat_totals_mismatch', severity: 'warn', message: 'Subtotal ' + b.subtotal.toFixed(2) + ' + VAT ' + b.tax.toFixed(2) + ' does not equal the total ' + b.total.toFixed(2) + '.' });\n  }\n  const oddVat = b.lines.filter(l => {\n    if (l.tax_amount === null || l.tax_amount === 0 || l.net === null) return false;\n    if (l.net === 0) return true;\n    const tol = Math.max(0.02, Math.abs(l.net) * 0.0025);\n    return !vatRates.some(r => Math.abs(l.tax_amount - l.net * r) <= tol);\n  });\n  if (oddVat.length) {\n    const eg = oddVat[0];\n    const pct = eg.net ? (eg.tax_amount / eg.net * 100).toFixed(1) + '%' : 'VAT on a zero line';\n    flags.push({ code: 'vat_rate_unusual', severity: 'warn', message: oddVat.length + ' line(s) have VAT that is not ' + vatRates.map(r => Math.round(r * 100) + '%').join(', ') + ' of the net amount (e.g. ' + eg.tax_amount.toFixed(2) + ' on ' + (eg.net || 0).toFixed(2) + ' = ' + pct + '). Check the VAT was not typed over.' });\n  }\n\n  // 8. Dates\n  const dMs = dayMs(b.date), dueMs = dayMs(b.due);\n  if (!b.date) flags.push({ code: 'missing_bill_date', severity: 'warn', message: 'Bill has no date.' });\n  if (!b.due) flags.push({ code: 'missing_due_date', severity: 'warn', message: 'Bill has no due date, so it will not show in due-date payment runs.' });\n  if (dMs !== null && dueMs !== null && dueMs < dMs) flags.push({ code: 'due_before_bill_date', severity: 'warn', message: 'Due date ' + b.due + ' is before the bill date ' + b.date + '.' });\n  if (dMs !== null && dMs > todayMs + DAY) flags.push({ code: 'future_dated', severity: 'warn', message: 'Bill is dated ' + b.date + ', in the future.' });\n  if (dMs !== null && oldBillDays > 0 && todayMs - dMs > oldBillDays * DAY) flags.push({ code: 'old_bill', severity: 'info', message: 'Bill is dated ' + b.date + ', more than ' + oldBillDays + ' days ago: check the date and that it has not been paid already.' });\n\n  // 9. Not approved yet (matters for the Monday payment batch)\n  if (b.status === 'DRAFT' || b.status === 'SUBMITTED') {\n    const upd = toDate(b.updated);\n    if (upd && (now - upd.getTime()) > staleDays * DAY) flags.push({ code: 'stale_unapproved', severity: 'warn', message: 'Waiting for approval for more than ' + staleDays + ' days (' + b.status + ').' });\n    if (dueMs !== null && dueMs - now <= dueSoonDays * DAY) flags.push({ code: 'due_soon_unapproved', severity: 'high', message: 'Due ' + b.due + ' and not yet approved.' });\n  }\n  // Report each issue once per bill version (stale and due-soon repeat every 3 days)\n  const fresh = [];\n  for (const f of flags) {\n    const repeat = (f.code === 'stale_unapproved' || f.code === 'due_soon_unapproved') ? ('|' + bucket) : '';\n    const rk = b.tenant_id + '|' + b.id + '|' + b.updated + '|' + f.code + repeat;\n    if (!reportedSeen[rk]) { fresh.push(f); reportedUpdates[rk] = now; }\n  }\n  if (fresh.length) exceptions.push({ company: b.company, supplier: b.supplier, number: b.number, date: b.date, due: b.due, status: b.status, total: b.total, currency: b.currency, id: b.id, flags: fresh, link: 'https://go.xero.com/AccountsPayable/View.aspx?invoiceID=' + b.id });\n}\nexceptions.sort((a, b) => (a.company || '').localeCompare(b.company || '') || (a.supplier || '').localeCompare(b.supplier || ''));\n\nreturn [{ json: {\n  generated_at: new Date(now).toISOString(),\n  org_count: orgs.length, org_names: orgNames, org_warning: orgWarning,\n  bills_checked: Object.keys(bills).length,\n  exceptions: exceptions, errors: errors,\n  changed_ok_tenants: Array.from(changedOk),\n  reported_updates: reportedUpdates, index_updates: indexUpdates,\n  bills: Object.values(bills).map(b => ({ company: b.company, tenant_id: b.tenant_id, id: b.id, number: b.number, supplier: b.supplier, date: b.date, total: b.total, currency: b.currency, status: b.status, lines: b.lines }))\n} }];\n"
+      },
+      "id": "9593d902-d8e3-40ee-b840-d7e58f9e6690",
+      "name": "Flatten bills and check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        21184,
+        6960
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/xero/bills/check' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ generated_at: $json.generated_at, bills: $json.bills }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "a1765a9f-5828-46e1-a4c0-fdea6ae99ea0",
+      "name": "Post bills to Hinkley app (price and bank-detail checks, enable later)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        21456,
+        7232
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FIwP4Ffez0ckSdW4",
+          "name": "Header Auth account 2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "031e749f-ae2e-4938-89bf-77a4813295d8",
+              "leftValue": "={{ ($json.exceptions.length + $json.errors.length) > 0 || !!$json.org_warning }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4d33ecc9-cfdc-4ca6-9aef-5098d201ddbe",
+      "name": "Any exceptions?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        21456,
+        6960
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build one digest email, grouped by company.\nconst cfg = $('Config').first().json;\nconst f = $input.first().json;\nconst esc = v => String(v === null || v === undefined ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst th = 'style=\"text-align:left;background:#f2f4f7;padding:6px 10px;border:1px solid #d0d5dd;white-space:nowrap;vertical-align:top\"';\nconst td = 'style=\"padding:6px 10px;border:1px solid #d0d5dd;vertical-align:top\"';\nconst tbl = 'style=\"border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;margin-bottom:16px\"';\nconst colour = { high: '#b42318', warn: '#b54708', info: '#475467' };\nconst money = (n, c) => n === null || n === undefined ? '-' : (c ? c + ' ' : '') + Number(n).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\nlet html = '<h2 style=\"font-family:Arial,sans-serif;margin:0 0 4px\">Xero bill exceptions</h2>' +\n  '<p style=\"font-family:Arial,sans-serif;font-size:13px;color:#475467;margin:0 0 12px\">' + esc(f.bills_checked) + ' bills checked across ' + esc(f.org_count) + ' Xero organisations. Read-only: nothing was changed in Xero.</p>';\nif (f.org_warning) html += '<p style=\"font-family:Arial,sans-serif;font-size:13px;color:#b42318\"><b>' + esc(f.org_warning) + '</b></p>';\nif ((f.errors || []).length) {\n  html += '<h3 style=\"font-family:Arial,sans-serif;margin:12px 0 6px\">Checks that failed</h3><table ' + tbl + '><tr><th ' + th + '>Company</th><th ' + th + '>Query</th><th ' + th + '>Problem</th></tr>';\n  for (const e of f.errors) html += '<tr><td ' + td + '>' + esc(e.tenant) + '</td><td ' + td + '>' + esc(e.query) + '</td><td ' + td + '>' + esc(e.message) + '</td></tr>';\n  html += '</table>';\n}\nconst byCo = {};\nfor (const e of (f.exceptions || [])) (byCo[e.company] = byCo[e.company] || []).push(e);\nfor (const co of Object.keys(byCo)) {\n  html += '<h3 style=\"font-family:Arial,sans-serif;margin:12px 0 6px\">' + esc(co) + ' (' + byCo[co].length + ')</h3>' +\n    '<table ' + tbl + '><tr><th ' + th + '>Supplier</th><th ' + th + '>Bill</th><th ' + th + '>Date</th><th ' + th + '>Due</th><th ' + th + '>Status</th><th ' + th + '>Total</th><th ' + th + '>Issues</th><th ' + th + '>Open</th></tr>';\n  for (const e of byCo[co]) {\n    const issues = e.flags.map(x => '<span style=\"color:' + (colour[x.severity] || '#344054') + '\"><b>' + esc(x.code) + '</b>: ' + esc(x.message) + '</span>').join('<br>');\n    html += '<tr><td ' + td + '>' + esc(e.supplier) + '</td><td ' + td + '>' + esc(e.number || '-') + '</td><td ' + td + '>' + esc(e.date) + '</td><td ' + td + '>' + esc(e.due) + '</td><td ' + td + '>' + esc(e.status) + '</td><td ' + td + ' align=\"right\">' + esc(money(e.total, e.currency)) + '</td><td ' + td + '>' + issues + '</td><td ' + td + '><a href=\"' + esc(e.link) + '\">Xero</a></td></tr>';\n  }\n  html += '</table>';\n}\nconst n = (f.exceptions || []).length;\nconst subject = '[Xero watcher] ' + n + ' bill exception' + (n === 1 ? '' : 's') + (Object.keys(byCo).length ? ' in ' + Object.keys(byCo).length + ' compan' + (Object.keys(byCo).length === 1 ? 'y' : 'ies') : '') + ((f.errors || []).length ? ', ' + f.errors.length + ' check(s) failed' : '');\nreturn [{ json: { mail: { message: { subject: subject, body: { contentType: 'HTML', content: html }, toRecipients: String(cfg.digest_to || '').split(/[,;]/).map(s => s.trim()).filter(Boolean).map(a => ({ emailAddress: { address: cfg.noreply_address } })) }, saveToSentItems: false } } }];"
+      },
+      "id": "3be9705b-84c1-4de0-80bb-7dbe8d401f14",
+      "name": "Build digest email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        21680,
+        6944
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.microsoft.com/v1.0/me/sendMail",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOutlookOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.mail) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "cc718e5d-3e4b-4008-841b-299f4dc48fda",
+      "name": "Send digest to Ruel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        21872,
+        6944
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "xVu5DTOSVHg6Rm77",
+          "name": "Microsoft Outlook account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Save what this run saw, only after the digest was sent (or nothing needed sending).\nconst f = $('Flatten bills and check').first().json;\nconst cfg = $('Config').first().json;\nconst sd = $getWorkflowStaticData('global');\nconst now = Date.now();\nsd.lastRunByTenant = sd.lastRunByTenant || {};\nfor (const t of (f.changed_ok_tenants || [])) sd.lastRunByTenant[t] = cfg.run_started_at;\nsd.reported = Object.assign(sd.reported || {}, f.reported_updates || {});\nsd.billIndex = Object.assign(sd.billIndex || {}, f.index_updates || {});\nfor (const k of Object.keys(sd.reported)) if (now - sd.reported[k] > 30 * 86400000) delete sd.reported[k];\nfor (const k of Object.keys(sd.billIndex)) if (now - sd.billIndex[k].ts > 120 * 86400000) delete sd.billIndex[k];\nconst keys = Object.keys(sd.billIndex);\nif (keys.length > 3000) { keys.sort((a, b) => sd.billIndex[a].ts - sd.billIndex[b].ts).slice(0, keys.length - 3000).forEach(k => delete sd.billIndex[k]); }\nreturn [{ json: { remembered: true, tenants_updated: (f.changed_ok_tenants || []).length, reported_keys: Object.keys(sd.reported).length, bill_index_size: Object.keys(sd.billIndex).length } }];"
+      },
+      "id": "c8724ab2-0a06-4c78-aeb3-e2fab4730fd1",
+      "name": "Remember this run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        22032,
+        7120
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every hour": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual test": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Get Xero organisations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Xero organisations": {
+      "main": [
+        [
+          {
+            "node": "Only organisations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Only organisations": {
+      "main": [
+        [
+          {
+            "node": "Add window to each organisation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add window to each organisation": {
+      "main": [
+        [
+          {
+            "node": "Get new or changed bills",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get unapproved bills",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get new or changed bills": {
+      "main": [
+        [
+          {
+            "node": "Tag: changed bills",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get unapproved bills": {
+      "main": [
+        [
+          {
+            "node": "Tag: unapproved bills",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag: changed bills": {
+      "main": [
+        [
+          {
+            "node": "Combine both queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag: unapproved bills": {
+      "main": [
+        [
+          {
+            "node": "Combine both queries",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Combine both queries": {
+      "main": [
+        [
+          {
+            "node": "Flatten bills and check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flatten bills and check": {
+      "main": [
+        [
+          {
+            "node": "Any exceptions?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post bills to Hinkley app (price and bank-detail checks, enable later)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any exceptions?": {
+      "main": [
+        [
+          {
+            "node": "Build digest email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Remember this run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build digest email": {
+      "main": [
+        [
+          {
+            "node": "Send digest to Ruel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send digest to Ruel": {
+      "main": [
+        [
+          {
+            "node": "Remember this run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "zOkM1BtJ6EWLl9FX",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "a9365001-009c-451f-8f35-f190e5252521",
+  "meta": {
+    "instanceId": "91160feec6de89661e3d4b7dd60fed55faacbf586fcb319fc3311f46435572a0"
+  },
+  "nodeGroups": [],
+  "id": "SwZon7aqKeYW4xQ0",
+  "tags": []
+}

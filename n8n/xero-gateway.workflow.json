@@ -2,51 +2,50 @@
   "name": "Hinkley PMS – Xero gateway (read-only)",
   "nodes": [
     {
-      "id": "bbf7c58c-f5dc-422b-ae98-c19e5677ba59",
-      "name": "PMS request",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        0,
-        0
-      ],
-      "webhookId": "6f1d3c2a-8b4e-4f0a-9c7d-2e5b1a9f4c83",
       "parameters": {
         "httpMethod": "POST",
         "path": "hinkley-xero-gateway",
         "authentication": "headerAuth",
         "responseMode": "responseNode",
         "options": {}
+      },
+      "id": "72bb9b2e-9a72-489f-a6aa-e97c937859b8",
+      "name": "PMS request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        2528,
+        1040
+      ],
+      "webhookId": "6f1d3c2a-8b4e-4f0a-9c7d-2e5b1a9f4c83",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "uDbyYQyAvs2lagnq",
+          "name": "Header Auth account"
+        }
       }
     },
     {
-      "id": "03337206-cb3b-4092-8614-ab2522f5ea90",
+      "parameters": {
+        "jsCode": "// Validates a gateway request and turns it into a single read-only Xero call.\n// Anything not on these allowlists is rejected before Xero is contacted.\nconst TENANTS = {\n  '0a290129-b001-4bfb-903d-d27a8ac55738': 'Hinkley Homes Management',\n  '3ae8a283-c7e0-4287-9bcd-4c2561295890': 'Hinkley Homes Holdings',\n  '47f65b32-d0d7-4417-bb5c-89ff2d93651e': 'Lettings',\n  '4c807578-e0a7-49ad-9644-8e705aec0c2a': 'Hinkley Homes Stays Ltd',\n  '9d1fee42-4203-47d8-87aa-6fa8e8ac0fef': 'Hinkley Homes Ltd',\n};\nconst PAGED = ['where', 'order', 'page', 'pageSize'];\nconst RESOURCES = {\n  organisation: { path: 'Organisation', query: [] },\n  accounts: { path: 'Accounts', query: ['where', 'order'] },\n  trackingCategories: { path: 'TrackingCategories', query: ['where', 'order', 'includeArchived'] },\n  contacts: { path: 'Contacts', byId: true, query: [...PAGED, 'IDs', 'includeArchived', 'summaryOnly', 'searchTerm'] },\n  // Bills are invoices with where=Type==\"ACCPAY\".\n  invoices: { path: 'Invoices', byId: true, query: [...PAGED, 'IDs', 'InvoiceNumbers', 'ContactIDs', 'Statuses', 'summaryOnly', 'searchTerm'] },\n  // Shareable \"view and pay\" link for one sales invoice (id required).\n  onlineInvoice: { path: 'Invoices', byId: true, idRequired: true, suffix: '/OnlineInvoice', query: [] },\n  // Sent / reminder / payment events on one invoice (id required).\n  invoiceHistory: { path: 'Invoices', byId: true, idRequired: true, suffix: '/History', query: [] },\n  // Whether Xero's own automatic invoice reminders are switched on.\n  invoiceReminderSettings: { path: 'InvoiceReminders/Settings', query: [] },\n  creditNotes: { path: 'CreditNotes', byId: true, query: PAGED },\n  payments: { path: 'Payments', byId: true, query: PAGED },\n  bankTransactions: { path: 'BankTransactions', byId: true, query: PAGED },\n  // Reports need Xero's accounting.reports.read scope, so they go through the\n  // \"Xero reports\" credential (see the \"Report?\" node); everything else uses \"Xero account\".\n  profitAndLoss: { path: 'Reports/ProfitAndLoss', report: true, query: ['fromDate', 'toDate', 'periods', 'timeframe', 'trackingCategoryID', 'standardLayout', 'paymentsOnly'] },\n  balanceSheet: { path: 'Reports/BalanceSheet', report: true, query: ['date', 'periods', 'timeframe', 'trackingOptionID1', 'standardLayout', 'paymentsOnly'] },\n  agedPayables: { path: 'Reports/AgedPayablesByContact', report: true, query: ['contactId', 'date', 'fromDate', 'toDate'] },\n  // Balance, money in and money out for every bank account over the period.\n  bankSummary: { path: 'Reports/BankSummary', report: true, query: ['fromDate', 'toDate'] },\n};\nconst GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\n\nconst fail = (status, error) => [{ json: { ok: false, status, error } }];\nconst body = $input.first().json.body;\nif (!body || typeof body !== 'object' || Array.isArray(body)) return fail(400, 'Send a JSON object body.');\n\nconst tenantId = String(body.tenantId ?? '').toLowerCase();\nif (!TENANTS[tenantId]) return fail(400, 'Unknown tenantId.');\n\nconst resource = String(body.resource ?? '');\nconst spec = Object.hasOwn(RESOURCES, resource) ? RESOURCES[resource] : undefined;\nif (!spec) return fail(400, `Unknown resource. Allowed: ${Object.keys(RESOURCES).join(', ')}.`);\n\nlet path = spec.path;\nif (body.id !== undefined && body.id !== null && body.id !== '') {\n  if (!spec.byId) return fail(400, `${resource} does not take an id.`);\n  if (!GUID.test(String(body.id))) return fail(400, 'id must be a Xero GUID.');\n  path += `/${String(body.id).toLowerCase()}`;\n}\nif (spec.idRequired && path === spec.path) return fail(400, `${resource} needs an id.`);\nif (spec.suffix) path += spec.suffix;\n\nconst query = {};\nconst rawQuery = body.query ?? {};\nif (typeof rawQuery !== 'object' || Array.isArray(rawQuery)) return fail(400, 'query must be an object.');\nfor (const [key, value] of Object.entries(rawQuery)) {\n  if (!spec.query.includes(key)) return fail(400, `Query parameter \"${key}\" is not allowed for ${resource}.`);\n  if (value === null || typeof value === 'object') return fail(400, `Query parameter \"${key}\" must be a string, number or boolean.`);\n  query[key] = String(value);\n}\nif (query.pageSize !== undefined) {\n  const size = Number(query.pageSize);\n  if (!Number.isInteger(size) || size < 1 || size > 1000) return fail(400, 'pageSize must be a whole number from 1 to 1000.');\n}\n\nconst headers = { 'xero-tenant-id': tenantId, Accept: 'application/json' };\nif (body.ifModifiedSince !== undefined && body.ifModifiedSince !== null && body.ifModifiedSince !== '') {\n  const since = new Date(String(body.ifModifiedSince));\n  if (Number.isNaN(since.getTime())) return fail(400, 'ifModifiedSince must be an ISO-8601 date-time.');\n  headers['If-Modified-Since'] = since.toUTCString();\n}\n\nreturn [{ json: { ok: true, report: spec.report === true, tenantId, tenantName: TENANTS[tenantId], resource, path, query, headers } }];\n"
+      },
+      "id": "ec18bc26-cae2-41b4-84ec-f7c58af0201d",
       "name": "Validate request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        220,
-        0
-      ],
-      "parameters": {
-        "jsCode": "// Validates a gateway request and turns it into a single read-only Xero call.\n// Anything not on these allowlists is rejected before Xero is contacted.\nconst TENANTS = {\n  '0a290129-b001-4bfb-903d-d27a8ac55738': 'Hinkley Homes Management',\n  '3ae8a283-c7e0-4287-9bcd-4c2561295890': 'Hinkley Homes Holdings',\n  '47f65b32-d0d7-4417-bb5c-89ff2d93651e': 'Lettings',\n  '4c807578-e0a7-49ad-9644-8e705aec0c2a': 'Hinkley Homes Stays Ltd',\n  '9d1fee42-4203-47d8-87aa-6fa8e8ac0fef': 'Hinkley Homes Ltd',\n};\nconst PAGED = ['where', 'order', 'page', 'pageSize'];\nconst RESOURCES = {\n  organisation: { path: 'Organisation', query: [] },\n  accounts: { path: 'Accounts', query: ['where', 'order'] },\n  trackingCategories: { path: 'TrackingCategories', query: ['where', 'order', 'includeArchived'] },\n  contacts: { path: 'Contacts', byId: true, query: [...PAGED, 'IDs', 'includeArchived', 'summaryOnly', 'searchTerm'] },\n  // Bills are invoices with where=Type==\"ACCPAY\".\n  invoices: { path: 'Invoices', byId: true, query: [...PAGED, 'IDs', 'InvoiceNumbers', 'ContactIDs', 'Statuses', 'summaryOnly', 'searchTerm'] },\n  // Shareable \"view and pay\" link for one sales invoice (id required).\n  onlineInvoice: { path: 'Invoices', byId: true, idRequired: true, suffix: '/OnlineInvoice', query: [] },\n  // Sent / reminder / payment events on one invoice (id required).\n  invoiceHistory: { path: 'Invoices', byId: true, idRequired: true, suffix: '/History', query: [] },\n  // Whether Xero's own automatic invoice reminders are switched on.\n  invoiceReminderSettings: { path: 'InvoiceReminders/Settings', query: [] },\n  creditNotes: { path: 'CreditNotes', byId: true, query: PAGED },\n  payments: { path: 'Payments', byId: true, query: PAGED },\n  bankTransactions: { path: 'BankTransactions', byId: true, query: PAGED },\n  // Reports need Xero's accounting.reports.read scope, so they go through the\n  // \"Xero reports\" credential (see the \"Report?\" node); everything else uses \"Xero account\".\n  profitAndLoss: { path: 'Reports/ProfitAndLoss', report: true, query: ['fromDate', 'toDate', 'periods', 'timeframe', 'trackingCategoryID', 'standardLayout', 'paymentsOnly'] },\n  balanceSheet: { path: 'Reports/BalanceSheet', report: true, query: ['date', 'periods', 'timeframe', 'trackingOptionID1', 'standardLayout', 'paymentsOnly'] },\n  agedPayables: { path: 'Reports/AgedPayablesByContact', report: true, query: ['contactId', 'date', 'fromDate', 'toDate'] },\n  // Balance, money in and money out for every bank account over the period.\n  bankSummary: { path: 'Reports/BankSummary', report: true, query: ['fromDate', 'toDate'] },\n};\nconst GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\n\nconst fail = (status, error) => [{ json: { ok: false, status, error } }];\nconst body = $input.first().json.body;\nif (!body || typeof body !== 'object' || Array.isArray(body)) return fail(400, 'Send a JSON object body.');\n\nconst tenantId = String(body.tenantId ?? '').toLowerCase();\nif (!TENANTS[tenantId]) return fail(400, 'Unknown tenantId.');\n\nconst resource = String(body.resource ?? '');\nconst spec = Object.hasOwn(RESOURCES, resource) ? RESOURCES[resource] : undefined;\nif (!spec) return fail(400, `Unknown resource. Allowed: ${Object.keys(RESOURCES).join(', ')}.`);\n\nlet path = spec.path;\nif (body.id !== undefined && body.id !== null && body.id !== '') {\n  if (!spec.byId) return fail(400, `${resource} does not take an id.`);\n  if (!GUID.test(String(body.id))) return fail(400, 'id must be a Xero GUID.');\n  path += `/${String(body.id).toLowerCase()}`;\n}\nif (spec.idRequired && path === spec.path) return fail(400, `${resource} needs an id.`);\nif (spec.suffix) path += spec.suffix;\n\nconst query = {};\nconst rawQuery = body.query ?? {};\nif (typeof rawQuery !== 'object' || Array.isArray(rawQuery)) return fail(400, 'query must be an object.');\nfor (const [key, value] of Object.entries(rawQuery)) {\n  if (!spec.query.includes(key)) return fail(400, `Query parameter \"${key}\" is not allowed for ${resource}.`);\n  if (value === null || typeof value === 'object') return fail(400, `Query parameter \"${key}\" must be a string, number or boolean.`);\n  query[key] = String(value);\n}\nif (query.pageSize !== undefined) {\n  const size = Number(query.pageSize);\n  if (!Number.isInteger(size) || size < 1 || size > 1000) return fail(400, 'pageSize must be a whole number from 1 to 1000.');\n}\n\nconst headers = { 'xero-tenant-id': tenantId, Accept: 'application/json' };\nif (body.ifModifiedSince !== undefined && body.ifModifiedSince !== null && body.ifModifiedSince !== '') {\n  const since = new Date(String(body.ifModifiedSince));\n  if (Number.isNaN(since.getTime())) return fail(400, 'ifModifiedSince must be an ISO-8601 date-time.');\n  headers['If-Modified-Since'] = since.toUTCString();\n}\n\nreturn [{ json: { ok: true, report: spec.report === true, tenantId, tenantName: TENANTS[tenantId], resource, path, query, headers } }];\n"
-      }
+        2752,
+        1040
+      ]
     },
     {
-      "id": "00d40d49-44c7-41d5-b49e-c46d0ee7d015",
-      "name": "Allowed?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        440,
-        0
-      ],
       "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 1
           },
           "conditions": [
             {
@@ -63,7 +62,15 @@
           "combinator": "and"
         },
         "options": {}
-      }
+      },
+      "id": "0909055a-2bc9-46a9-b9bc-6b237c07230b",
+      "name": "Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2976,
+        1040
+      ]
     },
     {
       "parameters": {
@@ -71,7 +78,8 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 1
           },
           "conditions": [
             {
@@ -89,26 +97,17 @@
         },
         "options": {}
       },
-      "id": "1efc2c57-f7ee-4ee1-aef5-54aa5427213d",
+      "id": "8f67c4ce-0ba9-4c72-907a-3c1244309390",
       "name": "Report?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        660,
-        -100
+        3200,
+        944
       ]
     },
     {
-      "id": "41591f0d-48d4-4a72-95b5-507e3a033523",
-      "name": "Call Xero",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        900,
-        -20
-      ],
       "parameters": {
-        "method": "GET",
         "url": "=https://api.xero.com/api.xro/2.0/{{ $json.path }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "xeroOAuth2Api",
@@ -128,6 +127,14 @@
           "timeout": 30000
         }
       },
+      "id": "43a9b5f4-bc8e-483e-849e-cf4c88782926",
+      "name": "Call Xero",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3440,
+        1024
+      ],
       "credentials": {
         "xeroOAuth2Api": {
           "id": "GmvU6JDduIJTlUjR",
@@ -137,9 +144,9 @@
     },
     {
       "parameters": {
-        "method": "GET",
         "url": "=https://api.xero.com/api.xro/2.0/{{ $json.path }}",
         "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
         "sendQuery": true,
         "specifyQuery": "json",
         "jsonQuery": "={{ JSON.stringify($json.query) }}",
@@ -154,53 +161,59 @@
             }
           },
           "timeout": 30000
-        },
-        "genericAuthType": "oAuth2Api"
+        }
       },
-      "id": "9911fb15-a24d-4e82-a9cb-8cd6654db65e",
+      "id": "253e224c-d9c8-45b5-bb1e-b2250989908c",
       "name": "Call Xero (reports)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        900,
-        -200
-      ]
+        3440,
+        832
+      ],
+      "credentials": {
+        "oAuth2Api": {
+          "id": "eIi8w95wO3qNohzO",
+          "name": "Hinkley Homes Stays Ltd"
+        }
+      }
     },
     {
-      "id": "09b78731-a55c-4ca8-9ab2-087c54f6cb10",
-      "name": "Return Xero result",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        1140,
-        -100
-      ],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ ok: $json.statusCode < 400, status: $json.statusCode, tenantId: $('Validate request').item.json.tenantId, tenantName: $('Validate request').item.json.tenantName, resource: $('Validate request').item.json.resource, retryAfter: $json.headers?.['retry-after'] ?? null, data: $json.body ?? null }) }}",
         "options": {
           "responseCode": "={{ [401, 403].includes($json.statusCode) ? 502 : $json.statusCode }}"
         }
-      }
-    },
-    {
-      "id": "1e4ad38d-8d20-4039-8b87-2b93a6476a50",
-      "name": "Reject request",
+      },
+      "id": "fa6da45e-e15b-47f7-bc51-36ba351792c6",
+      "name": "Return Xero result",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        660,
-        120
-      ],
+        3680,
+        944
+      ]
+    },
+    {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ ok: false, status: $json.status, error: $json.error }) }}",
         "options": {
           "responseCode": "={{ $json.status }}"
         }
-      }
+      },
+      "id": "0c549289-d4ab-4ee4-9e5d-7655e60d2b90",
+      "name": "Reject request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3200,
+        1152
+      ]
     }
   ],
+  "pinData": {},
   "connections": {
     "PMS request": {
       "main": [
@@ -283,10 +296,17 @@
       ]
     }
   },
+  "active": true,
   "settings": {
     "executionOrder": "v1",
-    "saveDataSuccessExecution": "none",
-    "saveManualExecutions": false
+    "binaryMode": "separate",
+    "availableInMCP": true
   },
-  "pinData": {}
+  "versionId": "8b5c00e5-2677-445d-b396-a48d70ca1a21",
+  "meta": {
+    "instanceId": "91160feec6de89661e3d4b7dd60fed55faacbf586fcb319fc3311f46435572a0"
+  },
+  "nodeGroups": [],
+  "id": "rYBFqq5vhX8EhYX5",
+  "tags": []
 }
