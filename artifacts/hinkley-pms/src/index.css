@@ -174,6 +174,7 @@ tbody tr:hover { background:#1e2b40 }
 .table-action { background:#1d3035; border-color:#31534f; color:#91d3b7 }
 .table-action:hover { background:#23453d }
 .empty-state { color:#9ba8b9 }
+.empty-state > svg { margin:0 auto }
 .empty-state h3 { color:#d9e2ec }
 .room-select,.field input,.field select,.field textarea { background:#141f30; color:#dce4ed; border-color:#334157 }
 .field label { color:#a9b5c5 }
