@@ -130,6 +130,7 @@ function ask(path: string, query: SmoobuQuery, directOnly: boolean): Promise<Rep
 // Smoobu can be called directly with the signed key (SMOOBU_API_KEY and
 // SMOOBU_API_SECRET), whether or not the n8n gateway is set up.
 export const smoobuDirectReady = (): boolean => !!smoobuCredentials()?.secret;
+export const smoobuDirectMissing = (): string[] => [...(smoobuCredentials() ? [] : ["SMOOBU_API_KEY"]), ...(smoobuCredentials()?.secret ? [] : ["SMOOBU_API_SECRET"])];
 
 // { direct: true } skips the n8n gateway and signs the call here (used for
 // rates, which the gateway doesn't allow).

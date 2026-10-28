@@ -11,7 +11,7 @@ import {
   SyncStaysResponse,
 } from "@workspace/api-zod";
 import { smoobuMode } from "../lib/integrations-env";
-import { SmoobuApiError, smoobuDirectReady } from "../lib/smoobu-api";
+import { SmoobuApiError, smoobuDirectMissing, smoobuDirectReady } from "../lib/smoobu-api";
 import { StaysError, autoLinkApartments, linkApartment, listApartments, stayAvailability, staysOverview, syncStays } from "../lib/stays";
 
 // Stays page (Hinkley Homes Stays, read-only from Smoobu) and the Smoobu
@@ -38,7 +38,7 @@ router.get("/stays", async (req, res): Promise<void> => {
 router.get("/stays/availability", async (req, res): Promise<void> => {
   if (notConnected(res)) return;
   if (!smoobuDirectReady()) {
-    res.status(503).json({ error: "Availability needs Smoobu's signed key: add SMOOBU_API_KEY and SMOOBU_API_SECRET." });
+    res.status(503).json({ error: `Availability needs Smoobu's signed key. The API server can't see ${smoobuDirectMissing().join(" or ")}: add it to Replit Secrets (and the deployment's secrets) and restart the server.` });
     return;
   }
   try {
