@@ -70,6 +70,13 @@ const apiErrorText = (error: unknown) => {
 const wholePounds = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 });
 type StayFree = { name: string; price: number | null; minStay: number | null };
 type StayDay = { free: StayFree[]; taken: number };
+// Hover text for a day's Stays pill: what the number means and which apartments are free.
+const staysTitle = (day: StayDay) => {
+  const total = day.free.length + day.taken;
+  if (!day.free.length) return `All ${total} Stays apartments are booked or blocked this night`;
+  const names = day.free.map((apartment) => `• ${apartment.name}${apartment.price === null ? "" : ` · ${wholePounds.format(apartment.price)}`}`);
+  return [`${day.free.length} of ${total} Stays apartments free this night:`, ...names.slice(0, 15), ...(names.length > 15 ? [`+${names.length - 15} more, click the day to see all`] : [])].join("\n");
+};
 // Opens the maintenance page with its "New issue" form prefilled.
 const reportMaintenanceHref = (propertyReference?: string, roomReference?: string) => {
   const params = new URLSearchParams({ report: "1" });
@@ -219,7 +226,7 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
 
       <div className="hh-cal-summary">
         <div className="hh-cal-summary-main"><span className="hh-cal-summary-label">Showing</span><strong>{monthLabel}</strong><span className="hh-cal-summary-divider" /><span className="hh-cal-summary-live"><i /> {monthEvents.length} COHO {monthEvents.length === 1 ? "event" : "events"}</span></div>
-        <div className="hh-cal-legend"><span><i className="hh-dot-live" /> Live COHO</span><button type="button" className={`hh-cal-stays-toggle ${showStays ? "on" : ""}`} aria-pressed={showStays} onClick={() => setShowStays((value) => !value)} data-testid="button-toggle-stays"><i className="hh-dot-stays" /> Stays availability {showStays ? "on" : "off"}</button></div>
+        <div className="hh-cal-legend"><span><i className="hh-dot-live" /> Live COHO</span><button type="button" className={`hh-cal-stays-toggle ${showStays ? "on" : ""}`} aria-pressed={showStays} onClick={() => setShowStays((value) => !value)} data-testid="button-toggle-stays"><i className="hh-dot-stays" /> Stays availability {showStays ? "on" : "off"}</button>{showStays && <span className="hh-cal-stays-key"><BedDouble size={12} /> Stays apartments free each night · hover or click a day for names</span>}</div>
       </div>
 
       <section className="hh-cal-toolbar" aria-label="Calendar controls">
@@ -261,7 +268,7 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
                 const stayDay = showStays && inMonth ? stayDays.get(key) : undefined;
                 return <button key={key} className={`hh-cal-day ${inMonth ? "" : "outside"} ${key === selectedDay ? "active" : ""}`} onClick={() => setSelectedDay(key)} aria-label={`Select ${formatDay(date)}, ${dayEvents.length} events`} aria-pressed={key === selectedDay} data-testid={`calendar-day-${key}`}>
                   <span className="hh-cal-day-number">{date.getDate()}</span>
-                  {stayDay && stayDay.free.length > 0 && <span className="hh-cal-stays-free" title={`${stayDay.free.length} Stays ${stayDay.free.length === 1 ? "apartment" : "apartments"} free this night`}>{stayDay.free.length} free</span>}
+                  {stayDay && stayDay.free.length + stayDay.taken > 0 && <span className={`hh-cal-stays-free ${stayDay.free.length ? "" : "full"}`} title={staysTitle(stayDay)} data-testid={`calendar-stays-${key}`}><BedDouble size={11} />{stayDay.free.length ? <>{stayDay.free.length}<span className="hh-cal-stays-of"> of {stayDay.free.length + stayDay.taken}</span> free</> : "Stays full"}</span>}
                   {dayEvents.length > 0 && <span className="hh-cal-day-count">{dayEvents.length} {dayEvents.length === 1 ? "event" : "events"}</span>}
                   <div className="hh-cal-day-events">{dayEvents.slice(0, 3).map((event) => <span className={`hh-cal-event coho ${typeClass(event.type)}`} key={event.id} title={`${event.title} · ${event.type}`}><i />{event.title}</span>)}</div>
                   {dayEvents.length > 3 && <span className="hh-cal-more">+{dayEvents.length - 3} more</span>}
