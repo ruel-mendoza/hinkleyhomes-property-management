@@ -1,0 +1,11 @@
+/* Maintenance page: duplicate grouping and the merge dialog. */
+.mnt-dup-toggle{display:inline-flex;align-items:center;gap:3px;margin-top:4px;padding:2px 7px;border:1px solid #5a4626;border-radius:999px;background:#403421;color:#f0d29b;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.mnt-dup-toggle:hover{filter:brightness(1.12)}
+.mnt-dup-row td{background:#162131}
+.mnt-actions{display:flex;gap:6px;flex-wrap:wrap}
+.mnt-actions .table-action{display:inline-flex;align-items:center;gap:4px}
+
+.mnt-merge-list{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+.mnt-merge-list label{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid #33425a;border-radius:8px;cursor:pointer}
+.mnt-merge-list label.active{border-color:#79cdb0;box-shadow:inset 0 0 0 1px #79cdb0}
+.mnt-merge-list .status{margin-left:auto}

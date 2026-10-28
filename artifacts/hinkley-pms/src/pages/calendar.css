@@ -25,3 +25,16 @@
 .hh-inspector-actions .hh-cal-action{width:100%;height:34px}
 .hh-event-link{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:12px;font-weight:600;color:#7fc4a8;text-decoration:none}
 .hh-event-link:hover{color:#a9e2cb;text-decoration:underline}
+
+/* Stays (Smoobu) availability: free-night badge on each day and the inspector list. */
+.hh-cal-stays-free{display:inline-block;margin-left:6px;padding:1px 5px;border-radius:8px;background:#173d35;color:#9fe0c6;font-size:12px;font-weight:700;line-height:1.3}
+.hh-cal-stays-toggle{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border:1px solid #33445a;border-radius:12px;background:transparent;color:#9caabd;font:inherit;font-size:12px;cursor:pointer}
+.hh-cal-stays-toggle.on{border-color:#2f6b5a;background:#173d35;color:#bfeadb}
+.hh-dot-stays{display:inline-block;width:6px;height:6px;border-radius:2px;background:#79cdb0}
+.hh-inspector-icon.stays{color:#9fe0c6;background:#173d35}
+.hh-section-count.stays{border-color:#2f6b5a;background:#173d35;color:#9fe0c6}
+.hh-stays-free-list{list-style:none;margin:0 0 6px;padding:0;display:flex;flex-direction:column;gap:5px;max-height:220px;overflow:auto}
+.hh-stays-free-list li{display:flex;justify-content:space-between;gap:8px;padding:6px 7px;background:#1c2b3e;border:1px solid #2b3d52;border-left:3px solid #4caa88;border-radius:5px;font-size:12px}
+.hh-stays-free-list strong{color:#e1e8ef;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hh-stays-free-list span{color:#9fe0c6;white-space:nowrap}
+.hh-live-empty a{color:#79cdb0}

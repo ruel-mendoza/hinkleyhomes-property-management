@@ -2,6 +2,7 @@ import { Router, type IRouter, type Response } from "express";
 import { isDatabaseConfigured } from "@workspace/db";
 import {
   AutoLinkStayApartmentsResponse,
+  GetStayAvailabilityQueryParams,
   GetStayAvailabilityResponse,
   GetStaysResponse,
   LinkStayApartmentBody,
@@ -41,8 +42,13 @@ router.get("/stays/availability", async (req, res): Promise<void> => {
     res.status(503).json({ error: `Availability needs Smoobu's signed key. The API server can't see ${smoobuDirectMissing().join(" or ")}: add it to Replit Secrets (and the deployment's secrets) and restart the server.` });
     return;
   }
+  const query = GetStayAvailabilityQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: "Give a start date (YYYY-MM-DD) and up to 62 nights." });
+    return;
+  }
   try {
-    res.json(GetStayAvailabilityResponse.parse(await stayAvailability()));
+    res.json(GetStayAvailabilityResponse.parse(await stayAvailability(query.data.from, query.data.nights)));
   } catch (error) {
     req.log.error({ err: error }, "Smoobu availability could not be read");
     res.status(502).json({ error: error instanceof SmoobuApiError ? error.message : "Availability couldn't be read from Smoobu." });

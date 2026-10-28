@@ -16,11 +16,15 @@ import {
   ListCohoMaintenanceResponse,
   ListCohoPropertiesQueryParams,
   ListCohoPropertiesResponse,
+  MergeCohoMaintenanceBody,
+  MergeCohoMaintenanceParams,
+  MergeCohoMaintenanceResponse,
   UpdateCohoMaintenanceBody,
   UpdateCohoMaintenanceParams,
   UpdateCohoMaintenanceResponse,
 } from "@workspace/api-zod";
 import { cohoApiKey } from "../lib/integrations-env";
+import { mergeMaintenance } from "../lib/maintenance-merge";
 
 const router: IRouter = Router();
 const COHO_PUBLIC_API = "https://api.coho.life/v1.1/public";
@@ -419,5 +423,27 @@ router.patch(
     sendParsed(req, res, CompleteCohoMaintenanceResponse, { success: true });
   },
 );
+
+// Duplicates are completed in COHO with a "Duplicate of" note; see lib/maintenance-merge.ts.
+router.post("/coho/maintenance/:guid/merge", async (req, res): Promise<void> => {
+  const params = MergeCohoMaintenanceParams.safeParse(req.params);
+  const body = MergeCohoMaintenanceBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Choose the issue to keep and at least one duplicate." });
+    return;
+  }
+  if (!cohoApiKey()) {
+    res.status(503).json({ error: "COHO_API_KEY is not configured." });
+    return;
+  }
+  const staff = res.locals.staff as { userId?: string; email?: string } | undefined;
+  const result = await mergeMaintenance(params.data.guid, body.data.keepJobNumber, body.data.duplicates, {
+    email: staff?.email ?? null,
+    userId: staff?.userId ?? null,
+    requestId: req.id !== undefined && req.id !== null ? String(req.id) : null,
+    ipAddress: req.ip ?? null,
+  });
+  res.json(MergeCohoMaintenanceResponse.parse(result));
+});
 
 export default router;

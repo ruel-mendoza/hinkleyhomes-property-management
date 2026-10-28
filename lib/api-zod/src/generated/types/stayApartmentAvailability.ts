@@ -10,6 +10,8 @@ import type { StayNight } from './stayNight';
 export interface StayApartmentAvailability {
   smoobuApartmentId: number;
   name: string;
+  /** @nullable */
+  cohoPropertyReference: string | null;
   freeNights: number;
   nights: StayNight[];
 }

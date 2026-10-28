@@ -651,6 +651,36 @@ export const CompleteCohoMaintenanceResponse = zod.object({
 
 
 /**
+ * @summary Merge duplicate COHO maintenance issues into this one (COHO has no merge; each duplicate is completed with a "Duplicate of" note and audit-logged)
+ */
+export const MergeCohoMaintenanceParams = zod.object({
+  "guid": zod.coerce.string().uuid()
+})
+
+export const mergeCohoMaintenanceBodyDuplicatesMax = 20;
+
+
+
+export const MergeCohoMaintenanceBody = zod.object({
+  "keepJobNumber": zod.string().nullable(),
+  "duplicates": zod.array(zod.object({
+  "guid": zod.string().uuid(),
+  "jobNumber": zod.string().nullable(),
+  "managerNotes": zod.string().nullable(),
+  "closed": zod.boolean()
+})).min(1).max(mergeCohoMaintenanceBodyDuplicatesMax)
+})
+
+export const MergeCohoMaintenanceResponse = zod.object({
+  "merged": zod.number().int(),
+  "failed": zod.array(zod.object({
+  "jobNumber": zod.string(),
+  "error": zod.string()
+}))
+})
+
+
+/**
  * @summary COHO properties plus register-only properties, with open action counts
  */
 export const ListPropertiesResponse = zod.object({
@@ -969,8 +999,18 @@ export const GetStaysResponse = zod.object({
 
 
 /**
- * @summary Free nights, prices and minimum stays per apartment for the next 14 nights, read live from Smoobu rates (read-only, called directly with the signed key)
+ * @summary Free nights, prices and minimum stays per apartment, read live from Smoobu rates (read-only, called directly with the signed key). Defaults to the next 14 nights; never starts before today.
  */
+export const getStayAvailabilityQueryFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getStayAvailabilityQueryNightsMax = 62;
+
+
+
+export const GetStayAvailabilityQueryParams = zod.object({
+  "from": zod.coerce.string().regex(getStayAvailabilityQueryFromRegExp).optional(),
+  "nights": zod.coerce.number().int().min(1).max(getStayAvailabilityQueryNightsMax).optional()
+})
+
 export const GetStayAvailabilityResponse = zod.object({
   "from": zod.string(),
   "to": zod.string(),
@@ -979,6 +1019,7 @@ export const GetStayAvailabilityResponse = zod.object({
   "apartments": zod.array(zod.object({
   "smoobuApartmentId": zod.number().int(),
   "name": zod.string(),
+  "cohoPropertyReference": zod.string().nullable(),
   "freeNights": zod.number().int(),
   "nights": zod.array(zod.object({
   "date": zod.string(),

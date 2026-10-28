@@ -44,6 +44,8 @@ import type {
   CohoMaintenanceComplete,
   CohoMaintenanceCreated,
   CohoMaintenanceInput,
+  CohoMaintenanceMerge,
+  CohoMaintenanceMergeResult,
   CohoMaintenancePage,
   CohoMaintenanceUpdate,
   CohoPropertiesPage,
@@ -63,6 +65,7 @@ import type {
   GetAttentionParams,
   GetComplianceParams,
   GetPerformanceParams,
+  GetStayAvailabilityParams,
   HealthStatus,
   IntakeCheckList,
   IntakeReviewList,
@@ -1825,6 +1828,95 @@ export const useCompleteCohoMaintenance = <TError = ErrorType<void>,
       return useMutation(getCompleteCohoMaintenanceMutationOptions(options));
     }
 
+export const getMergeCohoMaintenanceUrl = (guid: string,) => {
+
+
+
+
+  return `/api/coho/maintenance/${guid}/merge`
+}
+
+/**
+ * @summary Merge duplicate COHO maintenance issues into this one (COHO has no merge; each duplicate is completed with a "Duplicate of" note and audit-logged)
+ */
+export const mergeCohoMaintenance = async (guid: string,
+    cohoMaintenanceMerge: CohoMaintenanceMerge, options?: Parameters<typeof customFetch>[1]): Promise<CohoMaintenanceMergeResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CohoMaintenanceMergeResult>(getMergeCohoMaintenanceUrl(guid),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(cohoMaintenanceMerge)
+  }
+);}
+
+
+
+
+
+export const getMergeCohoMaintenanceMutationKey = () => ['mergeCohoMaintenance'] as const;
+
+export const getMergeCohoMaintenanceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mergeCohoMaintenance>>, TError,MergeCohoMaintenanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof mergeCohoMaintenance>>, TError,MergeCohoMaintenanceMutationVariables, TContext> => {
+
+const mutationKey = getMergeCohoMaintenanceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof mergeCohoMaintenance>>, MergeCohoMaintenanceMutationVariables> = (props) => {
+          const {guid,data} = props ?? {};
+
+          return  mergeCohoMaintenance(guid,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MergeCohoMaintenanceMutationResult = NonNullable<Awaited<ReturnType<typeof mergeCohoMaintenance>>>
+    export type MergeCohoMaintenanceMutationBody = BodyType<CohoMaintenanceMerge>
+    export type MergeCohoMaintenanceMutationError = ErrorType<void>
+    export type MergeCohoMaintenanceMutationVariables = {guid: string;data: BodyType<CohoMaintenanceMerge>}
+
+    /**
+ * @summary Merge duplicate COHO maintenance issues into this one (COHO has no merge; each duplicate is completed with a "Duplicate of" note and audit-logged)
+ */
+export const useMergeCohoMaintenance = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mergeCohoMaintenance>>, TError,MergeCohoMaintenanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof mergeCohoMaintenance>>,
+        TError,
+        MergeCohoMaintenanceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMergeCohoMaintenanceMutationOptions(options));
+    }
+
 export const getListPropertiesUrl = () => {
 
 
@@ -2386,20 +2478,27 @@ export function useGetStays<TData = Awaited<ReturnType<typeof getStays>>, TError
 
 
 
-export const getGetStayAvailabilityUrl = () => {
+export const getGetStayAvailabilityUrl = (params?: GetStayAvailabilityParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/stays/availability`
+  return stringifiedParams.length > 0 ? `/api/stays/availability?${stringifiedParams}` : `/api/stays/availability`
 }
 
 /**
- * @summary Free nights, prices and minimum stays per apartment for the next 14 nights, read live from Smoobu rates (read-only, called directly with the signed key)
+ * @summary Free nights, prices and minimum stays per apartment, read live from Smoobu rates (read-only, called directly with the signed key). Defaults to the next 14 nights; never starts before today.
  */
-export const getStayAvailability = async ( options?: Parameters<typeof customFetch>[1]): Promise<StayAvailability> => {
+export const getStayAvailability = async (params?: GetStayAvailabilityParams, options?: Parameters<typeof customFetch>[1]): Promise<StayAvailability> => {
 
-  return customFetch<StayAvailability>(getGetStayAvailabilityUrl(),
+  return customFetch<StayAvailability>(getGetStayAvailabilityUrl(params),
   {
     ...options,
     method: 'GET'
@@ -2412,23 +2511,23 @@ export const getStayAvailability = async ( options?: Parameters<typeof customFet
 
 
 
-export const getGetStayAvailabilityQueryKey = () => {
+export const getGetStayAvailabilityQueryKey = (params?: GetStayAvailabilityParams,) => {
     return [
-    `/api/stays/availability`
+    `/api/stays/availability`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetStayAvailabilityQueryOptions = <TData = Awaited<ReturnType<typeof getStayAvailability>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStayAvailability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetStayAvailabilityQueryOptions = <TData = Awaited<ReturnType<typeof getStayAvailability>>, TError = ErrorType<void>>(params?: GetStayAvailabilityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStayAvailability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetStayAvailabilityQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetStayAvailabilityQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStayAvailability>>> = ({ signal }) => getStayAvailability({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStayAvailability>>> = ({ signal }) => getStayAvailability(params, { signal, ...requestOptions });
 
 
 
@@ -2442,15 +2541,15 @@ export type GetStayAvailabilityQueryError = ErrorType<void>
 
 
 /**
- * @summary Free nights, prices and minimum stays per apartment for the next 14 nights, read live from Smoobu rates (read-only, called directly with the signed key)
+ * @summary Free nights, prices and minimum stays per apartment, read live from Smoobu rates (read-only, called directly with the signed key). Defaults to the next 14 nights; never starts before today.
  */
 
 export function useGetStayAvailability<TData = Awaited<ReturnType<typeof getStayAvailability>>, TError = ErrorType<void>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStayAvailability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetStayAvailabilityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStayAvailability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetStayAvailabilityQueryOptions(options)
+  const queryOptions = getGetStayAvailabilityQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

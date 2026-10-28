@@ -6,7 +6,10 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  ChevronDown,
+  ChevronRight,
   ClipboardList,
+  Merge,
   Plus,
   RefreshCw,
   Wrench,
@@ -27,8 +30,10 @@ import {
   useListCohoMaintenance,
   useListCohoMaintenanceCategories,
   useListCohoProperties,
+  useMergeCohoMaintenance,
   useUpdateCohoMaintenance,
 } from "@workspace/api-client-react";
+import "./coho-maintenance.css";
 
 const PAGE_SIZE = 50;
 
@@ -62,6 +67,50 @@ function isClosed(issue: CohoMaintenance): boolean {
   return /complete|closed/i.test(issue.publicStatus);
 }
 
+// Marked by a merge in this app (see api-server lib/maintenance-merge.ts).
+const MERGED_NOTE = /Duplicate of ([^,.\n]+), merged in Hinkley PMS/;
+
+function isMerged(issue: CohoMaintenance): boolean {
+  return MERGED_NOTE.test(issue.managerNotes ?? "");
+}
+
+// The same issue reported more than once: same property, room, title and
+// tenant on the same day. Shown as one row; COHO still has each record.
+type IssueGroup = { main: CohoMaintenance; others: CohoMaintenance[] };
+
+function duplicateKey(issue: CohoMaintenance): string {
+  const day = String(issue.created ?? "").slice(0, 10);
+  return [
+    issue.propertyReference ?? issue.propertyName ?? "",
+    issue.roomReference ?? "",
+    (issue.title ?? "").trim().toLowerCase(),
+    (issue.tenantName ?? "").trim().toLowerCase(),
+    day,
+  ].join("|");
+}
+
+function groupIssues(issues: CohoMaintenance[]): IssueGroup[] {
+  const byKey = new Map<string, CohoMaintenance[]>();
+  const byJob = new Map(issues.map((issue) => [issue.jobNumber, issue]));
+  for (const issue of issues) {
+    // A merged duplicate stays with the issue it was merged into.
+    const into = MERGED_NOTE.exec(issue.managerNotes ?? "")?.[1];
+    const target = into && byJob.get(into);
+    const key = target ? duplicateKey(target) : duplicateKey(issue);
+    byKey.set(key, [...(byKey.get(key) ?? []), issue]);
+  }
+  return [...byKey.values()].map((members) => {
+    const oldestFirst = [...members].sort(
+      (a, b) => new Date(a.created).getTime() - new Date(b.created).getTime(),
+    );
+    const main =
+      oldestFirst.find((issue) => !isMerged(issue) && !isClosed(issue)) ??
+      oldestFirst.find((issue) => !isMerged(issue)) ??
+      oldestFirst[0]!;
+    return { main, others: oldestFirst.filter((issue) => issue !== main) };
+  });
+}
+
 export default function CohoMaintenancePage() {
   const queryClient = useQueryClient();
   // ?report=1&property=…&room=… (from the calendar) opens "New issue" prefilled.
@@ -85,6 +134,9 @@ export default function CohoMaintenancePage() {
     if (prefill.open) navigate("/maintenance", { replace: true });
   }, []);
   const [selected, setSelected] = useState<CohoMaintenance | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [mergeGroup, setMergeGroup] = useState<IssueGroup | null>(null);
+  const [keepGuid, setKeepGuid] = useState("");
   const [notice, setNotice] = useState("");
   const [formError, setFormError] = useState("");
 
@@ -128,6 +180,7 @@ export default function CohoMaintenancePage() {
   const createMutation = useCreateCohoMaintenance();
   const updateMutation = useUpdateCohoMaintenance();
   const completeMutation = useCompleteCohoMaintenance();
+  const mergeMutation = useMergeCohoMaintenance();
 
   const refreshIssues = async () => {
     await queryClient.invalidateQueries({
@@ -219,13 +272,64 @@ export default function CohoMaintenancePage() {
     }
   };
 
+  const openMerge = (group: IssueGroup) => {
+    setNotice("");
+    setFormError("");
+    setKeepGuid(group.main.guid);
+    setMergeGroup(group);
+  };
+
+  const mergeIssues = async () => {
+    if (!mergeGroup) return;
+    const members = [mergeGroup.main, ...mergeGroup.others];
+    const keep = members.find((issue) => issue.guid === keepGuid) ?? mergeGroup.main;
+    const duplicates = members
+      .filter((issue) => issue.guid !== keep.guid && !isMerged(issue))
+      .map((issue) => ({
+        guid: issue.guid,
+        jobNumber: issue.jobNumber ?? null,
+        managerNotes: issue.managerNotes ?? null,
+        closed: isClosed(issue),
+      }));
+    setFormError("");
+    try {
+      const result = await mergeMutation.mutateAsync({
+        guid: keep.guid,
+        data: { keepJobNumber: keep.jobNumber ?? null, duplicates },
+      });
+      await refreshIssues();
+      if (result.failed.length) {
+        setFormError(
+          `Merged ${result.merged}. Not merged: ${result.failed.map((item) => `${item.jobNumber} (${item.error})`).join("; ")}`,
+        );
+        return;
+      }
+      setNotice(
+        `Merged ${result.merged} ${result.merged === 1 ? "duplicate" : "duplicates"} into ${keep.jobNumber || "the kept issue"} in COHO.`,
+      );
+      setMergeGroup(null);
+    } catch (error) {
+      setFormError(errorMessage(error));
+    }
+  };
+
+  const toggleExpanded = (guid: string) =>
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (next.has(guid)) next.delete(guid);
+      else next.add(guid);
+      return next;
+    });
+
   const properties = propertiesQuery.data?.items ?? [];
   const selectedProperty = properties.find(
     (property) => property.reference === newPropertyReference,
   );
   const categories = categoriesQuery.data?.items ?? [];
   const allIssues = issuesQuery.data?.items ?? [];
-  const visibleIssues = allIssues.filter((issue) =>
+  const groups = useMemo(() => groupIssues(allIssues), [allIssues]);
+  const duplicateCount = allIssues.length - groups.length;
+  const matches = (issue: CohoMaintenance) =>
     [
       issue.jobNumber,
       issue.title,
@@ -238,8 +342,15 @@ export default function CohoMaintenancePage() {
       .filter(Boolean)
       .join(" ")
       .toLowerCase()
-      .includes(search.toLowerCase()),
+      .includes(search.toLowerCase());
+  const visibleGroups = groups.filter(
+    (group) => matches(group.main) || group.others.some(matches),
   );
+  const manage = (issue: CohoMaintenance) => {
+    setNotice("");
+    setFormError("");
+    setSelected(issue);
+  };
 
   return (
     <>
@@ -330,13 +441,17 @@ export default function CohoMaintenancePage() {
           >
             <div className="panel metric">
               <div className="metric-top">Issues on this page</div>
-              <div className="metric-value">{allIssues.length}</div>
-              <div className="metric-foot">Page {issuesQuery.data?.page ?? page}</div>
+              <div className="metric-value">{groups.length}</div>
+              <div className="metric-foot">
+                Page {issuesQuery.data?.page ?? page}
+                {duplicateCount > 0 &&
+                  ` · ${duplicateCount} ${duplicateCount === 1 ? "duplicate" : "duplicates"} grouped`}
+              </div>
             </div>
             <div className="panel metric">
               <div className="metric-top">Open on this page</div>
               <div className="metric-value">
-                {allIssues.filter((issue) => !isClosed(issue)).length}
+                {groups.filter((group) => !isClosed(group.main)).length}
               </div>
               <div className="metric-foot">Not marked complete or closed</div>
             </div>
@@ -417,49 +532,103 @@ export default function CohoMaintenancePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleIssues.map((issue) => (
-                      <tr key={issue.guid}>
-                        <td>
-                          <strong>{issue.jobNumber || "—"}</strong>
-                        </td>
-                        <td>
-                          <strong>{issue.title || "Maintenance issue"}</strong>
-                          <span className="secondary-text">
-                            {issue.tenantName || issue.requestMessage || "—"}
-                          </span>
-                        </td>
-                        <td>
-                          {issue.propertyName || issue.propertyReference || "—"}
-                          <span className="secondary-text">
-                            {issue.roomName || issue.roomReference || " "}
-                          </span>
-                        </td>
-                        <td>{formatDate(issue.created)}</td>
-                        <td>
-                          <span className={"status " + issue.severity}>
-                            {issue.severity}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={"status " + issue.publicStatus}>
-                            {issue.publicStatus}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            className="table-action"
-                            onClick={() => {
-                              setNotice("");
-                              setFormError("");
-                              setSelected(issue);
-                            }}
-                          >
-                            Manage
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {visibleIssues.length === 0 && (
+                    {visibleGroups.flatMap((group) => {
+                      const issue = group.main;
+                      const open = expanded.has(issue.guid);
+                      const unmerged = group.others.filter((other) => !isMerged(other));
+                      return [
+                        <tr key={issue.guid}>
+                          <td>
+                            <strong>{issue.jobNumber || "—"}</strong>
+                            {group.others.length > 0 && (
+                              <button
+                                type="button"
+                                className="mnt-dup-toggle"
+                                aria-expanded={open}
+                                onClick={() => toggleExpanded(issue.guid)}
+                              >
+                                {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                +{group.others.length}{" "}
+                                {group.others.length === 1 ? "duplicate" : "duplicates"}
+                              </button>
+                            )}
+                          </td>
+                          <td>
+                            <strong>{issue.title || "Maintenance issue"}</strong>
+                            <span className="secondary-text">
+                              {issue.tenantName || issue.requestMessage || "—"}
+                            </span>
+                          </td>
+                          <td>
+                            {issue.propertyName || issue.propertyReference || "—"}
+                            <span className="secondary-text">
+                              {issue.roomName || issue.roomReference || " "}
+                            </span>
+                          </td>
+                          <td>{formatDate(issue.created)}</td>
+                          <td>
+                            <span className={"status " + issue.severity}>
+                              {issue.severity}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={"status " + issue.publicStatus}>
+                              {issue.publicStatus}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="mnt-actions">
+                              <button className="table-action" onClick={() => manage(issue)}>
+                                Manage
+                              </button>
+                              {unmerged.length > 0 && (
+                                <button className="table-action" onClick={() => openMerge(group)}>
+                                  <Merge size={12} /> Merge
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>,
+                        ...(open
+                          ? group.others.map((other) => (
+                              <tr key={other.guid} className="mnt-dup-row">
+                                <td>
+                                  <span className="secondary-text">↳ {other.jobNumber || "—"}</span>
+                                </td>
+                                <td>
+                                  <span className="secondary-text">
+                                    {isMerged(other)
+                                      ? `Merged into ${MERGED_NOTE.exec(other.managerNotes ?? "")?.[1] ?? "another issue"}`
+                                      : "Same issue reported again"}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className="secondary-text">
+                                    {other.roomName || other.roomReference || " "}
+                                  </span>
+                                </td>
+                                <td>{formatDate(other.created)}</td>
+                                <td>
+                                  <span className={"status " + other.severity}>
+                                    {other.severity}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className={"status " + other.publicStatus}>
+                                    {other.publicStatus}
+                                  </span>
+                                </td>
+                                <td>
+                                  <button className="table-action" onClick={() => manage(other)}>
+                                    Manage
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          : []),
+                      ];
+                    })}
+                    {visibleGroups.length === 0 && (
                       <tr>
                         <td colSpan={7}>
                           <div className="empty-state">
@@ -664,6 +833,81 @@ export default function CohoMaintenancePage() {
               </div>
             </div>
           </form>
+        </div>
+      )}
+
+      {mergeGroup && (
+        <div
+          className="modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setMergeGroup(null);
+          }}
+        >
+          <div className="modal">
+            <div className="modal-head">
+              <div>
+                <h2>Merge duplicate issues</h2>
+                <div className="panel-caption">
+                  {mergeGroup.main.title || "Maintenance issue"} ·{" "}
+                  {mergeGroup.main.propertyName || mergeGroup.main.propertyReference || "Property"}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Close"
+                onClick={() => setMergeGroup(null)}
+              >
+                <X size={17} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="page-sub" style={{ marginTop: 0 }}>
+                Choose the issue to keep. COHO can't delete issues, so each other
+                one is marked complete in COHO with the note "Duplicate of …".
+                The kept issue isn't changed.
+              </p>
+              <div className="mnt-merge-list" role="radiogroup" aria-label="Issue to keep">
+                {[mergeGroup.main, ...mergeGroup.others]
+                  .filter((issue) => !isMerged(issue))
+                  .map((issue) => (
+                    <label key={issue.guid} className={keepGuid === issue.guid ? "active" : ""}>
+                      <input
+                        type="radio"
+                        name="keep"
+                        value={issue.guid}
+                        checked={keepGuid === issue.guid}
+                        onChange={() => setKeepGuid(issue.guid)}
+                      />
+                      <strong>{issue.jobNumber || "—"}</strong>
+                      <span className="secondary-text">
+                        Reported {formatDate(issue.created)} · {issue.publicStatus}
+                      </span>
+                      {keepGuid === issue.guid && <span className="status ready">Keep</span>}
+                    </label>
+                  ))}
+              </div>
+              {formError && (
+                <p className="status overdue" role="alert">
+                  {formError}
+                </p>
+              )}
+              <div className="modal-actions">
+                <button type="button" className="button" onClick={() => setMergeGroup(null)}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="button primary"
+                  disabled={mergeMutation.isPending}
+                  onClick={() => void mergeIssues()}
+                >
+                  <Merge size={14} />
+                  {mergeMutation.isPending ? "Merging…" : "Merge in COHO"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

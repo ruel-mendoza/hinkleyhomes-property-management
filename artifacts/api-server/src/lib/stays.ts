@@ -520,38 +520,68 @@ export async function guestMessages(): Promise<GuestMessages> {
 // there by PriceLabs. Read live, directly with the signed key: the n8n gateway
 // doesn't allow rates. Read-only: nothing is written back.
 const AVAILABILITY_NIGHTS = 14;
+export const AVAILABILITY_MAX_NIGHTS = 62;
 const AVAILABILITY_TTL_MS = 10 * 60_000;
 const RATES_BATCH = 20;
 
 export type StayNight = { date: string; available: boolean; price: number | null; minStay: number | null };
-export type StayAvailability = { from: string; to: string; dates: string[]; freeTonight: number; apartments: { smoobuApartmentId: number; name: string; freeNights: number; nights: StayNight[] }[] };
-let availabilityCache: { at: number; value: StayAvailability } | null = null;
+export type StayAvailability = {
+  from: string;
+  to: string;
+  dates: string[];
+  freeTonight: number;
+  apartments: { smoobuApartmentId: number; name: string; cohoPropertyReference: string | null; freeNights: number; nights: StayNight[] }[];
+};
+const availabilityCache = new Map<string, { at: number; value: StayAvailability }>();
 
-export async function stayAvailability(): Promise<StayAvailability> {
-  const from = ukToday();
-  if (availabilityCache && availabilityCache.value.from === from && Date.now() - availabilityCache.at < AVAILABILITY_TTL_MS) return availabilityCache.value;
-  const dates = Array.from({ length: AVAILABILITY_NIGHTS }, (_, index) => addDays(from, index));
-  const to = dates[dates.length - 1]!;
+// From the given day (never before today: past nights aren't for sale) for the
+// given number of nights. The Stays panel asks for 14 from today; the calendar
+// asks for the month on screen.
+export async function stayAvailability(requestedFrom?: string, nights = AVAILABILITY_NIGHTS): Promise<StayAvailability> {
+  const today = ukToday();
+  const lastNight = addDays(requestedFrom ?? today, Math.min(Math.max(nights, 1), AVAILABILITY_MAX_NIGHTS) - 1);
+  const from = !requestedFrom || requestedFrom < today ? today : requestedFrom;
+  const dates: string[] = [];
+  for (let date = from; date <= lastNight; date = addDays(date, 1)) dates.push(date);
+  const to = dates[dates.length - 1] ?? from;
+  const cacheKey = `${from}|${to}`;
+  const cached = availabilityCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < AVAILABILITY_TTL_MS) return cached.value;
+
   const a = smoobuApartmentsTable;
-  const apartments = await getDb().select({ id: a.smoobuApartmentId, name: a.name }).from(a).orderBy(a.name);
+  const p = propertiesTable;
+  const apartments = await getDb()
+    .select({ id: a.smoobuApartmentId, name: a.name, coho: a.cohoPropertyReference, registerCoho: p.cohoPropertyReference })
+    .from(a)
+    .leftJoin(p, eq(p.id, a.propertyId))
+    .orderBy(a.name);
 
   const rates = new Map<string, Raw>();
-  for (let start = 0; start < apartments.length; start += RATES_BATCH) {
-    const ids = apartments.slice(start, start + RATES_BATCH).map((apartment) => apartment.id);
-    const payload = obj(await smoobuGet("/api/rates", { apartments: ids, start_date: from, end_date: to }, { direct: true }));
-    for (const [id, days] of Object.entries(obj(payload.data))) rates.set(id, obj(days));
+  if (dates.length) {
+    for (let start = 0; start < apartments.length; start += RATES_BATCH) {
+      const ids = apartments.slice(start, start + RATES_BATCH).map((apartment) => apartment.id);
+      const payload = obj(await smoobuGet("/api/rates", { apartments: ids, start_date: from, end_date: to }, { direct: true }));
+      for (const [id, days] of Object.entries(obj(payload.data))) rates.set(id, obj(days));
+    }
   }
 
   const rows = apartments.map((apartment) => {
     const days = rates.get(String(apartment.id)) ?? {};
-    const nights = dates.map((date): StayNight => {
+    const nightsOut = dates.map((date): StayNight => {
       const day = obj(days[date]);
       return { date, available: (num(day.available) ?? 0) > 0, price: num(day.price), minStay: num(day.min_length_of_stay) };
     });
-    return { smoobuApartmentId: apartment.id, name: apartment.name, freeNights: nights.filter((night) => night.available).length, nights };
+    return {
+      smoobuApartmentId: apartment.id,
+      name: apartment.name,
+      cohoPropertyReference: apartment.coho ?? apartment.registerCoho ?? null,
+      freeNights: nightsOut.filter((night) => night.available).length,
+      nights: nightsOut,
+    };
   });
-  const value = { from, to, dates, freeTonight: rows.filter((row) => row.nights[0]?.available).length, apartments: rows };
-  availabilityCache = { at: Date.now(), value };
+  const value = { from, to, dates, freeTonight: rows.filter((row) => row.nights[0]?.date === today && row.nights[0].available).length, apartments: rows };
+  if (availabilityCache.size > 24) availabilityCache.clear();
+  availabilityCache.set(cacheKey, { at: Date.now(), value });
   return value;
 }
 

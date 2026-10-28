@@ -38,7 +38,7 @@ export default function StaysPage() {
   const [syncMessage, setSyncMessage] = useState("");
   const [filter, setFilter] = useState<BookingFilter | null>(null);
   const data = query.data;
-  const availability = useGetStayAvailability({ query: { ...availabilityQueryOptions.query, enabled: !!data } });
+  const availability = useGetStayAvailability(undefined, { query: { ...availabilityQueryOptions.query, enabled: !!data } });
 
   const pick = (next: BookingFilter) => {
     const turnOff = filter === next;
@@ -256,7 +256,7 @@ function GuestChecksCell({ checks, arrived }: { checks: StayBooking["checks"]; a
 export function StaysStrip() {
   const query = useGetStays(staysQueryOptions);
   const data = query.data;
-  const free = useGetStayAvailability({ query: { ...availabilityQueryOptions.query, enabled: !!data } }).data;
+  const free = useGetStayAvailability(undefined, { query: { ...availabilityQueryOptions.query, enabled: !!data } }).data;
   const stat = (label: string, value: number, tone = "") => <div><span>{label}</span><strong className={tone}>{value}</strong></div>;
   return (
     <section className="panel hh-stay-strip" aria-label="Stays">

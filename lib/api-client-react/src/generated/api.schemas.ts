@@ -147,6 +147,8 @@ export interface StayNight {
 export interface StayApartmentAvailability {
   smoobuApartmentId: number;
   name: string;
+  /** @nullable */
+  cohoPropertyReference: string | null;
   freeNights: number;
   nights: StayNight[];
 }
@@ -1676,6 +1678,35 @@ export interface CohoActionResult {
   success: boolean;
 }
 
+export interface CohoMaintenanceMergeDuplicate {
+  guid: string;
+  /** @nullable */
+  jobNumber: string | null;
+  /** @nullable */
+  managerNotes: string | null;
+  closed: boolean;
+}
+
+export interface CohoMaintenanceMerge {
+  /** @nullable */
+  keepJobNumber: string | null;
+  /**
+     * @minItems 1
+     * @maxItems 20
+     */
+  duplicates: CohoMaintenanceMergeDuplicate[];
+}
+
+export type CohoMaintenanceMergeResultFailedItem = {
+  jobNumber: string;
+  error: string;
+};
+
+export interface CohoMaintenanceMergeResult {
+  merged: number;
+  failed: CohoMaintenanceMergeResultFailedItem[];
+}
+
 /**
  * Booked by staff on behalf of a prospective tenant. COHO notifies the property manager and may text the applicant.
  */
@@ -2701,6 +2732,18 @@ page?: number;
  */
 pageSize?: number;
 propertyReference?: string;
+};
+
+export type GetStayAvailabilityParams = {
+/**
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+from?: string;
+/**
+ * @minimum 1
+ * @maximum 62
+ */
+nights?: number;
 };
 
 export type GetAttentionParams = {

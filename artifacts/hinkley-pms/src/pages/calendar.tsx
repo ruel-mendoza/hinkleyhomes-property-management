@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CalendarPlus,
   Check,
+  BedDouble,
   ChevronDown,
   Clock3,
   List,
@@ -19,10 +20,12 @@ import {
   getGetCohoStatusQueryKey,
   getListCohoCalendarQueryKey,
   getListCohoPropertiesQueryKey,
+  getGetStayAvailabilityQueryKey,
   type CohoCalendarEntry,
   useGetCohoStatus,
   useListCohoCalendar,
   useListCohoProperties,
+  useGetStayAvailability,
 } from "@workspace/api-client-react";
 import { BookViewingModal } from "@/components/book-viewing-modal";
 import "./calendar.css";
@@ -60,6 +63,13 @@ const formatTime = (date: Date) => date.toLocaleTimeString("en-GB", { hour: "2-d
 const eventType = (entry: CohoCalendarEntry) => entry.entryType || entry.source;
 const typeClass = (type: string) => type.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 const errorText = (error: unknown) => error instanceof Error ? error.message : "Please try again in a moment.";
+const apiErrorText = (error: unknown) => {
+  const data = (error as { data?: { error?: unknown } } | null)?.data;
+  return typeof data?.error === "string" ? data.error : errorText(error);
+};
+const wholePounds = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 });
+type StayFree = { name: string; price: number | null; minStay: number | null };
+type StayDay = { free: StayFree[]; taken: number };
 // Opens the maintenance page with its "New issue" form prefilled.
 const reportMaintenanceHref = (propertyReference?: string, roomReference?: string) => {
   const params = new URLSearchParams({ report: "1" });
@@ -76,6 +86,7 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
   const [search, setSearch] = useState("");
   const [viewingOpen, setViewingOpen] = useState(false);
   const [notice, setNotice] = useState("");
+  const [showStays, setShowStays] = useState(true);
 
   const statusQuery = useGetCohoStatus({
     query: { queryKey: getGetCohoStatusQueryKey(), refetchInterval: 15_000 },
@@ -96,6 +107,31 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
     query: { queryKey: getListCohoPropertiesQueryKey({ page: 1, pageSize: 100 }), enabled: configured },
   });
   const properties = propertiesQuery.data?.items ?? [];
+
+  // Stays (Smoobu) free nights for the month on screen; the server never starts
+  // before today. Filtered to the apartments linked to the selected property.
+  const stayParams = useMemo(() => ({
+    from: dateKey(month),
+    nights: new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate(),
+  }), [month]);
+  const staysQuery = useGetStayAvailability(stayParams, {
+    query: { queryKey: getGetStayAvailabilityQueryKey(stayParams), enabled: showStays, retry: false, staleTime: 5 * 60_000 },
+  });
+  const stayApartments = useMemo(() => (staysQuery.data?.apartments ?? [])
+    .filter((apartment) => !selectedPropertyReference || apartment.cohoPropertyReference === selectedPropertyReference), [staysQuery.data, selectedPropertyReference]);
+  const stayDays = useMemo(() => {
+    const days = new Map<string, StayDay>();
+    for (const date of staysQuery.data?.dates ?? []) days.set(date, { free: [], taken: 0 });
+    for (const apartment of stayApartments) {
+      for (const night of apartment.nights) {
+        const day = days.get(night.date);
+        if (!day) continue;
+        if (night.available) day.free.push({ name: apartment.name, price: night.price, minStay: night.minStay });
+        else day.taken += 1;
+      }
+    }
+    return days;
+  }, [staysQuery.data, stayApartments]);
 
   const events = useMemo<CalendarEvent[]>(() => {
     const entries = calendarQuery.data?.items ?? [];
@@ -168,7 +204,7 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
         <div>
           <div className="hh-cal-kicker"><span className="hh-cal-kicker-dot" /> COHO / PROPERTY ACTIVITY</div>
           <h1>Property calendar</h1>
-          <p>Tenancies, viewings, maintenance and actions from COHO in one view.</p>
+          <p>Tenancies, viewings, maintenance and actions from COHO, with Stays free nights from Smoobu.</p>
         </div>
         <div className="hh-cal-head-actions">
           <span className="hh-cal-property"><i />{selectedPropertyReference ? "Selected property" : "All properties"}</span>
@@ -183,7 +219,7 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
 
       <div className="hh-cal-summary">
         <div className="hh-cal-summary-main"><span className="hh-cal-summary-label">Showing</span><strong>{monthLabel}</strong><span className="hh-cal-summary-divider" /><span className="hh-cal-summary-live"><i /> {monthEvents.length} COHO {monthEvents.length === 1 ? "event" : "events"}</span></div>
-        <div className="hh-cal-legend"><span><i className="hh-dot-live" /> Live COHO</span></div>
+        <div className="hh-cal-legend"><span><i className="hh-dot-live" /> Live COHO</span><button type="button" className={`hh-cal-stays-toggle ${showStays ? "on" : ""}`} aria-pressed={showStays} onClick={() => setShowStays((value) => !value)} data-testid="button-toggle-stays"><i className="hh-dot-stays" /> Stays availability {showStays ? "on" : "off"}</button></div>
       </div>
 
       <section className="hh-cal-toolbar" aria-label="Calendar controls">
@@ -222,8 +258,10 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
                 const key = dateKey(date);
                 const dayEvents = visibleEvents.filter((event) => coversDay(event, key));
                 const inMonth = date.getMonth() === month.getMonth();
+                const stayDay = showStays && inMonth ? stayDays.get(key) : undefined;
                 return <button key={key} className={`hh-cal-day ${inMonth ? "" : "outside"} ${key === selectedDay ? "active" : ""}`} onClick={() => setSelectedDay(key)} aria-label={`Select ${formatDay(date)}, ${dayEvents.length} events`} aria-pressed={key === selectedDay} data-testid={`calendar-day-${key}`}>
                   <span className="hh-cal-day-number">{date.getDate()}</span>
+                  {stayDay && stayDay.free.length > 0 && <span className="hh-cal-stays-free" title={`${stayDay.free.length} Stays ${stayDay.free.length === 1 ? "apartment" : "apartments"} free this night`}>{stayDay.free.length} free</span>}
                   {dayEvents.length > 0 && <span className="hh-cal-day-count">{dayEvents.length} {dayEvents.length === 1 ? "event" : "events"}</span>}
                   <div className="hh-cal-day-events">{dayEvents.slice(0, 3).map((event) => <span className={`hh-cal-event coho ${typeClass(event.type)}`} key={event.id} title={`${event.title} · ${event.type}`}><i />{event.title}</span>)}</div>
                   {dayEvents.length > 3 && <span className="hh-cal-more">+{dayEvents.length - 3} more</span>}
@@ -236,6 +274,7 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
             <div className="hh-inspector-section-title hh-live-section-title"><span className="hh-inspector-icon live"><CalendarDays size={13} /></span>COHO activity <span className="hh-section-count live">{selectedEvents.length}</span></div>
             {selectedEvents.length ? <div className="hh-inspector-events">{selectedEvents.map((event) => <EventCard key={event.id} event={event} />)}</div>
               : <div className="hh-live-empty">{configured ? "No COHO events on this date." : "Live activity unavailable until COHO is configured."}</div>}
+            {showStays && <StaysDay query={staysQuery} day={stayDays.get(selectedDay)} linkedCount={stayApartments.length} filtered={!!selectedPropertyReference} />}
             <div className="hh-inspector-actions">
               <button type="button" className="hh-cal-action accent" onClick={() => { setNotice(""); setViewingOpen(true); }} disabled={!configured || properties.length === 0} data-testid="button-book-viewing-day"><CalendarPlus size={14} /> Book a viewing on this day</button>
               <Link href={reportMaintenanceHref(selectedPropertyReference)} className="hh-cal-action"><Wrench size={14} /> Report maintenance</Link>
@@ -257,6 +296,22 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
       />}
     </div>
   );
+}
+
+// Day inspector: Stays apartments free that night, from Smoobu rates (read-only).
+function StaysDay({ query, day, linkedCount, filtered }: { query: { isLoading: boolean; isError: boolean; error: unknown }; day?: StayDay; linkedCount: number; filtered: boolean }) {
+  return <>
+    <div className="hh-inspector-section-title hh-live-section-title"><span className="hh-inspector-icon stays"><BedDouble size={13} /></span>Stays availability {day && <span className="hh-section-count stays">{day.free.length} free</span>}</div>
+    {query.isLoading ? <div className="hh-live-empty">Loading availability from Smoobu…</div>
+      : query.isError ? <div className="hh-live-empty">{apiErrorText(query.error)}</div>
+        : filtered && linkedCount === 0 ? <div className="hh-live-empty">No Smoobu apartments are linked to this property. <Link href="/properties?tab=smoobu">Link apartments</Link></div>
+          : !day ? <div className="hh-live-empty">Availability is shown for tonight and later nights.</div>
+            : <>
+              {day.free.length ? <ul className="hh-stays-free-list">{day.free.map((apartment) => <li key={apartment.name}><strong>{apartment.name}</strong><span>{[apartment.price === null ? null : wholePounds.format(apartment.price), apartment.minStay && apartment.minStay > 1 ? `min ${apartment.minStay} nights` : null].filter(Boolean).join(" · ") || "Free"}</span></li>)}</ul>
+                : <div className="hh-live-empty">Every apartment is booked or blocked this night.</div>}
+              {day.taken > 0 && <div className="hh-live-empty">{day.taken} booked or blocked · <Link href="/stays">Open Stays</Link></div>}
+            </>}
+  </>;
 }
 
 function EventCard({ event }: { event: CalendarEvent }) {
