@@ -804,6 +804,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MoneyOverview"
+  /overview/revenue-trend:
+    get:
+      operationId: getRevenueTrend
+      tags: [coho]
+      summary: Monthly revenue, expenses and net profit per company for the last 6 months, from Xero's profit and loss report
+      responses:
+        "200":
+          description: Revenue trend; each company reports its own error if Xero could not be read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevenueTrend"
   /performance:
     get:
       operationId: getPerformance
@@ -2059,6 +2071,55 @@ components:
           items:
             $ref: "#/components/schemas/MoneyCompany"
       required: [error, companies]
+    RevenueTrendMonth:
+      type: object
+      properties:
+        month:
+          description: YYYY-MM
+          type: string
+        revenue:
+          description: Total income, including other income
+          type: number
+        expenses:
+          description: Cost of sales plus all expenses (revenue minus net profit)
+          type: number
+        netProfit:
+          type: number
+      required: [month, revenue, expenses, netProfit]
+    RevenueTrendCompany:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        name:
+          type: string
+        error:
+          type: ["string", "null"]
+        months:
+          description: Oldest first; empty when error is set
+          type: array
+          items:
+            $ref: "#/components/schemas/RevenueTrendMonth"
+      required: [tenantId, name, error, months]
+    RevenueTrend:
+      type: object
+      properties:
+        asOf:
+          description: When the figures were fetched (ISO date-time)
+          type: string
+        months:
+          description: The months covered, YYYY-MM, oldest first; the last is the current month so far
+          type: array
+          items:
+            type: string
+        error:
+          description: Set when Xero can't be read at all (gateway not configured)
+          type: ["string", "null"]
+        companies:
+          type: array
+          items:
+            $ref: "#/components/schemas/RevenueTrendCompany"
+      required: [asOf, months, error, companies]
     AttentionSeverity:
       type: string
       enum: [high, warn, info]

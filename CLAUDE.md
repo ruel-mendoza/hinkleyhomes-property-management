@@ -6,7 +6,7 @@ Hinkley Homes PMS: an internal, staff-only property operations app for Hinkley H
 
 - **Clean UI.** Every page should be calm and easy to scan. Use one clear page header, panels with a title and a short caption, a small set of metrics, plain-English labels and UK dates and money (`en-GB`, `£`). Don't add clutter, repeat the same figure, use heavy colour, or show raw API field names. When you add something, look for something to take away or combine.
 - **Every section needs a quick-access entry on the Overview** (`/dashboard`, the `Overview` component in `artifacts/hinkley-pms/src/App.tsx`). Each sidebar page, and each new page or tab you add, must be reachable from the Overview through a compact card or strip that shows its key figure, or at least a link. Use the existing pattern: a `*Strip` component exported from the page file (`PerformanceStrip`, `ReceivablesStrip`, `MoneyTrend`) and placed in `Overview`, or a `Link`/`button` in a panel head. The link must work even when there is nothing to report. A link that only appears in Needs attention doesn't count.
-  - Current gaps to close as you go: **Properties**, **Property aliases** and **Occupancy** have no Overview entry. **Actions**, **Compliance** and **Finance checks** appear only when Needs attention has items for them.
+  - Current gaps to close as you go: **Properties** and **Property aliases** have no Overview entry. **Actions**, **Compliance** and **Finance checks** appear only when Needs attention has items for them.
 - Copy should be short and plain, written for office staff rather than developers. Commit messages are a single plain sentence describing the user-visible change.
 
 ## Repo layout (pnpm workspace, Node 24, TS 5.9)

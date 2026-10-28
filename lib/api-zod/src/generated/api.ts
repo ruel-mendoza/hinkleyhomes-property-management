@@ -1197,6 +1197,27 @@ export const GetMoneyOverviewResponse = zod.object({
 
 
 /**
+ * @summary Monthly revenue, expenses and net profit per company for the last 6 months, from Xero's profit and loss report
+ */
+export const GetRevenueTrendResponse = zod.object({
+  "asOf": zod.string().describe('When the figures were fetched (ISO date-time)'),
+  "months": zod.array(zod.string()).describe('The months covered, YYYY-MM, oldest first; the last is the current month so far'),
+  "error": zod.string().nullable().describe('Set when Xero can\'t be read at all (gateway not configured)'),
+  "companies": zod.array(zod.object({
+  "tenantId": zod.string(),
+  "name": zod.string(),
+  "error": zod.string().nullable(),
+  "months": zod.array(zod.object({
+  "month": zod.string().describe('YYYY-MM'),
+  "revenue": zod.number().describe('Total income, including other income'),
+  "expenses": zod.number().describe('Cost of sales plus all expenses (revenue minus net profit)'),
+  "netProfit": zod.number()
+})).describe('Oldest first; empty when error is set')
+}))
+})
+
+
+/**
  * @summary Rent roll, rent paid on time, days late, occupancy, tenancy length, voids and satisfaction (COHO plus daily unit snapshots)
  */
 export const getPerformanceQueryPropertyReferenceMax = 200;

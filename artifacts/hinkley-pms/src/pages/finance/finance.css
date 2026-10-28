@@ -213,3 +213,9 @@ td.hh-chk-summary{min-width:260px;width:60ch}
 .hh-chk-suggest .hh-fin-sub{display:inline;margin-left:4px}
 .button.danger{background:#5a1f2a;border-color:#7a2c3a;color:#f6cfd6}
 .button.danger:hover{background:#6c2533}
+
+/* Overview: revenue trend beside the occupancy card and bank feed */
+.hh-trend-side{display:flex;flex-direction:column;gap:13px;min-width:0}
+.hh-trend-head-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.hh-trend-select{height:30px;max-width:200px;padding:0 8px;border:1px solid #37475e;border-radius:6px;background:#1c2a3e;color:#dbe3ee;font:inherit;font-size:12px}
+.hh-chart-legend i.dashed{height:3px;border-radius:2px}

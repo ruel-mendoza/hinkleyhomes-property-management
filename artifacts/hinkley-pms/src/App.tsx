@@ -28,7 +28,7 @@ import CalendarPage from '@/pages/calendar';
 import ActionsPage from '@/pages/actions';
 import PropertiesPage from '@/pages/properties/PropertiesPage';
 import PropertyDetailPage from '@/pages/properties/PropertyDetailPage';
-import OccupancyPage from '@/pages/occupancy/OccupancyPage';
+import OccupancyPage, { OccupancyCard } from '@/pages/occupancy/OccupancyPage';
 import PerformancePage, { PerformanceStrip } from '@/pages/performance/PerformancePage';
 import StaysPage, { StaysStrip } from '@/pages/stays/StaysPage';
 import CompliancePage, { complianceQuery } from '@/pages/compliance/CompliancePage';
@@ -187,7 +187,7 @@ function Overview({ profileName, configured, statusLoading, properties, properti
     <PerformanceStrip propertyReference={propertyReference} />
     <StaysStrip />
     <MoneyPanels data={moneyQuery.data} loading={moneyQuery.isLoading} failed={moneyQuery.isError} propertyReference={propertyReference} lead={<NeedsAttention money={moneyQuery.data} propertyReference={propertyReference} />} />
-    <MoneyTrend />
+    <MoneyTrend side={<OccupancyCard propertyReference={propertyReference} />} />
     <ReceivablesStrip />
     <section className="panel arrival-panel"><div className="panel-head"><div><div className="panel-title">Coming up in COHO</div><div className="panel-caption">Tenancies, viewings, maintenance and actions in the next 7 days</div></div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Link href="/maintenance" className="button" style={{ textDecoration: 'none' }}><Wrench size={13} /> Maintenance</Link><Link href="/calendar" className="button" style={{ textDecoration: 'none' }}>Open calendar <ArrowUpRight size={13} /></Link></div></div>
       {!configured ? <div className="empty-state"><PlugZap size={21} /><h3>COHO is not configured</h3><p>Add the COHO API key to see live activity.</p></div>

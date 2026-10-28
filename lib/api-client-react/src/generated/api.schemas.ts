@@ -482,6 +482,38 @@ export interface MoneyXero {
   companies: MoneyCompany[];
 }
 
+export interface RevenueTrendMonth {
+  /** YYYY-MM */
+  month: string;
+  /** Total income, including other income */
+  revenue: number;
+  /** Cost of sales plus all expenses (revenue minus net profit) */
+  expenses: number;
+  netProfit: number;
+}
+
+export interface RevenueTrendCompany {
+  tenantId: string;
+  name: string;
+  /** @nullable */
+  error: string | null;
+  /** Oldest first; empty when error is set */
+  months: RevenueTrendMonth[];
+}
+
+export interface RevenueTrend {
+  /** When the figures were fetched (ISO date-time) */
+  asOf: string;
+  /** The months covered, YYYY-MM, oldest first; the last is the current month so far */
+  months: string[];
+  /**
+     * Set when Xero can't be read at all (gateway not configured)
+     * @nullable
+     */
+  error: string | null;
+  companies: RevenueTrendCompany[];
+}
+
 export type AttentionSeverity = typeof AttentionSeverity[keyof typeof AttentionSeverity];
 
 

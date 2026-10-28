@@ -39,3 +39,20 @@
 
 @media(max-width:1100px){.hh-occ-tiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:680px){.hh-occ-summary{grid-template-columns:1fr}.hh-occ-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Overview occupancy card */
+.hh-occ-card a{text-decoration:none}
+.hh-occ-card{padding:14px 17px 16px}
+.hh-occ-card-top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.hh-occ-card-top span,.hh-occ-card-split span{display:block;font-size:12px;color:#95a2b5}
+.hh-occ-card-top strong{display:block;font-size:26px;font-weight:800;color:#e7edf4;font-variant-numeric:tabular-nums}
+.hh-occ-card-top .right{text-align:right}
+.hh-occ-card-top .right strong{font-size:18px}
+.hh-occ-card-split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hh-occ-card-split a{padding:8px 10px;border:1px solid #2a374d;border-radius:6px;color:inherit}
+.hh-occ-card-split a:hover{border-color:#4f9c88}
+.hh-occ-card-split strong{font-size:18px;font-weight:800;color:#e7edf4}
+.hh-occ-card-split strong.warn{color:#f0b35a}
+.hh-occ-card-stays{display:flex;align-items:center;gap:6px;margin-top:12px;padding-top:11px;border-top:1px solid #2a374d;color:#c6d1de;font-size:12px}
+.hh-occ-card-stays b{margin-left:auto;color:#e7edf4;font-weight:700}
+.hh-occ-card-stays:hover b{color:#79cdb0}

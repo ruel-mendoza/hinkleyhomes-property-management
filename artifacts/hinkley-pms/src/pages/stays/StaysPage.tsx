@@ -16,7 +16,7 @@ const pounds = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GB
 const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const dayLabel = (date: string, today: string) => (date === today ? "Today" : formatDate(date));
 const staysQueryOptions = { query: { queryKey: getGetStaysQueryKey(), refetchInterval: 5 * 60_000, retry: false } };
-const availabilityQueryOptions = { query: { queryKey: getGetStayAvailabilityQueryKey(), refetchInterval: 10 * 60_000, retry: false } };
+export const availabilityQueryOptions = { query: { queryKey: getGetStayAvailabilityQueryKey(), refetchInterval: 10 * 60_000, retry: false } };
 const wholePounds = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 });
 const nightLabel = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", timeZone: "UTC" });
 const nextDay = (date: string) => new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);

@@ -102,6 +102,7 @@ import type {
   ReminderLogList,
   ReminderSettings,
   ReminderSettingsUpdate,
+  RevenueTrend,
   SignupEmailCheckRequest,
   SignupEmailCheckResult,
   StayApartment,
@@ -3025,6 +3026,83 @@ export function useGetMoneyOverview<TData = Awaited<ReturnType<typeof getMoneyOv
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetMoneyOverviewQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetRevenueTrendUrl = () => {
+
+
+
+
+  return `/api/overview/revenue-trend`
+}
+
+/**
+ * @summary Monthly revenue, expenses and net profit per company for the last 6 months, from Xero's profit and loss report
+ */
+export const getRevenueTrend = async ( options?: Parameters<typeof customFetch>[1]): Promise<RevenueTrend> => {
+
+  return customFetch<RevenueTrend>(getGetRevenueTrendUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRevenueTrendQueryKey = () => {
+    return [
+    `/api/overview/revenue-trend`
+    ] as const;
+    }
+
+
+export const getGetRevenueTrendQueryOptions = <TData = Awaited<ReturnType<typeof getRevenueTrend>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRevenueTrend>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRevenueTrendQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRevenueTrend>>> = ({ signal }) => getRevenueTrend({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRevenueTrend>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRevenueTrendQueryResult = NonNullable<Awaited<ReturnType<typeof getRevenueTrend>>>
+export type GetRevenueTrendQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Monthly revenue, expenses and net profit per company for the last 6 months, from Xero's profit and loss report
+ */
+
+export function useGetRevenueTrend<TData = Awaited<ReturnType<typeof getRevenueTrend>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRevenueTrend>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRevenueTrendQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

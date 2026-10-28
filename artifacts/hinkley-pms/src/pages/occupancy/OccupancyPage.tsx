@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { Link, useLocation, useSearch } from "wouter";
-import { AlertTriangle, ArrowLeftRight, DoorOpen, Download, Search, Users, X } from "lucide-react";
-import { getGetOccupancyQueryKey, useGetOccupancy } from "@workspace/api-client-react";
+import { AlertTriangle, ArrowLeftRight, BedDouble, DoorOpen, Download, Search, Users, X } from "lucide-react";
+import { getGetOccupancyQueryKey, useGetOccupancy, useGetPerformance, useGetStayAvailability } from "@workspace/api-client-react";
+import { performanceQuery } from "@/pages/performance/PerformancePage";
+import { availabilityQueryOptions } from "@/pages/stays/StaysPage";
 import { errorText } from "@/components/action-modals";
 import { downloadText, formatDate } from "@/services/properties";
 import {
@@ -154,5 +156,45 @@ export default function OccupancyPage({ selectedPropertyReference }: { selectedP
         </div>
       </section>
     </>
+  );
+}
+
+// Overview card: rooms let today (COHO, via Performance) and Stays apartments free tonight (Smoobu).
+export function OccupancyCard({ propertyReference }: { propertyReference?: string }) {
+  const { params, options } = performanceQuery(propertyReference);
+  const performance = useGetPerformance(params, options);
+  const stays = useGetStayAvailability(undefined, availabilityQueryOptions);
+  const data = performance.data;
+  const percent = data?.occupancyTodayPercent ?? null;
+  const tonight = stays.data?.dates[0];
+  const apartments = (stays.data?.apartments ?? []).filter((apartment) => !propertyReference || apartment.cohoPropertyReference === propertyReference);
+  const freeTonight = apartments.filter((apartment) => apartment.nights.find((night) => night.date === tonight)?.available).length;
+  return (
+    <section className="panel" aria-label="Occupancy">
+      <div className="panel-head">
+        <div><div className="panel-title">Occupancy</div><div className="panel-caption">Rooms let today, from COHO</div></div>
+        <Link href="/occupancy">Occupancy →</Link>
+      </div>
+      <div className="hh-occ-card">
+        {performance.isLoading ? <p className="hh-fin-note">Loading from COHO…</p>
+          : !data ? <p className="hh-fin-note">Occupancy could not be loaded from COHO.</p>
+            : (
+              <>
+                <div className="hh-occ-card-top">
+                  <div><span>Let today</span><strong>{percent === null ? "—" : `${percent.toFixed(1)}%`}</strong></div>
+                  <div className="right"><span>{propertyReference ? "Selected property" : "All properties"}</span><strong>{data.units} {data.units === 1 ? "room" : "rooms"}</strong></div>
+                </div>
+                <div className="hh-meter-bar" role="img" aria-label={`${data.occupiedToday} of ${data.units} rooms let`}><span style={{ width: data.units ? `${(data.occupiedToday / data.units) * 100}%` : "0%", background: "#3aa889" }} /></div>
+                <div className="hh-occ-card-split">
+                  <Link href="/occupancy?status=occupied"><span>Let</span><strong>{data.occupiedToday}</strong></Link>
+                  <Link href="/occupancy?status=vacant"><span>Vacant</span><strong className={data.units - data.occupiedToday ? "warn" : ""}>{data.units - data.occupiedToday}</strong></Link>
+                </div>
+              </>
+            )}
+        {stays.data && apartments.length > 0 && (
+          <Link href="/stays" className="hh-occ-card-stays"><BedDouble size={13} /> Stays tonight<b>{freeTonight} of {apartments.length} apartments free</b></Link>
+        )}
+      </div>
+    </section>
   );
 }

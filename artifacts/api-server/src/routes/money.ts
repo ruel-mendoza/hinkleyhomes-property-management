@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { GetMoneyOverviewResponse } from "@workspace/api-zod";
+import { GetMoneyOverviewResponse, GetRevenueTrendResponse } from "@workspace/api-zod";
 import { cohoApiKey, readXeroGatewayEnv } from "../lib/integrations-env";
 import { cohoGet } from "../lib/coho-api";
 import { parseXeroDate, xeroGatewayRequest } from "../lib/xero-gateway";
@@ -278,6 +278,89 @@ async function companyBanking(company: (typeof COMPANIES)[number]) {
   return base;
 }
 
+// --- Revenue trend (Xero profit and loss) --------------------------------------------
+
+const TREND_MONTHS = 6;
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+const round2 = (value: number) => Math.round(value * 100) / 100;
+
+// The last TREND_MONTHS months as YYYY-MM, oldest first, ending with this UK month.
+function trendMonths(): string[] {
+  const [year, month] = ukDate.format(new Date()).split("-").map(Number);
+  return Array.from({ length: TREND_MONTHS }, (_, index) => {
+    const date = new Date(Date.UTC(year, month - 1 - (TREND_MONTHS - 1 - index), 1));
+    return date.toISOString().slice(0, 7);
+  });
+}
+
+// Xero's monthly P&L has one column per month, newest first, headed like
+// "31 Oct 26". Revenue is every "Total … Income" summary row (trading and other
+// income); net profit is the "Net Profit" row, and expenses are the difference,
+// so cost of sales, operating and other expenses are all included.
+export function parseProfitAndLoss(data: unknown, months: string[]) {
+  const rows = list(asRecord(list(asRecord(data).Reports)[0]).Rows);
+  const header = list(rows.find((row) => row.RowType === "Header")?.Cells).slice(1).map((cell) => String(cell.Value ?? ""));
+  const columnMonth = header.map((label, index) => {
+    const match = label.toLowerCase().match(/([a-z]{3})[a-z]*\s+(\d{2,4})\s*$/);
+    const monthIndex = match ? MONTHS.indexOf(match[1]) : -1;
+    if (!match || monthIndex < 0) return months[months.length - 1 - index] ?? null;
+    const year = match[2].length === 2 ? 2000 + Number(match[2]) : Number(match[2]);
+    return `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+  });
+  const revenue = new Map<string, number>();
+  const expenses = new Map<string, number>();
+  const net = new Map<string, number>();
+  const add = (map: Map<string, number>, cells: RecordValue[]) =>
+    cells.slice(1).forEach((cell, index) => {
+      const month = columnMonth[index];
+      if (month) map.set(month, (map.get(month) ?? 0) + (amount(cell.Value) ?? 0));
+    });
+  const walk = (items: RecordValue[]) => {
+    for (const row of items) {
+      if (row.RowType === "Section") walk(list(row.Rows));
+      if (row.RowType !== "Row" && row.RowType !== "SummaryRow") continue;
+      const cells = list(row.Cells);
+      const label = String(cells[0]?.Value ?? "").trim();
+      if (/^net (profit|loss)/i.test(label)) add(net, cells);
+      else if (row.RowType === "SummaryRow" && /^total\b.*\bincome$/i.test(label)) add(revenue, cells);
+      else if (row.RowType === "SummaryRow" && /^total\b.*\b(expenses|cost of sales)$/i.test(label)) add(expenses, cells);
+    }
+  };
+  walk(rows);
+  return months.map((month) => {
+    const income = revenue.get(month) ?? 0;
+    const netProfit = net.has(month) ? net.get(month)! : income - (expenses.get(month) ?? 0);
+    return { month, revenue: round2(income), expenses: round2(income - netProfit), netProfit: round2(netProfit) };
+  });
+}
+
+async function companyTrend(company: (typeof COMPANIES)[number], months: string[]) {
+  const base = { tenantId: company.tenantId, name: company.name, error: null as string | null, months: [] as ReturnType<typeof parseProfitAndLoss> };
+  const last = months[months.length - 1];
+  const [year, month] = last.split("-").map(Number);
+  const monthEnd = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+  try {
+    const response = await xeroGatewayRequest({
+      tenantId: company.tenantId,
+      resource: "profitAndLoss",
+      query: { fromDate: `${last}-01`, toDate: monthEnd, periods: months.length - 1, timeframe: "MONTH" },
+    });
+    if (!response.ok) {
+      base.error =
+        response.status === 429
+          ? "Xero is rate limiting; try again shortly."
+          : [401, 403, 502].includes(response.status)
+            ? "Profit and loss needs Xero's reports permission on the n8n \"Xero reports\" credential."
+            : `Xero returned HTTP ${response.status} for the profit and loss report.`;
+      return base;
+    }
+    base.months = parseProfitAndLoss(response.data, months);
+  } catch (error) {
+    base.error = (error as Error).message;
+  }
+  return base;
+}
+
 // --- Route ---------------------------------------------------------------------------
 
 // Says which secret is missing or wrong (names only, never values), so a
@@ -318,6 +401,24 @@ moneyRouter.get("/overview/money", async (req, res): Promise<void> => {
   // Only cache complete answers, so a COHO or Xero blip is retried on the next load.
   const failed = coho.error || xero.error || xero.companies.some((company) => company.error);
   cache = failed ? null : { at: Date.now(), body };
+  res.json(body);
+});
+
+// P&L moves slowly and costs one Xero report call per company, so it is kept longer.
+const TREND_CACHE_MS = 30 * 60_000;
+let trendCache: { at: number; body: unknown } | null = null;
+
+moneyRouter.get("/overview/revenue-trend", async (req, res): Promise<void> => {
+  if (trendCache && Date.now() - trendCache.at < TREND_CACHE_MS && req.query.refresh !== "1") {
+    res.json(trendCache.body);
+    return;
+  }
+  const months = trendMonths();
+  const gateway = readXeroGatewayEnv();
+  const companies = gateway.status === "configured" ? await Promise.all(COMPANIES.map((company) => companyTrend(company, months))) : [];
+  const error = gateway.status === "configured" ? null : gatewaySetupError(gateway);
+  const body = GetRevenueTrendResponse.parse({ asOf: new Date().toISOString(), months, error, companies });
+  trendCache = error || companies.some((company) => company.error) ? null : { at: Date.now(), body };
   res.json(body);
 });
 

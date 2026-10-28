@@ -165,7 +165,6 @@ export function PerformanceStrip({ propertyReference }: { propertyReference?: st
             : (
               <>
                 {stat("Rent roll", `${pounds.format(data.rentRollThisMonth.amount)}${data.rentRollThisMonth.percent === null ? "" : ` (${data.rentRollThisMonth.percent}%)`}`, tone(data.rentRollThisMonth.percent, (v) => v >= 100, (v) => v >= 90))}
-                {stat("Occupancy today", `${fixed(data.occupancyTodayPercent, 1)}%`, tone(data.occupancyTodayPercent, (v) => v >= 90, (v) => v >= 75))}
                 {stat("Paid on time", monthToDate?.paidOnTimePercent === null || !monthToDate ? "—" : `${monthToDate.paidOnTimePercent.toFixed(1)}%`, tone(monthToDate?.paidOnTimePercent ?? null, (v) => v >= 95, (v) => v >= 85))}
                 {stat("Avg days late", fixed(monthToDate?.averageDaysLate ?? null, 1), tone(monthToDate?.averageDaysLate ?? null, (v) => v <= 1, (v) => v <= 3))}
               </>
