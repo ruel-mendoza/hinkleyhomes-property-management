@@ -15,6 +15,13 @@
 .hh-stay-sum button.active{border-color:#79cdb0;box-shadow:inset 0 0 0 1px #79cdb0}
 .hh-stay-panel{scroll-margin-top:72px}
 
+/* Availability grid: one row per apartment, one column per night. */
+.hh-av th,.hh-av td{white-space:nowrap}
+.hh-av th:not(:first-child),.hh-av td:not(:first-child){text-align:center;padding-left:6px;padding-right:6px}
+.hh-av th:first-child,.hh-av td:first-child{position:sticky;left:0;z-index:1;background:#192538;min-width:160px}
+.hh-av td.free{background:#173d35;color:#bfeadb;font-size:12px;font-weight:600;border-left:1px solid #12302a}
+.hh-av td.taken{background:#1f2a3c;border-left:1px solid #192538}
+
 .hh-stay-panel{margin-bottom:14px}
 .hh-stay-panel .panel-head .button{text-decoration:none}
 .hh-stay-panel td{vertical-align:top}

@@ -514,6 +514,47 @@ export async function guestMessages(): Promise<GuestMessages> {
   }
 }
 
+// --- Availability ---------------------------------------------------------------
+
+// Free nights, prices and minimum stays from Smoobu rates (GET /api/rates), set
+// there by PriceLabs. Read live, directly with the signed key: the n8n gateway
+// doesn't allow rates. Read-only: nothing is written back.
+const AVAILABILITY_NIGHTS = 14;
+const AVAILABILITY_TTL_MS = 10 * 60_000;
+const RATES_BATCH = 20;
+
+export type StayNight = { date: string; available: boolean; price: number | null; minStay: number | null };
+export type StayAvailability = { from: string; to: string; dates: string[]; freeTonight: number; apartments: { smoobuApartmentId: number; name: string; freeNights: number; nights: StayNight[] }[] };
+let availabilityCache: { at: number; value: StayAvailability } | null = null;
+
+export async function stayAvailability(): Promise<StayAvailability> {
+  const from = ukToday();
+  if (availabilityCache && availabilityCache.value.from === from && Date.now() - availabilityCache.at < AVAILABILITY_TTL_MS) return availabilityCache.value;
+  const dates = Array.from({ length: AVAILABILITY_NIGHTS }, (_, index) => addDays(from, index));
+  const to = dates[dates.length - 1]!;
+  const a = smoobuApartmentsTable;
+  const apartments = await getDb().select({ id: a.smoobuApartmentId, name: a.name }).from(a).orderBy(a.name);
+
+  const rates = new Map<string, Raw>();
+  for (let start = 0; start < apartments.length; start += RATES_BATCH) {
+    const ids = apartments.slice(start, start + RATES_BATCH).map((apartment) => apartment.id);
+    const payload = obj(await smoobuGet("/api/rates", { apartments: ids, start_date: from, end_date: to }, { direct: true }));
+    for (const [id, days] of Object.entries(obj(payload.data))) rates.set(id, obj(days));
+  }
+
+  const rows = apartments.map((apartment) => {
+    const days = rates.get(String(apartment.id)) ?? {};
+    const nights = dates.map((date): StayNight => {
+      const day = obj(days[date]);
+      return { date, available: (num(day.available) ?? 0) > 0, price: num(day.price), minStay: num(day.min_length_of_stay) };
+    });
+    return { smoobuApartmentId: apartment.id, name: apartment.name, freeNights: nights.filter((night) => night.available).length, nights };
+  });
+  const value = { from, to, dates, freeTonight: rows.filter((row) => row.nights[0]?.available).length, apartments: rows };
+  availabilityCache = { at: Date.now(), value };
+  return value;
+}
+
 // --- Page data ------------------------------------------------------------------
 
 export async function staysOverview() {

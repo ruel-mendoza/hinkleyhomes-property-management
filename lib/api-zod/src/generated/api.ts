@@ -969,6 +969,28 @@ export const GetStaysResponse = zod.object({
 
 
 /**
+ * @summary Free nights, prices and minimum stays per apartment for the next 14 nights, read live from Smoobu rates (read-only, called directly with the signed key)
+ */
+export const GetStayAvailabilityResponse = zod.object({
+  "from": zod.string(),
+  "to": zod.string(),
+  "dates": zod.array(zod.string()),
+  "freeTonight": zod.number().int(),
+  "apartments": zod.array(zod.object({
+  "smoobuApartmentId": zod.number().int(),
+  "name": zod.string(),
+  "freeNights": zod.number().int(),
+  "nights": zod.array(zod.object({
+  "date": zod.string(),
+  "available": zod.boolean(),
+  "price": zod.number().nullable(),
+  "minStay": zod.number().int().nullable()
+}))
+}))
+})
+
+
+/**
  * @summary Read changed bookings and apartments from Smoobu now
  */
 export const SyncStaysResponse = zod.object({

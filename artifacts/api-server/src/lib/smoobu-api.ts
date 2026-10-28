@@ -122,18 +122,25 @@ async function viaGateway(gateway: { url: string; key: string }, path: string, q
   return { status: reply.status, retryAt: Number(reply.retryAfter) * 1000 || null, payload };
 }
 
-function ask(path: string, query: SmoobuQuery): Promise<Reply> {
-  const gateway = readSmoobuGatewayEnv();
+function ask(path: string, query: SmoobuQuery, directOnly: boolean): Promise<Reply> {
+  const gateway = directOnly ? undefined : readSmoobuGatewayEnv();
   return gateway ? viaGateway(gateway, path, query) : direct(path, query);
 }
 
-export async function smoobuGet(path: string, query: SmoobuQuery = {}): Promise<unknown> {
-  let reply = await ask(path, query);
+// Smoobu can be called directly with the signed key (SMOOBU_API_KEY and
+// SMOOBU_API_SECRET), whether or not the n8n gateway is set up.
+export const smoobuDirectReady = (): boolean => !!smoobuCredentials()?.secret;
+
+// { direct: true } skips the n8n gateway and signs the call here (used for
+// rates, which the gateway doesn't allow).
+export async function smoobuGet(path: string, query: SmoobuQuery = {}, options: { direct?: boolean } = {}): Promise<unknown> {
+  const directOnly = options.direct === true;
+  let reply = await ask(path, query, directOnly);
   // 700 requests a minute; wait for the window to reset once (at most a minute).
   if (reply.status === 429) {
     const wait = reply.retryAt && reply.retryAt > Date.now() ? Math.min(reply.retryAt - Date.now(), 60_000) : 10_000;
     await new Promise((resolve) => setTimeout(resolve, wait));
-    reply = await ask(path, query);
+    reply = await ask(path, query, directOnly);
   }
   if (reply.status >= 400) {
     const details = (reply.payload ?? {}) as { detail?: unknown; title?: unknown; message?: unknown };

@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeftRight, BedDouble, ExternalLink, LogIn, LogOut, MessageSquare, PlugZap, RefreshCw, ShieldCheck } from "lucide-react";
-import { getGetStaysQueryKey, useGetStays, useSyncStays, type StayBooking, type StaysOverview } from "@workspace/api-client-react";
+import { AlertTriangle, ArrowLeftRight, BedDouble, CalendarDays, DoorOpen, ExternalLink, LogIn, LogOut, MessageSquare, PlugZap, RefreshCw, ShieldCheck } from "lucide-react";
+import { getGetStayAvailabilityQueryKey, getGetStaysQueryKey, useGetStayAvailability, useGetStays, useSyncStays, type StayAvailability, type StayBooking, type StaysOverview } from "@workspace/api-client-react";
 import { errorText } from "@/components/action-modals";
 import { formatDate } from "@/services/properties";
 import "./stays.css";
@@ -16,6 +16,9 @@ const pounds = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GB
 const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const dayLabel = (date: string, today: string) => (date === today ? "Today" : formatDate(date));
 const staysQueryOptions = { query: { queryKey: getGetStaysQueryKey(), refetchInterval: 5 * 60_000, retry: false } };
+const availabilityQueryOptions = { query: { queryKey: getGetStayAvailabilityQueryKey(), refetchInterval: 10 * 60_000, retry: false } };
+const wholePounds = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 });
+const nightLabel = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", timeZone: "UTC" });
 const nextDay = (date: string) => new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 
 // The summary tiles filter the bookings table; same rules as the server's counts.
@@ -35,6 +38,7 @@ export default function StaysPage() {
   const [syncMessage, setSyncMessage] = useState("");
   const [filter, setFilter] = useState<BookingFilter | null>(null);
   const data = query.data;
+  const availability = useGetStayAvailability({ query: { ...availabilityQueryOptions.query, enabled: !!data } });
 
   const pick = (next: BookingFilter) => {
     const turnOff = filter === next;
@@ -91,10 +95,12 @@ export default function StaysPage() {
             {tile("inHouse", <BedDouble size={17} />, data.counts.inHouse, "in house", "good")}
             <button type="button" onClick={() => scrollToId("stays-messages")} title="Go to guest messages"><MessageSquare size={17} /><strong>{data.messages.threadsToday}</strong> guest {data.messages.threadsToday === 1 ? "conversation" : "conversations"} today</button>
             {data.guestChecks && tile("notReady", <ShieldCheck size={17} />, data.counts.notReady, "not ready to arrive", data.counts.notReady ? "warn" : "")}
+            {availability.data && <button type="button" onClick={() => scrollToId("stays-availability")} title="Go to availability"><DoorOpen size={17} /><strong>{availability.data.freeTonight}</strong> free tonight</button>}
           </div>
           <GuestMessagesPanel messages={data.messages} />
           <ChangeoversPanel data={data} />
           <BookingsPanel data={data} filter={filter} onClear={() => setFilter(null)} />
+          <AvailabilityPanel query={availability} />
           <p className="hh-stay-foot">
             Read-only from Smoobu across <Link href="/properties?tab=smoobu">{data.apartments} {data.apartments === 1 ? "apartment" : "apartments"}</Link>. Prices and availability are set in Smoobu by PriceLabs, and replies to guests are sent from Smoobu. Only guest names are kept here.
           </p>
@@ -191,6 +197,42 @@ function BookingsPanel({ data, filter, onClear }: { data: StaysOverview; filter:
   );
 }
 
+// Free nights per apartment for the next 14 nights, from Smoobu rates (set by PriceLabs).
+function AvailabilityPanel({ query }: { query: { data?: StayAvailability; isLoading: boolean; isError: boolean; error: unknown } }) {
+  const data = query.data;
+  return (
+    <section className="panel table-panel hh-stay-panel" id="stays-availability">
+      <div className="panel-head">
+        <div><div className="panel-title">Availability</div><div className="panel-caption">{data ? `${data.freeTonight} of ${data.apartments.length} apartments free tonight. ` : ""}Free nights for the next 14 nights with the nightly price and minimum stay from Smoobu, set by PriceLabs.</div></div>
+        <a className="button" href={SMOOBU_URL} target="_blank" rel="noreferrer">Open calendar in Smoobu <ExternalLink size={13} /></a>
+      </div>
+      {query.isLoading ? <div className="empty-state"><CalendarDays size={21} /><h3>Loading availability from Smoobu…</h3></div>
+        : query.isError ? <div className="empty-state"><PlugZap size={21} /><h3>Availability could not be loaded</h3><p>{errorText(query.error)}</p></div>
+          : !data?.apartments.length ? <div className="empty-state"><CalendarDays size={21} /><h3>No apartments yet</h3><p>Run Sync now to read apartments from Smoobu.</p></div>
+            : (
+              <div className="table-wrap">
+                <table className="hh-av">
+                  <thead><tr><th>Apartment</th>{data.dates.map((date, index) => <th key={date}>{index === 0 ? "Tonight" : nightLabel(date)}</th>)}<th>Free</th></tr></thead>
+                  <tbody>
+                    {data.apartments.map((apartment) => (
+                      <tr key={apartment.smoobuApartmentId}>
+                        <td>{apartment.name}</td>
+                        {apartment.nights.map((night) => (
+                          <td key={night.date} className={night.available ? "free" : "taken"} title={`${nightLabel(night.date)}: ${night.available ? ["Free", night.price === null ? null : wholePounds.format(night.price), night.minStay && night.minStay > 1 ? `min ${night.minStay} nights` : null].filter(Boolean).join(" · ") : "Booked or blocked"}`}>
+                            {night.available ? (night.price === null ? "Free" : wholePounds.format(night.price)) : ""}
+                          </td>
+                        ))}
+                        <td><strong>{apartment.freeNights}</strong></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+    </section>
+  );
+}
+
 // ChargeAutomation guest checks: what to sort first, else ready, plus what passed.
 function GuestChecksCell({ checks, arrived }: { checks: StayBooking["checks"]; arrived: boolean }) {
   if (!checks) return <span className="secondary-text">—</span>;
@@ -214,6 +256,7 @@ function GuestChecksCell({ checks, arrived }: { checks: StayBooking["checks"]; a
 export function StaysStrip() {
   const query = useGetStays(staysQueryOptions);
   const data = query.data;
+  const free = useGetStayAvailability({ query: { ...availabilityQueryOptions.query, enabled: !!data } }).data;
   const stat = (label: string, value: number, tone = "") => <div><span>{label}</span><strong className={tone}>{value}</strong></div>;
   return (
     <section className="panel hh-stay-strip" aria-label="Stays">
@@ -226,6 +269,7 @@ export function StaysStrip() {
                 {stat("Arriving", data.counts.arrivingToday)}
                 {stat("Leaving", data.counts.leavingToday)}
                 {stat("In house", data.counts.inHouse)}
+                {free && stat("Free tonight", free.freeTonight)}
                 {stat("Changeovers this week", data.counts.changeoversThisWeek)}
                 {stat("Guest conversations today", data.messages.threadsToday)}
                 {data.guestChecks && stat("Not ready to arrive", data.counts.notReady, data.counts.notReady ? "warn" : "")}

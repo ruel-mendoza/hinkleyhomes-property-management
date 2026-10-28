@@ -17,7 +17,7 @@
 ## 4. Short-Stay Integrations (Hinkley Homes Stays)
 - **Smoobu is the source of truth** for serviced accommodation. PriceLabs sets prices and availability through it, and ChargeAutomation, RentalNinja and the OTAs connect to it.
 - **Read-only towards Smoobu and ChargeAutomation.** The app never writes bookings, rates, availability or guest messages to Smoobu. It never charges, refunds, releases deposits or creates bookings in ChargeAutomation. Staff reply to guests and act on payments in those systems.
-- **Credentials live in n8n.** The app reaches both through n8n gateway webhooks that allow only listed read paths. Smoobu calls are signed with its HMAC API key, since the old key stopped on 31 Oct 2026.
+- **Credentials live in n8n.** The app reaches both through n8n gateway webhooks that allow only listed read paths. Smoobu calls are signed with its HMAC API key, since the old key stopped on 31 Oct 2026. The one exception is Smoobu availability and prices, which the app reads directly with the same signed key, read-only.
 - **Webhooks are re-read, not trusted.** Events arrive through n8n. The app re-reads the booking from the source before changing anything.
 - **Privacy.** Keep only guest names. No guest emails, phone numbers or message history are stored.
 

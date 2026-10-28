@@ -105,6 +105,7 @@ import type {
   StayApartmentAutoLinkResult,
   StayApartmentLink,
   StayApartmentList,
+  StayAvailability,
   StaysOverview,
   StaysSyncResult,
   SyncCohoActionsParams,
@@ -2373,6 +2374,83 @@ export function useGetStays<TData = Awaited<ReturnType<typeof getStays>>, TError
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetStaysQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetStayAvailabilityUrl = () => {
+
+
+
+
+  return `/api/stays/availability`
+}
+
+/**
+ * @summary Free nights, prices and minimum stays per apartment for the next 14 nights, read live from Smoobu rates (read-only, called directly with the signed key)
+ */
+export const getStayAvailability = async ( options?: Parameters<typeof customFetch>[1]): Promise<StayAvailability> => {
+
+  return customFetch<StayAvailability>(getGetStayAvailabilityUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStayAvailabilityQueryKey = () => {
+    return [
+    `/api/stays/availability`
+    ] as const;
+    }
+
+
+export const getGetStayAvailabilityQueryOptions = <TData = Awaited<ReturnType<typeof getStayAvailability>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStayAvailability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStayAvailabilityQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStayAvailability>>> = ({ signal }) => getStayAvailability({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStayAvailability>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStayAvailabilityQueryResult = NonNullable<Awaited<ReturnType<typeof getStayAvailability>>>
+export type GetStayAvailabilityQueryError = ErrorType<void>
+
+
+/**
+ * @summary Free nights, prices and minimum stays per apartment for the next 14 nights, read live from Smoobu rates (read-only, called directly with the signed key)
+ */
+
+export function useGetStayAvailability<TData = Awaited<ReturnType<typeof getStayAvailability>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStayAvailability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStayAvailabilityQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

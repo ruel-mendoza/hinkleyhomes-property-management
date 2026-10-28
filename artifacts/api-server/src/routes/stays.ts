@@ -2,6 +2,7 @@ import { Router, type IRouter, type Response } from "express";
 import { isDatabaseConfigured } from "@workspace/db";
 import {
   AutoLinkStayApartmentsResponse,
+  GetStayAvailabilityResponse,
   GetStaysResponse,
   LinkStayApartmentBody,
   LinkStayApartmentParams,
@@ -10,7 +11,8 @@ import {
   SyncStaysResponse,
 } from "@workspace/api-zod";
 import { smoobuMode } from "../lib/integrations-env";
-import { StaysError, autoLinkApartments, linkApartment, listApartments, staysOverview, syncStays } from "../lib/stays";
+import { SmoobuApiError, smoobuDirectReady } from "../lib/smoobu-api";
+import { StaysError, autoLinkApartments, linkApartment, listApartments, stayAvailability, staysOverview, syncStays } from "../lib/stays";
 
 // Stays page (Hinkley Homes Stays, read-only from Smoobu) and the Smoobu
 // apartments tab on the Properties page. See lib/stays.ts.
@@ -29,6 +31,21 @@ router.get("/stays", async (req, res): Promise<void> => {
   } catch (error) {
     req.log.error({ err: error }, "Stays could not be read");
     res.status(503).json({ error: "Stays aren't set up yet: run the database push." });
+  }
+});
+
+// Rates are read straight from Smoobu with the signed key, not through n8n.
+router.get("/stays/availability", async (req, res): Promise<void> => {
+  if (notConnected(res)) return;
+  if (!smoobuDirectReady()) {
+    res.status(503).json({ error: "Availability needs Smoobu's signed key: add SMOOBU_API_KEY and SMOOBU_API_SECRET." });
+    return;
+  }
+  try {
+    res.json(GetStayAvailabilityResponse.parse(await stayAvailability()));
+  } catch (error) {
+    req.log.error({ err: error }, "Smoobu availability could not be read");
+    res.status(502).json({ error: error instanceof SmoobuApiError ? error.message : "Availability couldn't be read from Smoobu." });
   }
 });
 

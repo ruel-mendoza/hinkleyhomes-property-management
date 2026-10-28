@@ -643,6 +643,20 @@ paths:
                 $ref: "#/components/schemas/StaysOverview"
         "503":
           description: Smoobu or the database is not configured
+  /stays/availability:
+    get:
+      operationId: getStayAvailability
+      tags: [smoobu]
+      summary: Free nights, prices and minimum stays per apartment for the next 14 nights, read live from Smoobu rates (read-only, called directly with the signed key)
+      responses:
+        "200":
+          description: Availability grid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StayAvailability"
+        "503":
+          description: Smoobu's signed key or the database is not configured
   /stays/sync:
     post:
       operationId: syncStays
@@ -1610,6 +1624,50 @@ components:
         error:
           type: ["string", "null"]
       required: [threadsToday, unreadMessages, threads, error]
+    StayNight:
+      type: object
+      properties:
+        date:
+          type: string
+        available:
+          type: boolean
+        price:
+          type: ["number", "null"]
+        minStay:
+          type: ["integer", "null"]
+      required: [date, available, price, minStay]
+    StayApartmentAvailability:
+      type: object
+      properties:
+        smoobuApartmentId:
+          type: integer
+        name:
+          type: string
+        freeNights:
+          type: integer
+        nights:
+          type: array
+          items:
+            $ref: "#/components/schemas/StayNight"
+      required: [smoobuApartmentId, name, freeNights, nights]
+    StayAvailability:
+      type: object
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        dates:
+          type: array
+          items:
+            type: string
+        freeTonight:
+          type: integer
+        apartments:
+          type: array
+          items:
+            $ref: "#/components/schemas/StayApartmentAvailability"
+      required: [from, to, dates, freeTonight, apartments]
     StaysOverview:
       type: object
       properties:

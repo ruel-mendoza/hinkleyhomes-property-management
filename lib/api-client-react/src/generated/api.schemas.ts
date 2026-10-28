@@ -135,6 +135,30 @@ export interface GuestMessages {
   error: string | null;
 }
 
+export interface StayNight {
+  date: string;
+  available: boolean;
+  /** @nullable */
+  price: number | null;
+  /** @nullable */
+  minStay: number | null;
+}
+
+export interface StayApartmentAvailability {
+  smoobuApartmentId: number;
+  name: string;
+  freeNights: number;
+  nights: StayNight[];
+}
+
+export interface StayAvailability {
+  from: string;
+  to: string;
+  dates: string[];
+  freeTonight: number;
+  apartments: StayApartmentAvailability[];
+}
+
 /**
  * @nullable
  */
