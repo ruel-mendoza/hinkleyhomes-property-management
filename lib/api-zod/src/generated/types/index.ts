@@ -202,6 +202,8 @@ export * from './reminderMode';
 export * from './reminderSettings';
 export * from './reminderSettingsUpdate';
 export * from './reminderStatus';
+export * from './rentMatchActionsResult';
+export * from './rentMatchActionsResultStatus';
 export * from './revenueTrend';
 export * from './revenueTrendCompany';
 export * from './revenueTrendMonth';

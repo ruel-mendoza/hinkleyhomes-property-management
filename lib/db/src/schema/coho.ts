@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { boolean, date, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { id, money, timestamps } from "./columns";
 
@@ -102,3 +103,30 @@ export const cohoUnitSnapshotsTable = pgTable(
 
 export type CohoUnitSnapshot = typeof cohoUnitSnapshotsTable.$inferSelect;
 export type InsertCohoUnitSnapshot = typeof cohoUnitSnapshotsTable.$inferInsert;
+
+// One COHO action per bank line the app suggests as an overdue rent payment
+// ("Possible rent" on the Rent bank feed), so the reminder sits in COHO where the
+// matching is done. Created and later completed by lib/rent-match-actions.ts.
+export const rentMatchActionsTable = pgTable(
+  "rent_match_actions",
+  {
+    id: id(),
+    // COHO transaction item guid. One action per bank line and tenancy, ever, so
+    // an action completed by hand in COHO is not raised again.
+    bankLineGuid: text("bank_line_guid").notNull(),
+    tenancyGuid: text("tenancy_guid").notNull(),
+    cohoActionReference: text("coho_action_reference"),
+    cohoPropertyReference: text("coho_property_reference"),
+    amount: money("amount").notNull(),
+    // Set when the line is matched in COHO or no longer looks like that rent.
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    closedReason: text("closed_reason"),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("rent_match_actions_line_tenancy_idx").on(t.bankLineGuid, t.tenancyGuid),
+    index("rent_match_actions_open_idx").on(t.createdAt).where(sql`${t.closedAt} is null`),
+  ],
+).enableRLS();
+
+export type RentMatchAction = typeof rentMatchActionsTable.$inferSelect;

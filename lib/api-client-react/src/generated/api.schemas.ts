@@ -785,6 +785,11 @@ export interface PossibleRentMatch {
   daysInArrears: number;
   /** Why this line was proposed, in plain English */
   reason: string;
+  /**
+     * The open COHO action telling staff to match this payment, if one has been raised
+     * @nullable
+     */
+  cohoActionReference: string | null;
 }
 
 export interface FinanceBankLine {
@@ -808,6 +813,25 @@ export interface FinanceBankLine {
   snoozedUntil: string | null;
   /** An overdue tenancy this unmatched line may pay (same amount, around the due date); matching is done in COHO */
   possibleMatch: PossibleRentMatch | null;
+}
+
+export type RentMatchActionsResultStatus = typeof RentMatchActionsResultStatus[keyof typeof RentMatchActionsResultStatus];
+
+
+export const RentMatchActionsResultStatus = {
+  succeeded: 'succeeded',
+  failed: 'failed',
+} as const;
+
+export interface RentMatchActionsResult {
+  status: RentMatchActionsResultStatus;
+  created: number;
+  closed: number;
+  open: number;
+  /** Suggestions left for the next run (at most 20 actions are raised per run) */
+  waiting: number;
+  /** @nullable */
+  error: string | null;
 }
 
 export interface FinanceBankFeedMonth {

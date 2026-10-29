@@ -19,6 +19,7 @@ import {
   type CohoProperty,
   useGetCohoStatus,
   useGetCompliance,
+  useGetFinanceBankFeed,
   useGetMoneyOverview,
   useListCohoCalendar,
   useListCohoProperties,
@@ -33,7 +34,7 @@ import PerformancePage, { PerformanceStrip } from '@/pages/performance/Performan
 import StaysPage, { StaysStrip } from '@/pages/stays/StaysPage';
 import CompliancePage, { complianceQuery } from '@/pages/compliance/CompliancePage';
 import FinanceIncomePage from '@/pages/finance/FinanceIncomePage';
-import BankFeedPage from '@/pages/finance/BankFeedPage';
+import BankFeedPage, { bankFeedQueryOptions } from '@/pages/finance/BankFeedPage';
 import { MoneyTrend } from '@/pages/finance/MoneyTrend';
 import InvoicesPage, { ReceivablesStrip } from '@/pages/finance/InvoicesPage';
 import ChecksPage from '@/pages/finance/ChecksPage';
@@ -77,6 +78,7 @@ function AppShell() {
   const [sideOpen, setSideOpen] = useState(false);
   const expiredCompliance = complianceQuery('expired');
   const expiredCount = useGetCompliance(expiredCompliance.params, expiredCompliance.options).data?.rows.length ?? 0;
+  const rentToMatch = useGetFinanceBankFeed(bankFeedQueryOptions).data?.lines.filter(line => line.possibleMatch).length ?? 0;
   const cohoStatusQuery = useGetCohoStatus({ query: { queryKey: getGetCohoStatusQueryKey(), refetchInterval: 15_000 } });
   const cohoConfigured = cohoStatusQuery.data?.configured === true;
   const cohoPropertiesQuery = useListCohoProperties({ page: 1, pageSize: 100 }, { query: { queryKey: getListCohoPropertiesQueryKey({ page: 1, pageSize: 100 }), enabled: cohoConfigured, refetchInterval: 60_000 } });
@@ -99,7 +101,7 @@ function AppShell() {
   useEffect(() => { try { localStorage.removeItem(LEGACY_DEMO_STORAGE); } catch { /* storage unavailable */ } }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 2600); return () => clearTimeout(t); }, [toast]);
   useEffect(() => { setSideOpen(false); }, [path]);
-  const nav = <>{navGroups.map(group => <div className="nav-group" key={group.label}><div className="nav-label">{group.label}</div>{group.items.map(([href, label, Icon]) => <Link href={href} key={href} className={'nav-link ' + (path === href || path.startsWith(`${href}/`) ? 'active' : '')} data-testid={`link-nav-${label.toLowerCase().replaceAll(' ', '-')}`}><Icon size={15} /><span>{label}</span>{href === '/compliance' && expiredCount > 0 && <span className="nav-badge" title={`${expiredCount} expired compliance ${expiredCount === 1 ? 'item' : 'items'}`} aria-label={`${expiredCount} expired`}>{expiredCount}</span>}</Link>)}</div>)}</>;
+  const nav = <>{navGroups.map(group => <div className="nav-group" key={group.label}><div className="nav-label">{group.label}</div>{group.items.map(([href, label, Icon]) => <Link href={href} key={href} className={'nav-link ' + (path === href || path.startsWith(`${href}/`) ? 'active' : '')} data-testid={`link-nav-${label.toLowerCase().replaceAll(' ', '-')}`}><Icon size={15} /><span>{label}</span>{href === '/compliance' && expiredCount > 0 && <span className="nav-badge" title={`${expiredCount} expired compliance ${expiredCount === 1 ? 'item' : 'items'}`} aria-label={`${expiredCount} expired`}>{expiredCount}</span>}{href === '/bank-feed' && rentToMatch > 0 && <span className="nav-badge info" title={`${rentToMatch} ${rentToMatch === 1 ? 'payment looks' : 'payments look'} like overdue rent, ready to match in COHO`} aria-label={`${rentToMatch} ready to match`}>{rentToMatch}</span>}</Link>)}</div>)}</>;
   const term = global.trim().toLowerCase();
   const globalResults = term
     ? cohoProperties

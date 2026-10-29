@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useSearch } from "wouter";
-import { AlertTriangle, ArrowRight, Download, ExternalLink, Lightbulb, Search, X } from "lucide-react";
-import { getGetFinanceBankFeedQueryKey, useGetFinanceBankFeed, type FinanceBankLine, type FinanceBankLineStatus } from "@workspace/api-client-react";
+import { AlertTriangle, ArrowRight, BellPlus, Check, Download, ExternalLink, Lightbulb, Search, X } from "lucide-react";
+import { getGetFinanceBankFeedQueryKey, useGetFinanceBankFeed, useSyncRentMatchActions, type FinanceBankLine, type FinanceBankLineStatus } from "@workspace/api-client-react";
 import { errorText } from "@/components/action-modals";
 import { MonthlyBars, SERIES_COLOURS } from "@/components/charts/MonthlyBars";
 import { downloadText, formatDate } from "@/services/properties";
@@ -9,7 +10,8 @@ import "./finance.css";
 
 // Rent bank feed: COHO's bank lines and whether each has been matched to rent,
 // plus our suggestion of which unmatched line may pay an overdue tenancy.
-// Read-only here; matching is done in COHO.
+// Each suggestion is also raised as a COHO action (hourly, or "Add to COHO
+// actions") so staff see it in COHO; the matching itself is done in COHO.
 
 const pence = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 export const bankFeedQueryOptions = { query: { queryKey: getGetFinanceBankFeedQueryKey(), staleTime: 15 * 60_000 } };
@@ -179,6 +181,20 @@ export default function BankFeedPage() {
 // Reconcile proposals, laid out like COHO's Reconcile transactions panel:
 // the bank line on the left, the overdue rent it may pay on the right.
 function ReconcilePanel({ lines, unmatched }: { lines: FinanceBankLine[]; unmatched: number }) {
+  const queryClient = useQueryClient();
+  const raise = useSyncRentMatchActions();
+  const [message, setMessage] = useState("");
+  const notRaised = lines.filter((line) => !line.possibleMatch?.cohoActionReference).length;
+  const addToCoho = async () => {
+    setMessage("");
+    try {
+      const result = await raise.mutateAsync();
+      await queryClient.invalidateQueries({ queryKey: getGetFinanceBankFeedQueryKey() });
+      setMessage(`${result.created ? `Added ${result.created} to COHO actions` : "Nothing new to add"}${result.closed ? ` · ${result.closed} completed` : ""}${result.waiting ? ` · ${result.waiting} more next hour` : ""}.`);
+    } catch (error) {
+      setMessage(`Could not add to COHO actions: ${errorText(error)}`);
+    }
+  };
   return (
     <section className="panel hh-rec" aria-labelledby="reconcile-title">
       <div className="panel-head">
@@ -186,11 +202,15 @@ function ReconcilePanel({ lines, unmatched }: { lines: FinanceBankLine[]; unmatc
           <div className="panel-title" id="reconcile-title"><Lightbulb size={15} /> Reconcile transactions</div>
           <div className="panel-caption">
             {lines.length
-              ? `${lines.length} unmatched ${lines.length === 1 ? "payment looks" : "payments look"} like overdue rent. Check each one, then reconcile it in COHO so the arrears clear.`
+              ? `${lines.length} unmatched ${lines.length === 1 ? "payment looks" : "payments look"} like overdue rent. Check each one, then reconcile it in COHO so the arrears clear.${notRaised ? "" : " Each one is in COHO's Actions list."}`
               : `No unmatched payment matches an overdue rent amount${unmatched ? `; the ${unmatched} unmatched ${unmatched === 1 ? "line needs" : "lines need"} reviewing in COHO` : ""}.`}
           </div>
+          {(raise.isPending || message) && <div className="panel-caption" role="status">{raise.isPending ? "Adding to COHO actions…" : message}</div>}
         </div>
-        <a className="button" href={COHO_TRANSACTIONS_URL} target="_blank" rel="noopener noreferrer"><ExternalLink size={13} /> Open COHO</a>
+        <div className="head-actions">
+          {notRaised > 0 && <button type="button" className="button" onClick={() => void addToCoho()} disabled={raise.isPending} data-testid="button-bank-feed-coho-actions"><BellPlus size={13} /> Add to COHO actions</button>}
+          <a className="button" href={COHO_TRANSACTIONS_URL} target="_blank" rel="noopener noreferrer"><ExternalLink size={13} /> Open COHO</a>
+        </div>
       </div>
       {lines.length > 0 && (
         <ol className="hh-rec-list">
@@ -218,6 +238,7 @@ function ReconcilePanel({ lines, unmatched }: { lines: FinanceBankLine[]; unmatc
                   <div className="hh-rec-actions">
                     <a className="button primary" href={COHO_TRANSACTIONS_URL} target="_blank" rel="noopener noreferrer"><ExternalLink size={13} /> Reconcile in COHO</a>
                     <Link className="button" href={`/properties/${encodeURIComponent(match.propertyReference)}`}>View property</Link>
+                    {match.cohoActionReference && <span className="hh-rec-raised"><Check size={13} /> In COHO actions</span>}
                   </div>
                 </div>
               </li>
@@ -225,7 +246,7 @@ function ReconcilePanel({ lines, unmatched }: { lines: FinanceBankLine[]; unmatc
           })}
         </ol>
       )}
-      <p className="hh-rec-foot">Proposals are worked out here (same amount as the overdue rent, received from a week before it was due). Linking the payment is done in COHO: Transactions → Reconcile transactions → OK.</p>
+      <p className="hh-rec-foot">Proposals are worked out here (same amount as the overdue rent, received from a week before it was due). Each one is added to COHO's Actions list every hour and completed once the payment is matched. Linking the payment is done in COHO: Transactions → Reconcile transactions → OK.</p>
     </section>
   );
 }

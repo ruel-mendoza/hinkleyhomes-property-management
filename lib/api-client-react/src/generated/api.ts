@@ -102,6 +102,7 @@ import type {
   ReminderLogList,
   ReminderSettings,
   ReminderSettingsUpdate,
+  RentMatchActionsResult,
   RevenueTrend,
   SignupEmailCheckRequest,
   SignupEmailCheckResult,
@@ -3436,6 +3437,80 @@ export function useGetFinanceBankFeed<TData = Awaited<ReturnType<typeof getFinan
 
 
 
+
+export const getSyncRentMatchActionsUrl = () => {
+
+
+
+
+  return `/api/finance/bank-feed/coho-actions`
+}
+
+/**
+ * @summary Raise a COHO action for each payment that looks like overdue rent, and complete the ones now matched
+ */
+export const syncRentMatchActions = async ( options?: Parameters<typeof customFetch>[1]): Promise<RentMatchActionsResult> => {
+
+  return customFetch<RentMatchActionsResult>(getSyncRentMatchActionsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSyncRentMatchActionsMutationKey = () => ['syncRentMatchActions'] as const;
+
+export const getSyncRentMatchActionsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncRentMatchActions>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncRentMatchActions>>, TError,void, TContext> => {
+
+const mutationKey = getSyncRentMatchActionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncRentMatchActions>>, void> = () => {
+
+
+          return  syncRentMatchActions(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncRentMatchActionsMutationResult = NonNullable<Awaited<ReturnType<typeof syncRentMatchActions>>>
+
+    export type SyncRentMatchActionsMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Raise a COHO action for each payment that looks like overdue rent, and complete the ones now matched
+ */
+export const useSyncRentMatchActions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncRentMatchActions>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncRentMatchActions>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getSyncRentMatchActionsMutationOptions(options));
+    }
 
 export const getGetReceivablesUrl = () => {
 

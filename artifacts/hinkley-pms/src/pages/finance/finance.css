@@ -92,6 +92,8 @@
 .hh-rec-reason{margin:8px 0 0;font-size:12px;color:#a9c3e3}
 .hh-rec-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .hh-rec-actions .button{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.hh-rec .head-actions{flex-wrap:wrap;justify-content:flex-end}
+.hh-rec-raised{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#79cdb0}
 .hh-rec-arrow{color:#7fb2f0}
 .hh-rec-foot{margin:0;padding:12px 16px 14px;font-size:12px;color:#8f9db0}
 @media(max-width:900px){.hh-rec-item{grid-template-columns:1fr}.hh-rec-arrow{transform:rotate(90deg);justify-self:center}}

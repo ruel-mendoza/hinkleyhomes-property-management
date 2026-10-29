@@ -34,3 +34,4 @@
 
 /* Expired count on the sidebar link */
 .nav-badge{margin-left:auto;min-width:19px;height:18px;padding:0 6px;border-radius:999px;background:#c2287a;color:#fff;font-size:11px;font-weight:800;display:inline-grid;place-items:center;line-height:1}
+.nav-badge.info{background:#1f3550;color:#a9c9ef}

@@ -42,6 +42,8 @@ export type OverdueTenancy = {
   tenancyNumber: string | null;
   propertyReference: string;
   propertyName: string;
+  roomReference: string | null;
+  roomName: string | null;
   tenantName: string | null;
   outstanding: number;
   daysInArrears: number;
@@ -98,6 +100,8 @@ export async function loadOverdueTenancies(): Promise<OverdueTenancy[]> {
       tenancyNumber: numbers.get(String(item.tenancyGuid)) ?? null,
       propertyReference: str(item.propertyReference) ?? "",
       propertyName: str(item.propertyName) ?? "Unknown property",
+      roomReference: str(item.roomReference),
+      roomName: str(item.roomName),
       tenantName: str(item.tenantName),
       outstanding: num(item.totalOutstanding),
       daysInArrears: Math.max(Math.trunc(num(item.daysInArrears)), 0),

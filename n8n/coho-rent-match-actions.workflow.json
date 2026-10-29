@@ -1,0 +1,63 @@
+{
+  "name": "Hinkley PMS – Rent ready to match in COHO (hourly)",
+  "nodes": [
+    {
+      "id": "a40b9f7a-0a99-4133-9718-4547fc549d4e",
+      "name": "Every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1ce49ce-9802-4372-be8c-566605452754",
+      "name": "Raise COHO actions for rent to match",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "notes": "Calls the PMS API, which raises a COHO action for each bank payment that looks like overdue rent (Rent bank feed → Possible rent) and completes the ones COHO now shows as matched. Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret.",
+      "parameters": {
+        "method": "POST",
+        "url": "https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/coho/rent-match-actions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every hour": {
+      "main": [
+        [
+          {
+            "node": "Raise COHO actions for rent to match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none"
+  },
+  "pinData": {}
+}

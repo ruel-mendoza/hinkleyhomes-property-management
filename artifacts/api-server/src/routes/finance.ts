@@ -1,15 +1,20 @@
 import { Router, type IRouter } from "express";
-import { GetFinanceBankFeedResponse, GetFinanceIncomeResponse } from "@workspace/api-zod";
+import { isDatabaseConfigured } from "@workspace/db";
+import { GetFinanceBankFeedResponse, GetFinanceIncomeResponse, SyncRentMatchActionsResponse } from "@workspace/api-zod";
 import { cohoApiKey } from "../lib/integrations-env";
 import { cohoGet } from "../lib/coho-api";
+import { logger } from "../lib/logger";
 import { matchReason, rentMatchingData, suggestPayments } from "../lib/rent-matching";
+import { openRentMatchActions, syncRentMatchActions } from "../lib/rent-match-actions";
 
 // Finance section, read-only from COHO:
 //   GET /finance/financial-items  rent invoiced (client money) and management
 //                                 fees (Hinkley income); COHO holds no expenses
 //                                 for this account, those are in Xero.
 //   GET /transactions/items       COHO's rent bank feed: bank lines matched (or
-//                                 not) to rent. Matching itself stays in COHO.
+//                                 not) to rent. Matching itself stays in COHO;
+//                                 POST /finance/bank-feed/coho-actions raises a
+//                                 COHO action for each suggested match.
 // Bank account numbers never leave the server except as the last four digits.
 
 type RecordValue = Record<string, unknown>;
@@ -157,6 +162,12 @@ async function buildBankFeed(refresh: boolean) {
   const { lines, arrears } = await rentMatchingData(from, refresh);
   const suggestions = suggestPayments(arrears, lines, today);
   const matchFor = new Map([...suggestions].map(([tenancyGuid, line]) => [line.id, arrears.find((arrear) => arrear.tenancyGuid === tenancyGuid)!]));
+  const actions = isDatabaseConfigured()
+    ? await openRentMatchActions().catch((error: unknown) => {
+        logger.warn({ err: error }, "Rent match actions could not be read");
+        return new Map<string, string>();
+      })
+    : new Map<string, string>();
 
   const byMonth = new Map(months.map((month) => [month, { month, matched: 0, unmatched: 0 }]));
   let matchedCount = 0, unmatchedCount = 0, excludedCount = 0, matchedAmount = 0, unmatchedAmount = 0;
@@ -199,6 +210,7 @@ async function buildBankFeed(refresh: boolean) {
                 earliestDue: match.earliestDue,
                 daysInArrears: match.daysInArrears,
                 reason: matchReason(match, line),
+                cohoActionReference: actions.get(line.id) ?? null,
               }
             : null,
         };
@@ -233,6 +245,21 @@ financeRouter.get("/finance/bank-feed", async (req, res): Promise<void> => {
     req.log.warn({ err: error }, "COHO bank feed unavailable");
     res.status(502).json({ error: "COHO could not be reached. Try again." });
   }
+});
+
+// Staff "Add to COHO actions" button; n8n runs the same thing on a schedule.
+financeRouter.post("/finance/bank-feed/coho-actions", async (req, res): Promise<void> => {
+  if (!cohoApiKey() || !isDatabaseConfigured()) {
+    res.status(503).json({ error: "COHO or the database is not configured." });
+    return;
+  }
+  const result = await syncRentMatchActions("manual");
+  cache.delete("bank-feed");
+  if (result.status === "failed") {
+    res.status(502).json({ error: result.error ?? "COHO could not be reached. Try again." });
+    return;
+  }
+  res.json(SyncRentMatchActionsResponse.parse(result));
 });
 
 export default financeRouter;

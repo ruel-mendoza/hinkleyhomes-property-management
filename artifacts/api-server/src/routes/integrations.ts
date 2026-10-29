@@ -3,6 +3,7 @@ import { Router, type IRouter, type RequestHandler } from "express";
 import { isDatabaseConfigured } from "@workspace/db";
 import { cohoApiKey, pmsSyncKey } from "../lib/integrations-env";
 import { syncCohoActions } from "../lib/coho-actions-sync";
+import { syncRentMatchActions } from "../lib/rent-match-actions";
 import { recordUnitSnapshot, ukToday } from "../lib/performance";
 import { performanceData } from "./performance";
 import { readXeroGatewayEnv } from "../lib/integrations-env";
@@ -55,6 +56,17 @@ router.post("/integrations/coho/actions/sync", requireSyncKey, async (_req, res)
     return;
   }
   const result = await syncCohoActions("schedule");
+  res.status(result.status === "failed" ? 502 : 200).json(result);
+});
+
+// Hourly: raise a COHO action for each bank payment that looks like overdue
+// rent, and complete the ones COHO now shows as matched (lib/rent-match-actions.ts).
+router.post("/integrations/coho/rent-match-actions", requireSyncKey, async (_req, res): Promise<void> => {
+  if (!isDatabaseConfigured() || !cohoApiKey()) {
+    res.status(503).json({ error: "COHO or the database is not configured." });
+    return;
+  }
+  const result = await syncRentMatchActions("schedule");
   res.status(result.status === "failed" ? 502 : 200).json(result);
 });
 

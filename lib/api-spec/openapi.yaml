@@ -894,6 +894,22 @@ paths:
           description: COHO returned an error
         "503":
           description: COHO API key is not configured
+  /finance/bank-feed/coho-actions:
+    post:
+      operationId: syncRentMatchActions
+      tags: [coho]
+      summary: Raise a COHO action for each payment that looks like overdue rent, and complete the ones now matched
+      responses:
+        "200":
+          description: Actions raised and completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RentMatchActionsResult"
+        "502":
+          description: COHO returned an error
+        "503":
+          description: COHO or the database is not configured
   /receivables:
     get:
       operationId: getReceivables
@@ -2493,7 +2509,28 @@ components:
         reason:
           description: Why this line was proposed, in plain English
           type: string
-      required: [propertyReference, propertyName, tenantName, tenancyNumber, outstanding, earliestDue, daysInArrears, reason]
+        cohoActionReference:
+          description: The open COHO action telling staff to match this payment, if one has been raised
+          type: ["string", "null"]
+      required: [propertyReference, propertyName, tenantName, tenancyNumber, outstanding, earliestDue, daysInArrears, reason, cohoActionReference]
+    RentMatchActionsResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [succeeded, failed]
+        created:
+          type: integer
+        closed:
+          type: integer
+        open:
+          type: integer
+        waiting:
+          description: Suggestions left for the next run (at most 20 actions are raised per run)
+          type: integer
+        error:
+          type: ["string", "null"]
+      required: [status, created, closed, open, waiting, error]
     PossiblePayment:
       type: object
       properties:

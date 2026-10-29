@@ -1392,9 +1392,23 @@ export const GetFinanceBankFeedResponse = zod.object({
   "outstanding": zod.number(),
   "earliestDue": zod.string().nullable(),
   "daysInArrears": zod.number().int(),
-  "reason": zod.string().describe('Why this line was proposed, in plain English')
+  "reason": zod.string().describe('Why this line was proposed, in plain English'),
+  "cohoActionReference": zod.string().nullable().describe('The open COHO action telling staff to match this payment, if one has been raised')
 }),zod.null()]).describe('An overdue tenancy this unmatched line may pay (same amount, around the due date); matching is done in COHO')
 }))
+})
+
+
+/**
+ * @summary Raise a COHO action for each payment that looks like overdue rent, and complete the ones now matched
+ */
+export const SyncRentMatchActionsResponse = zod.object({
+  "status": zod.enum(['succeeded', 'failed']),
+  "created": zod.number().int(),
+  "closed": zod.number().int(),
+  "open": zod.number().int(),
+  "waiting": zod.number().int().describe('Suggestions left for the next run (at most 20 actions are raised per run)'),
+  "error": zod.string().nullable()
 })
 
 

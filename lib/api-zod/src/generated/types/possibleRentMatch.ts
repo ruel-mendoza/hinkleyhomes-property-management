@@ -19,4 +19,9 @@ export interface PossibleRentMatch {
   daysInArrears: number;
   /** Why this line was proposed, in plain English */
   reason: string;
+  /**
+     * The open COHO action telling staff to match this payment, if one has been raised
+     * @nullable
+     */
+  cohoActionReference: string | null;
 }
