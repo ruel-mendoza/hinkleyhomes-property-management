@@ -30,7 +30,7 @@ const inFilter = (line: FinanceBankLine, filter: Filter) =>
         : line.status === filter;
 // COHO's Transactions page, where the Reconcile step happens. Set
 // VITE_COHO_TRANSACTIONS_URL to its exact address; COHO's API can't reconcile.
-const COHO_TRANSACTIONS_URL = (import.meta.env.VITE_COHO_TRANSACTIONS_URL as string | undefined) || "https://app.coho.life";
+const COHO_TRANSACTIONS_URL = (import.meta.env.VITE_COHO_TRANSACTIONS_URL as string | undefined) || "https://coho.life/";
 
 export const daysSince = (date: string | null, today: string) => (date ? Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${date}T12:00:00Z`)) / 86_400_000) : 0);
 
