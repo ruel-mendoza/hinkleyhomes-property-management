@@ -22,8 +22,9 @@ import { SmoobuApiError, smoobuGet } from "./smoobu-api";
 // each booking from Smoobu rather than trusting the webhook (Smoobu doesn't sign
 // them). n8n also starts a catch-up sync every hour for anything missed.
 
-const SYNC_TRIGGER = "bookings";
-const FIRST_SYNC_DAYS = 120;
+export const SYNC_TRIGGER = "bookings";
+// The first sync reads bookings departing from this many days back.
+export const FIRST_SYNC_DAYS = 120;
 const ALLOWANCE_RULE = "Guest cleaning fee charged in Smoobu";
 
 type Raw = Record<string, unknown>;

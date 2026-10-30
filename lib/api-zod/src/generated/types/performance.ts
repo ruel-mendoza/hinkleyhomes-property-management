@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PerformanceMonth } from './performanceMonth';
 import type { PerformancePeriod } from './performancePeriod';
 import type { PerformanceRentRollMonth } from './performanceRentRollMonth';
 
@@ -20,6 +21,8 @@ export interface Performance {
   rentRollThisMonth: PerformanceRentRollMonth;
   rentRollLastMonth: PerformanceRentRollMonth;
   periods: PerformancePeriod[];
+  /** The last 12 months, oldest first; the last is this month to date */
+  months: PerformanceMonth[];
   /**
      * Average length of tenancies known to the app (current ones to today, ended ones from snapshots)
      * @nullable

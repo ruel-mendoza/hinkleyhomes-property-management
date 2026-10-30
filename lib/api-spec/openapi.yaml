@@ -698,6 +698,28 @@ paths:
                 $ref: "#/components/schemas/StayAvailability"
         "503":
           description: Smoobu's signed key or the database is not configured
+  /stays/performance:
+    get:
+      operationId: getStaysPerformance
+      tags: [smoobu]
+      summary: Stays occupancy, room revenue, average nightly rate and RevPAR by period and month, worked out from the bookings synced from Smoobu (read-only)
+      parameters:
+        - name: propertyReference
+          in: query
+          required: false
+          description: Limit to the apartments linked to one COHO property
+          schema:
+            type: string
+            maxLength: 200
+      responses:
+        "200":
+          description: Stays performance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaysPerformance"
+        "503":
+          description: Smoobu or the database is not configured
   /stays/sync:
     post:
       operationId: syncStays
@@ -2234,6 +2256,27 @@ components:
         voidsFilled:
           type: integer
       required: [key, label, from, to, rentRecords, paidOnTimePercent, averageDaysLate, occupancyPercent, occupancyComplete, satisfaction, satisfactionResponses, daysToFillVoids, voidsFilled]
+    PerformanceMonth:
+      type: object
+      properties:
+        month:
+          description: YYYY-MM
+          type: string
+        rentRoll:
+          description: Rent due in the month
+          type: number
+        paidOnTimePercent:
+          type: ["number", "null"]
+        averageDaysLate:
+          type: ["number", "null"]
+        occupancyPercent:
+          type: ["number", "null"]
+        occupancyComplete:
+          description: False when the month starts before snapshots began, so ended tenancies may be missing
+          type: boolean
+        satisfaction:
+          type: ["number", "null"]
+      required: [month, rentRoll, paidOnTimePercent, averageDaysLate, occupancyPercent, occupancyComplete, satisfaction]
     Performance:
       type: object
       properties:
@@ -2256,6 +2299,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PerformancePeriod"
+        months:
+          description: The last 12 months, oldest first; the last is this month to date
+          type: array
+          items:
+            $ref: "#/components/schemas/PerformanceMonth"
         averageTenancyMonths:
           description: Average length of tenancies known to the app (current ones to today, ended ones from snapshots)
           type: ["number", "null"]
@@ -2267,7 +2315,135 @@ components:
         snapshotError:
           description: Set when today's snapshot could not be saved
           type: ["string", "null"]
-      required: [asOf, propertyReference, units, occupiedToday, occupancyTodayPercent, rentRollThisMonth, rentRollLastMonth, periods, averageTenancyMonths, tenanciesCounted, snapshotsSince, snapshotError]
+      required: [asOf, propertyReference, units, occupiedToday, occupancyTodayPercent, rentRollThisMonth, rentRollLastMonth, periods, months, averageTenancyMonths, tenanciesCounted, snapshotsSince, snapshotError]
+    StaysPerformancePeriod:
+      type: object
+      properties:
+        key:
+          $ref: "#/components/schemas/PerformancePeriodKey"
+        label:
+          type: string
+        from:
+          type: string
+        to:
+          type: string
+        arrivals:
+          type: integer
+        averageStayNights:
+          type: ["number", "null"]
+        availableNights:
+          description: Apartment-nights in the range (apartments in view x nights)
+          type: integer
+        bookedNights:
+          type: integer
+        occupancyPercent:
+          type: ["number", "null"]
+        roomRevenue:
+          description: Booking price less cleaning fees, spread evenly over the nights stayed
+          type: number
+        averageDailyRate:
+          description: Room revenue per booked night
+          type: ["number", "null"]
+        revPar:
+          description: Room revenue per available night
+          type: ["number", "null"]
+        complete:
+          description: False when the range starts before the bookings history the app holds
+          type: boolean
+      required: [key, label, from, to, arrivals, averageStayNights, availableNights, bookedNights, occupancyPercent, roomRevenue, averageDailyRate, revPar, complete]
+    StaysPerformanceMonth:
+      type: object
+      properties:
+        month:
+          description: YYYY-MM
+          type: string
+        availableNights:
+          description: Apartment-nights in the range (apartments in view x nights)
+          type: integer
+        bookedNights:
+          type: integer
+        occupancyPercent:
+          type: ["number", "null"]
+        roomRevenue:
+          description: Booking price less cleaning fees, spread evenly over the nights stayed
+          type: number
+        averageDailyRate:
+          description: Room revenue per booked night
+          type: ["number", "null"]
+        revPar:
+          description: Room revenue per available night
+          type: ["number", "null"]
+        complete:
+          description: False when the range starts before the bookings history the app holds
+          type: boolean
+      required: [month, availableNights, bookedNights, occupancyPercent, roomRevenue, averageDailyRate, revPar, complete]
+    StaysPerformanceAhead:
+      type: object
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        availableNights:
+          description: Apartment-nights in the range (apartments in view x nights)
+          type: integer
+        bookedNights:
+          type: integer
+        occupancyPercent:
+          type: ["number", "null"]
+        roomRevenue:
+          description: Booking price less cleaning fees, spread evenly over the nights stayed
+          type: number
+        averageDailyRate:
+          description: Room revenue per booked night
+          type: ["number", "null"]
+        revPar:
+          description: Room revenue per available night
+          type: ["number", "null"]
+        complete:
+          description: False when the range starts before the bookings history the app holds
+          type: boolean
+      required: [from, to, availableNights, bookedNights, occupancyPercent, roomRevenue, averageDailyRate, revPar, complete]
+    StaysPerformanceChannel:
+      type: object
+      properties:
+        channel:
+          type: string
+        bookedNights:
+          type: integer
+        roomRevenue:
+          type: number
+      required: [channel, bookedNights, roomRevenue]
+    StaysPerformance:
+      type: object
+      properties:
+        asOf:
+          type: string
+        propertyReference:
+          type: ["string", "null"]
+        apartments:
+          type: integer
+        historyFrom:
+          description: First night the synced bookings fully cover; earlier figures are incomplete
+          type: ["string", "null"]
+        periods:
+          type: array
+          items:
+            $ref: "#/components/schemas/StaysPerformancePeriod"
+        months:
+          description: The last 12 months, oldest first; the last is this month to date
+          type: array
+          items:
+            $ref: "#/components/schemas/StaysPerformanceMonth"
+        ahead:
+          description: Nights already booked for the next 30 nights
+          $ref: "#/components/schemas/StaysPerformanceAhead"
+        channels:
+          description: Booked nights and room revenue by booking channel, last 90 days
+          type: array
+          items:
+            $ref: "#/components/schemas/StaysPerformanceChannel"
+      required: [asOf, propertyReference, apartments, historyFrom, periods, months, ahead, channels]
     ComplianceFilter:
       type: string
       enum: [expired, due_30, due_60, due_90, not_started, not_required, all]

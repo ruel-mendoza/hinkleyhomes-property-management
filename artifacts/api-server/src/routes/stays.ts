@@ -4,6 +4,7 @@ import {
   AutoLinkStayApartmentsResponse,
   GetStayAvailabilityQueryParams,
   GetStayAvailabilityResponse,
+  GetStaysPerformanceResponse,
   GetStaysResponse,
   LinkStayApartmentBody,
   LinkStayApartmentParams,
@@ -14,6 +15,7 @@ import {
 import { smoobuMode } from "../lib/integrations-env";
 import { SmoobuApiError, smoobuDirectMissing, smoobuDirectReady } from "../lib/smoobu-api";
 import { StaysError, autoLinkApartments, linkApartment, listApartments, stayAvailability, staysOverview, syncStays } from "../lib/stays";
+import { staysPerformance } from "../lib/stays-performance";
 
 // Stays page (Hinkley Homes Stays, read-only from Smoobu) and the Smoobu
 // apartments tab on the Properties page. See lib/stays.ts.
@@ -32,6 +34,18 @@ router.get("/stays", async (req, res): Promise<void> => {
   } catch (error) {
     req.log.error({ err: error }, "Stays could not be read");
     res.status(503).json({ error: "Stays aren't set up yet: run the database push." });
+  }
+});
+
+// Worked out from the synced bookings in the database; Smoobu isn't called.
+router.get("/stays/performance", async (req, res): Promise<void> => {
+  if (notConnected(res)) return;
+  const reference = typeof req.query.propertyReference === "string" && req.query.propertyReference.trim() ? req.query.propertyReference.trim() : null;
+  try {
+    res.json(GetStaysPerformanceResponse.parse(await staysPerformance(reference)));
+  } catch (error) {
+    req.log.error({ err: error }, "Stays performance could not be worked out");
+    res.status(503).json({ error: "Stays performance couldn't be worked out from the synced bookings." });
   }
 });
 

@@ -1032,6 +1032,66 @@ export const GetStayAvailabilityResponse = zod.object({
 
 
 /**
+ * @summary Stays occupancy, room revenue, average nightly rate and RevPAR by period and month, worked out from the bookings synced from Smoobu (read-only)
+ */
+export const getStaysPerformanceQueryPropertyReferenceMax = 200;
+
+
+
+export const GetStaysPerformanceQueryParams = zod.object({
+  "propertyReference": zod.coerce.string().max(getStaysPerformanceQueryPropertyReferenceMax).optional().describe('Limit to the apartments linked to one COHO property')
+})
+
+export const GetStaysPerformanceResponse = zod.object({
+  "asOf": zod.string(),
+  "propertyReference": zod.string().nullable(),
+  "apartments": zod.number().int(),
+  "historyFrom": zod.string().nullable().describe('First night the synced bookings fully cover; earlier figures are incomplete'),
+  "periods": zod.array(zod.object({
+  "key": zod.enum(['month_to_date', 'last_month', 'last_90_days', 'last_year']),
+  "label": zod.string(),
+  "from": zod.string(),
+  "to": zod.string(),
+  "arrivals": zod.number().int(),
+  "averageStayNights": zod.number().nullable(),
+  "availableNights": zod.number().int().describe('Apartment-nights in the range (apartments in view x nights)'),
+  "bookedNights": zod.number().int(),
+  "occupancyPercent": zod.number().nullable(),
+  "roomRevenue": zod.number().describe('Booking price less cleaning fees, spread evenly over the nights stayed'),
+  "averageDailyRate": zod.number().nullable().describe('Room revenue per booked night'),
+  "revPar": zod.number().nullable().describe('Room revenue per available night'),
+  "complete": zod.boolean().describe('False when the range starts before the bookings history the app holds')
+})),
+  "months": zod.array(zod.object({
+  "month": zod.string().describe('YYYY-MM'),
+  "availableNights": zod.number().int().describe('Apartment-nights in the range (apartments in view x nights)'),
+  "bookedNights": zod.number().int(),
+  "occupancyPercent": zod.number().nullable(),
+  "roomRevenue": zod.number().describe('Booking price less cleaning fees, spread evenly over the nights stayed'),
+  "averageDailyRate": zod.number().nullable().describe('Room revenue per booked night'),
+  "revPar": zod.number().nullable().describe('Room revenue per available night'),
+  "complete": zod.boolean().describe('False when the range starts before the bookings history the app holds')
+})).describe('The last 12 months, oldest first; the last is this month to date'),
+  "ahead": zod.object({
+  "from": zod.string(),
+  "to": zod.string(),
+  "availableNights": zod.number().int().describe('Apartment-nights in the range (apartments in view x nights)'),
+  "bookedNights": zod.number().int(),
+  "occupancyPercent": zod.number().nullable(),
+  "roomRevenue": zod.number().describe('Booking price less cleaning fees, spread evenly over the nights stayed'),
+  "averageDailyRate": zod.number().nullable().describe('Room revenue per booked night'),
+  "revPar": zod.number().nullable().describe('Room revenue per available night'),
+  "complete": zod.boolean().describe('False when the range starts before the bookings history the app holds')
+}).describe('Nights already booked for the next 30 nights'),
+  "channels": zod.array(zod.object({
+  "channel": zod.string(),
+  "bookedNights": zod.number().int(),
+  "roomRevenue": zod.number()
+})).describe('Booked nights and room revenue by booking channel, last 90 days')
+})
+
+
+/**
  * @summary Read changed bookings and apartments from Smoobu now
  */
 export const SyncStaysResponse = zod.object({
@@ -1261,6 +1321,15 @@ export const GetPerformanceResponse = zod.object({
   "daysToFillVoids": zod.number().nullable(),
   "voidsFilled": zod.number().int()
 })),
+  "months": zod.array(zod.object({
+  "month": zod.string().describe('YYYY-MM'),
+  "rentRoll": zod.number().describe('Rent due in the month'),
+  "paidOnTimePercent": zod.number().nullable(),
+  "averageDaysLate": zod.number().nullable(),
+  "occupancyPercent": zod.number().nullable(),
+  "occupancyComplete": zod.boolean().describe('False when the month starts before snapshots began, so ended tenancies may be missing'),
+  "satisfaction": zod.number().nullable()
+})).describe('The last 12 months, oldest first; the last is this month to date'),
   "averageTenancyMonths": zod.number().nullable().describe('Average length of tenancies known to the app (current ones to today, ended ones from snapshots)'),
   "tenanciesCounted": zod.number().int(),
   "snapshotsSince": zod.string().nullable().describe('First day of unit snapshots; history before it is incomplete'),

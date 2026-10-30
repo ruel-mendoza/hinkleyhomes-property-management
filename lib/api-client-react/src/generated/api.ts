@@ -66,6 +66,7 @@ import type {
   GetComplianceParams,
   GetPerformanceParams,
   GetStayAvailabilityParams,
+  GetStaysPerformanceParams,
   HealthStatus,
   IntakeCheckList,
   IntakeReviewList,
@@ -112,6 +113,7 @@ import type {
   StayApartmentList,
   StayAvailability,
   StaysOverview,
+  StaysPerformance,
   StaysSyncResult,
   SyncCohoActionsParams,
   TrackingOptions
@@ -2552,6 +2554,90 @@ export function useGetStayAvailability<TData = Awaited<ReturnType<typeof getStay
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetStayAvailabilityQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetStaysPerformanceUrl = (params?: GetStaysPerformanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/stays/performance?${stringifiedParams}` : `/api/stays/performance`
+}
+
+/**
+ * @summary Stays occupancy, room revenue, average nightly rate and RevPAR by period and month, worked out from the bookings synced from Smoobu (read-only)
+ */
+export const getStaysPerformance = async (params?: GetStaysPerformanceParams, options?: Parameters<typeof customFetch>[1]): Promise<StaysPerformance> => {
+
+  return customFetch<StaysPerformance>(getGetStaysPerformanceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStaysPerformanceQueryKey = (params?: GetStaysPerformanceParams,) => {
+    return [
+    `/api/stays/performance`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetStaysPerformanceQueryOptions = <TData = Awaited<ReturnType<typeof getStaysPerformance>>, TError = ErrorType<void>>(params?: GetStaysPerformanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStaysPerformance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStaysPerformanceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStaysPerformance>>> = ({ signal }) => getStaysPerformance(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStaysPerformance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStaysPerformanceQueryResult = NonNullable<Awaited<ReturnType<typeof getStaysPerformance>>>
+export type GetStaysPerformanceQueryError = ErrorType<void>
+
+
+/**
+ * @summary Stays occupancy, room revenue, average nightly rate and RevPAR by period and month, worked out from the bookings synced from Smoobu (read-only)
+ */
+
+export function useGetStaysPerformance<TData = Awaited<ReturnType<typeof getStaysPerformance>>, TError = ErrorType<void>>(
+ params?: GetStaysPerformanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStaysPerformance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStaysPerformanceQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

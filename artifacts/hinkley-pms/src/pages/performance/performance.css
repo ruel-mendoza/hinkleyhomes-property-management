@@ -1,21 +1,46 @@
-/* Performance page, in the app's dark panel style (see index.css). */
-.hh-perf-loading{padding:16px 17px;font-size:13px;color:#95a2b5}
-.hh-perf-section{margin-bottom:18px}
-.hh-perf-section h2{display:flex;align-items:center;gap:7px;margin:0 0 8px;font-size:15px;font-weight:800;color:#e2e9f1}
-.hh-perf-info{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#1f3550;color:#a9c9ef;cursor:help}
-.hh-perf-tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
-.hh-perf-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:76px;padding:9px 8px;border-radius:8px;background:#25324a;color:#dce4ed;text-align:center}
-.hh-perf-tile.wide{grid-column:span 2}
-.hh-perf-tile strong{font-size:26px;font-weight:800;line-height:1.1}
-.hh-perf-tile strong small{font-size:13px;font-weight:700;margin-left:1px}
-.hh-perf-sub{font-size:11px;opacity:.85}
-.hh-perf-label{font-size:12px;font-weight:700}
-.hh-perf-tile.good{background:#1d4a3c;color:#c9f0e0}
-.hh-perf-tile.warn{background:#4a3a1e;color:#f3d9a4}
-.hh-perf-tile.bad{background:#5a1f3a;color:#f6cfe0}
-.hh-perf-tile.none{background:#25324a;color:#95a2b5}
-.hh-perf-tile.partial{background-image:repeating-linear-gradient(135deg,#ffffff0a 0 8px,transparent 8px 16px)}
-.hh-perf-note{margin:7px 0 0;font-size:12px;color:#8f9db0;max-width:90ch}
+/* Performance page, in the app's dark panel style (see index.css).
+   Series colours follow the business line: HMO blue, Stays orange (charts.css). */
+.hh-perf-head{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin:20px 0 10px}
+.hh-perf-head h2{margin:0;font-size:16px;font-weight:800;color:#e2e9f1}
+.hh-perf-head>span:last-child{font-size:12px;color:#95a2b5}
+.hh-perf-head-icon{display:inline-grid;place-items:center;align-self:center;width:26px;height:26px;border-radius:7px;background:#1f2b40}
+
+.hh-perf-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.hh-perf-kpi{display:flex;flex-direction:column}
+.hh-perf-kpi .metric-top{gap:8px}
+.hh-perf-kpi .metric-value{margin:8px 0 6px}
+.hh-perf-kpi .metric-foot{line-height:1.45}
+.hh-perf-flag{padding:2px 7px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;background:#29364a;color:#c1ccda}
+.hh-perf-flag.good{background:#173d35;color:#79d0a9}.hh-perf-flag.warn{background:#403421;color:#edc16b}.hh-perf-flag.bad{background:#45272c;color:#f08f91}
+.hh-perf-meter{height:6px;margin:0 0 7px;border-radius:4px;background:#25324a;overflow:hidden}
+.hh-perf-meter i{display:block;height:100%;border-radius:4px}
+.hh-perf-delta{display:flex;align-items:center;gap:4px;margin-top:auto;padding-top:7px;font-size:12px;color:#95a2b5}
+.hh-perf-delta.better{color:#79d0a9}.hh-perf-delta.worse{color:#f0a3a5}
+
+.hh-perf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.hh-perf-panel{min-width:0}
+.hh-perf-panel.wide{margin-bottom:12px}
+.hh-perf-panel-body{padding:12px 16px 14px}
+.hh-perf-panel .empty-state{padding:30px 12px}
+
+.hh-perf-table{width:100%;min-width:480px;border-collapse:collapse;font-size:13px}
+.hh-perf-table th,.hh-perf-table td{padding:8px 10px;border-bottom:1px solid #2a374d;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hh-perf-table thead th{font-size:12px;font-weight:700;color:#95a2b5;text-transform:none;letter-spacing:0}
+.hh-perf-table th[scope=row],.hh-perf-table thead th:first-child{text-align:left;font-weight:600;color:#c6d1de;cursor:help}
+.hh-perf-table td{color:#e2e9f1}
+.hh-perf-table tbody tr:last-child>*{border-bottom:0}
+.hh-perf-table sup{margin-left:1px;color:#95a2b5}
+.hh-perf-dot{display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%;vertical-align:1px}
+.hh-perf-dot.good{background:#5fcf9c}.hh-perf-dot.warn{background:#edc16b}.hh-perf-dot.bad{background:#f08f91}
+.hh-perf-note{margin:9px 0 0;font-size:12px;color:#8f9db0;max-width:90ch}
+
+.hh-perf-channels{display:grid;gap:11px;list-style:none;margin:2px 0 0;padding:0}
+.hh-perf-channels li{display:grid;grid-template-columns:minmax(90px,150px) minmax(0,1fr) 40px;align-items:center;gap:4px 10px;font-size:13px;color:#c6d1de}
+.hh-perf-channels .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.hh-perf-channels .bar{height:10px;border-radius:4px;background:#25324a;overflow:hidden}
+.hh-perf-channels .bar i{display:block;height:100%;border-radius:0 4px 4px 0}
+.hh-perf-channels .value{text-align:right;font-weight:700;color:#e2e9f1;font-variant-numeric:tabular-nums}
+.hh-perf-channels .detail{grid-column:2/4;font-size:12px;color:#8f9db0}
 
 /* Overview strip */
 .hh-perf-strip{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:13px;padding:13px 16px}
@@ -25,5 +50,5 @@
 .hh-perf-strip-stats strong{font-size:18px;font-weight:800;color:#e2e9f1}
 .hh-perf-strip-stats strong.good{color:#5fcf9c}.hh-perf-strip-stats strong.warn{color:#edc16b}.hh-perf-strip-stats strong.bad{color:#f08f91}
 
-@media(max-width:1100px){.hh-perf-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:600px){.hh-perf-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.hh-perf-tile.wide{grid-column:span 2}}
+@media(max-width:1100px){.hh-perf-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.hh-perf-grid{grid-template-columns:1fr}}
+@media(max-width:460px){.hh-perf-kpis{grid-template-columns:1fr}.hh-perf-panel-body{padding:10px 12px 12px}.hh-perf-channels li{grid-template-columns:minmax(70px,110px) minmax(0,1fr) 36px}}

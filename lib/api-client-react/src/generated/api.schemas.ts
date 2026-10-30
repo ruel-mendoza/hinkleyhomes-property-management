@@ -592,6 +592,23 @@ export interface PerformancePeriod {
   voidsFilled: number;
 }
 
+export interface PerformanceMonth {
+  /** YYYY-MM */
+  month: string;
+  /** Rent due in the month */
+  rentRoll: number;
+  /** @nullable */
+  paidOnTimePercent: number | null;
+  /** @nullable */
+  averageDaysLate: number | null;
+  /** @nullable */
+  occupancyPercent: number | null;
+  /** False when the month starts before snapshots began, so ended tenancies may be missing */
+  occupancyComplete: boolean;
+  /** @nullable */
+  satisfaction: number | null;
+}
+
 export interface Performance {
   /** UK date the figures are for */
   asOf: string;
@@ -604,6 +621,8 @@ export interface Performance {
   rentRollThisMonth: PerformanceRentRollMonth;
   rentRollLastMonth: PerformanceRentRollMonth;
   periods: PerformancePeriod[];
+  /** The last 12 months, oldest first; the last is this month to date */
+  months: PerformanceMonth[];
   /**
      * Average length of tenancies known to the app (current ones to today, ended ones from snapshots)
      * @nullable
@@ -620,6 +639,108 @@ export interface Performance {
      * @nullable
      */
   snapshotError: string | null;
+}
+
+export interface StaysPerformancePeriod {
+  key: PerformancePeriodKey;
+  label: string;
+  from: string;
+  to: string;
+  arrivals: number;
+  /** @nullable */
+  averageStayNights: number | null;
+  /** Apartment-nights in the range (apartments in view x nights) */
+  availableNights: number;
+  bookedNights: number;
+  /** @nullable */
+  occupancyPercent: number | null;
+  /** Booking price less cleaning fees, spread evenly over the nights stayed */
+  roomRevenue: number;
+  /**
+     * Room revenue per booked night
+     * @nullable
+     */
+  averageDailyRate: number | null;
+  /**
+     * Room revenue per available night
+     * @nullable
+     */
+  revPar: number | null;
+  /** False when the range starts before the bookings history the app holds */
+  complete: boolean;
+}
+
+export interface StaysPerformanceMonth {
+  /** YYYY-MM */
+  month: string;
+  /** Apartment-nights in the range (apartments in view x nights) */
+  availableNights: number;
+  bookedNights: number;
+  /** @nullable */
+  occupancyPercent: number | null;
+  /** Booking price less cleaning fees, spread evenly over the nights stayed */
+  roomRevenue: number;
+  /**
+     * Room revenue per booked night
+     * @nullable
+     */
+  averageDailyRate: number | null;
+  /**
+     * Room revenue per available night
+     * @nullable
+     */
+  revPar: number | null;
+  /** False when the range starts before the bookings history the app holds */
+  complete: boolean;
+}
+
+export interface StaysPerformanceAhead {
+  from: string;
+  to: string;
+  /** Apartment-nights in the range (apartments in view x nights) */
+  availableNights: number;
+  bookedNights: number;
+  /** @nullable */
+  occupancyPercent: number | null;
+  /** Booking price less cleaning fees, spread evenly over the nights stayed */
+  roomRevenue: number;
+  /**
+     * Room revenue per booked night
+     * @nullable
+     */
+  averageDailyRate: number | null;
+  /**
+     * Room revenue per available night
+     * @nullable
+     */
+  revPar: number | null;
+  /** False when the range starts before the bookings history the app holds */
+  complete: boolean;
+}
+
+export interface StaysPerformanceChannel {
+  channel: string;
+  bookedNights: number;
+  roomRevenue: number;
+}
+
+export interface StaysPerformance {
+  asOf: string;
+  /** @nullable */
+  propertyReference: string | null;
+  apartments: number;
+  /**
+     * First night the synced bookings fully cover; earlier figures are incomplete
+     * @nullable
+     */
+  historyFrom: string | null;
+  periods: StaysPerformancePeriod[];
+  /** The last 12 months, oldest first; the last is this month to date */
+  months: StaysPerformanceMonth[];
+  /** Nights already booked for the next 30 nights */
+  ahead: StaysPerformanceAhead;
+  /** Booked nights and room revenue by booking channel, last 90 days */
+  channels: StaysPerformanceChannel[];
 }
 
 export type ComplianceFilter = typeof ComplianceFilter[keyof typeof ComplianceFilter];
@@ -2800,6 +2921,14 @@ from?: string;
  * @maximum 62
  */
 nights?: number;
+};
+
+export type GetStaysPerformanceParams = {
+/**
+ * Limit to the apartments linked to one COHO property
+ * @maxLength 200
+ */
+propertyReference?: string;
 };
 
 export type GetAttentionParams = {

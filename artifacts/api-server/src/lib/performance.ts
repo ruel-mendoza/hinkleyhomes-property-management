@@ -210,6 +210,16 @@ export function periodsFor(today: string): { key: PeriodKey; label: string; from
   ];
 }
 
+// "YYYY-MM" for the last `count` months, oldest first, ending with this month.
+export function lastMonths(today: string, count: number): string[] {
+  const [year, month] = today.split("-").map(Number);
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(Date.UTC(year, month - 1 - (count - 1 - index), 1));
+    return date.toISOString().slice(0, 7);
+  });
+}
+export const monthEnd = (month: string) => addDays(`${monthOf(addDays(`${month}-28`, 4))}-01`, -1);
+
 export function computePerformance(data: CohoPerformanceData, snapshots: CohoUnitSnapshot[], propertyReference: string | null, today = ukToday()) {
   const inScope = <T extends { propertyReference: string }>(items: T[]) => items.filter((item) => !propertyReference || item.propertyReference === propertyReference);
   const units = inScope(data.units);
@@ -253,9 +263,10 @@ export function computePerformance(data: CohoPerformanceData, snapshots: CohoUni
     });
   }
 
-  const periods = periodsFor(today).map((period) => {
-    const end = period.to < today ? period.to : today;
-    const due = rent.filter((record) => record.due >= period.from && record.due <= end);
+  // Every figure for one date range (cut off at today).
+  const figures = (from: string, to: string) => {
+    const end = to < today ? to : today;
+    const due = rent.filter((record) => record.due >= from && record.due <= end);
     const onTime = due.filter((record) => record.status === "paidOnTime").length;
     const lateDays = due.map((record) =>
       record.status === "overdue" ? Math.max(daysBetween(record.due, today), 0)
@@ -265,7 +276,7 @@ export function computePerformance(data: CohoPerformanceData, snapshots: CohoUni
 
     let occupied = 0;
     let unitDays = 0;
-    for (let day = period.from; day <= end; day = addDays(day, 1)) {
+    for (let day = from; day <= end; day = addDays(day, 1)) {
       for (const unit of units) {
         unitDays += 1;
         if (occupiedUnitDay(unit, day)) occupied += 1;
@@ -273,28 +284,40 @@ export function computePerformance(data: CohoPerformanceData, snapshots: CohoUni
     }
 
     const months = new Set<string>();
-    for (let day = period.from; day <= end; day = addDays(day, 1)) months.add(monthOf(day));
+    for (let day = from; day <= end; day = addDays(day, 1)) months.add(monthOf(day));
     const scores = data.feedback
       .filter((month) => months.has(month.month))
       .map((month) => (propertyReference ? month.byProperty.get(propertyReference) ?? null : month.overall))
       .filter((score): score is { score: number; count: number } => score !== null);
     const responses = scores.reduce((sum, score) => sum + score.count, 0);
 
-    const voids = filledVoids.filter((item) => item.filled >= period.from && item.filled <= end);
+    const voids = filledVoids.filter((item) => item.filled >= from && item.filled <= end);
     return {
-      key: period.key,
-      label: period.label,
-      from: period.from,
-      to: period.to,
       rentRecords: due.length,
       paidOnTimePercent: due.length ? round((onTime / due.length) * 100) : null,
       averageDaysLate: due.length ? round(lateDays.reduce((sum, days) => sum + days, 0) / due.length, 1) : null,
       occupancyPercent: unitDays ? round((occupied / unitDays) * 100) : null,
-      occupancyComplete: Boolean(snapshotsSince && period.from >= snapshotsSince),
+      occupancyComplete: Boolean(snapshotsSince && from >= snapshotsSince),
       satisfaction: responses ? round(scores.reduce((sum, score) => sum + score.score * score.count, 0) / responses, 1) : null,
       satisfactionResponses: responses,
       daysToFillVoids: voids.length ? round(voids.reduce((sum, item) => sum + item.days, 0) / voids.length, 1) : null,
       voidsFilled: voids.length,
+    };
+  };
+
+  const periods = periodsFor(today).map((period) => ({ key: period.key, label: period.label, from: period.from, to: period.to, ...figures(period.from, period.to) }));
+
+  // The last 12 months for the trend charts; rent roll counts the whole month (as above).
+  const months = lastMonths(today, 12).map((month) => {
+    const row = figures(`${month}-01`, monthEnd(month));
+    return {
+      month,
+      rentRoll: rentRoll(month).amount,
+      paidOnTimePercent: row.paidOnTimePercent,
+      averageDaysLate: row.averageDaysLate,
+      occupancyPercent: row.occupancyPercent,
+      occupancyComplete: row.occupancyComplete,
+      satisfaction: row.satisfaction,
     };
   });
 
@@ -316,6 +339,7 @@ export function computePerformance(data: CohoPerformanceData, snapshots: CohoUni
     rentRollThisMonth: rentRoll(monthOf(today)),
     rentRollLastMonth: rentRoll(monthOf(addDays(`${today.slice(0, 8)}01`, -1))),
     periods,
+    months,
     averageTenancyMonths: lengths.size ? round([...lengths.values()].reduce((sum, days) => sum + days, 0) / lengths.size / 30.4375, 1) : null,
     tenanciesCounted: lengths.size,
     snapshotsSince,
