@@ -540,12 +540,15 @@ export const CreateCohoViewingResponse = zod.object({
 
 export const listCohoMaintenanceQueryPageSizeMax = 100;
 
+export const listCohoMaintenanceQuerySearchMax = 200;
+
 
 
 export const ListCohoMaintenanceQueryParams = zod.object({
   "page": zod.coerce.number().int().min(1).optional(),
   "pageSize": zod.coerce.number().int().min(1).max(listCohoMaintenanceQueryPageSizeMax).optional(),
-  "propertyReference": zod.coerce.string().optional()
+  "propertyReference": zod.coerce.string().optional(),
+  "search": zod.coerce.string().max(listCohoMaintenanceQuerySearchMax).optional().describe('Text to find in the job number, title, request, property, room, tenant or status, across every page (COHO has no search, so all issues are read)')
 })
 
 export const ListCohoMaintenanceResponse = zod.object({

@@ -128,6 +128,15 @@ export default function CohoMaintenancePage() {
   const [propertyReference, setPropertyReference] = useState("");
   const [newPropertyReference, setNewPropertyReference] = useState(prefill.property);
   const [search, setSearch] = useState("");
+  // Searched on the server across every page (COHO's list can't search), after a pause in typing.
+  const [searchTerm, setSearchTerm] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchTerm(search.trim());
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search]);
   const [createOpen, setCreateOpen] = useState(prefill.open);
   useEffect(() => {
     // Drop the query so a refresh doesn't reopen the form.
@@ -167,8 +176,9 @@ export default function CohoMaintenancePage() {
       page,
       pageSize: PAGE_SIZE,
       ...(propertyReference ? { propertyReference } : {}),
+      ...(searchTerm ? { search: searchTerm } : {}),
     }),
-    [page, propertyReference],
+    [page, propertyReference, searchTerm],
   );
   const issuesQuery = useListCohoMaintenance(listParams, {
     query: {

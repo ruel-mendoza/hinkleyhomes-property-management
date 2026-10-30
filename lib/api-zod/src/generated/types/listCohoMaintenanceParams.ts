@@ -17,4 +17,9 @@ page?: number;
  */
 pageSize?: number;
 propertyReference?: string;
+/**
+ * Text to find in the job number, title, request, property, room, tenant or status, across every page (COHO has no search, so all issues are read)
+ * @maxLength 200
+ */
+search?: string;
 };

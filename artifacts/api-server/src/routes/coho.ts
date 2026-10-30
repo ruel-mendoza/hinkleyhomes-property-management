@@ -287,6 +287,43 @@ router.get("/coho/maintenance", async (req, res): Promise<void> => {
   if (params.data.propertyReference) {
     query.set("propertyReference", params.data.propertyReference);
   }
+
+  // COHO's list has no search and sorts by date created (batches of jobs come
+  // out of number order), so a search reads every page and pages the matches here.
+  const search = params.data.search?.trim().toLowerCase();
+  if (search) {
+    const all: unknown[] = [];
+    query.set("pageSize", "100");
+    for (let page = 1; page <= 20; page++) {
+      query.set("page", String(page));
+      const payload = await requestCoho(req, res, `/maintenance?${query}`);
+      if (payload === undefined) return;
+      const source = asRecord(payload);
+      if (Array.isArray(source.items)) all.push(...source.items);
+      if (source.hasNextPage !== true) break;
+    }
+    const text = (value: unknown) => (typeof value === "string" ? value : "");
+    const matches = all.filter((item) => {
+      const issue = asRecord(item);
+      return [issue.jobNumber, issue.title, issue.requestMessage, issue.propertyName, issue.roomName, issue.tenantName, issue.publicStatus]
+        .map(text)
+        .join(" ")
+        .toLowerCase()
+        .includes(search);
+    });
+    const page = params.data.page ?? 1;
+    const pageSize = params.data.pageSize ?? 50;
+    sendParsed(req, res, ListCohoMaintenanceResponse, {
+      items: matches.slice((page - 1) * pageSize, page * pageSize),
+      page,
+      pageSize,
+      totalCount: matches.length,
+      hasNextPage: page * pageSize < matches.length,
+      hasPreviousPage: page > 1,
+    });
+    return;
+  }
+
   const payload = await requestCoho(req, res, `/maintenance?${query}`);
   if (payload === undefined) return;
 
