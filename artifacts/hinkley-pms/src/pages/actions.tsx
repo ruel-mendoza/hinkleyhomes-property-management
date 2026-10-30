@@ -25,7 +25,7 @@ import {
   useListCohoActions,
   useSyncCohoActions,
 } from "@workspace/api-client-react";
-import { ActionDetailModal, CreateActionModal, errorText } from "@/components/action-modals";
+import { ActionDetailModal, CreateActionModal, actionTypeLabel, errorText } from "@/components/action-modals";
 import "./actions.css";
 
 const PAGE_SIZE = 50;
@@ -204,15 +204,15 @@ export default function ActionsPage({ selectedPropertyReference: topBarProperty 
                   key={action.reference}
                   className="hh-act-row"
                   tabIndex={0}
-                  aria-label={`Open ${action.title || action.typeName || "action"}`}
+                  aria-label={`Open ${action.title || actionTypeLabel(action) || "action"}`}
                   onClick={() => setSelected(action)}
                   onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelected(action); } }}
                   data-testid={`row-action-${action.reference}`}
                 >
                   <td>
                     <div className="hh-act-title">
-                      <strong>{action.title || action.typeName || "Untitled action"}{new Date(action.firstSeenAt).getTime() > dayAgo && <span className="hh-act-new">NEW</span>}</strong>
-                      <small>{action.typeName}{action.progressionStepsCount > 0 ? ` · step ${action.progressionStepsCompleted}/${action.progressionStepsCount}` : ""}</small>
+                      <strong>{action.title || actionTypeLabel(action) || "Untitled action"}{new Date(action.firstSeenAt).getTime() > dayAgo && <span className="hh-act-new">NEW</span>}</strong>
+                      <small>{actionTypeLabel(action)}{action.progressionStepsCount > 0 ? ` · step ${action.progressionStepsCompleted}/${action.progressionStepsCount}` : ""}</small>
                     </div>
                   </td>
                   <td>{action.propertyName || action.propertyReference || "—"}{action.roomName && <div className="hh-act-sub">{action.roomName}</div>}</td>

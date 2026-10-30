@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlarmClock, AlarmClockOff, Check, Pencil, Plus, UserRound, X } from "lucide-react";
+import { AlarmClock, AlarmClockOff, Check, ExternalLink, Pencil, Plus, UserRound, X } from "lucide-react";
 import {
   getListCohoActionAssigneesQueryKey,
   getListCohoActionsQueryKey,
@@ -42,6 +42,39 @@ export function errorText(error: unknown): string {
   if (typeof candidate?.message === "string") return candidate.message;
   return "Something went wrong. Please try again.";
 }
+
+// COHO sometimes sends a placeholder instead of a type name (e.g. "3002#XERO_…
+// action translation missing"). Show a readable name made from the type instead.
+const TYPE_LABELS: Record<string, string> = { xeroConnectionRequiresRelinking: "Xero connection needs reconnecting · Finances → Connections & Synchronisation" };
+export function actionTypeLabel(action: { type?: string | null; typeName?: string | null }): string {
+  const name = action.typeName?.trim() ?? "";
+  if (name && !/translation missing|^\d+#/i.test(name)) return name;
+  const type = action.type?.trim() ?? "";
+  if (TYPE_LABELS[type]) return TYPE_LABELS[type];
+  const words = type.replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").trim().toLowerCase();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : "";
+}
+
+// COHO's own link to Xero has expired. Only COHO can fix it, so say where.
+// Steps from COHO's Xero set-up guide (Finances > Connections & Synchronisation).
+function XeroRelinkSteps({ message }: { message: string | null }) {
+  const company = message?.match(/'([^']+)'/)?.[1];
+  return (
+    <section className="hh-act-section hh-act-fix" aria-label="How to reconnect">
+      <h3>How to reconnect</h3>
+      <p>COHO's own link to Xero{company ? ` for ${company}` : ""} has expired, so COHO can't send rent, supplier or owner settlements to Xero until it's reconnected. This is done in COHO, not in this app.</p>
+      <ol>
+        <li>In COHO, open <strong>Finances → Connections &amp; Synchronisation</strong>.</li>
+        <li>Find the Xero connection{company ? <> for <strong>{company}</strong></> : ""} and click <strong>View</strong>.</li>
+        <li>Reconnect it and sign in to Xero as an admin of {company ?? "that organisation"}, choosing that organisation.</li>
+        <li>Click <strong>Pull accounts, categories, and contacts</strong>, then check <strong>Errors</strong> for anything that didn't sync while it was down.</li>
+      </ol>
+      <p className="hh-act-hint">If there's no reconnect option, ask COHO support before adding the connection again: a property covered by two Xero connections stops syncing. This action closes itself once COHO can reach Xero.</p>
+      <a className="button" href={COHO_URL} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Open COHO</a>
+    </section>
+  );
+}
+const COHO_URL = "https://coho.life/";
 
 const STATUS_OPTIONS: { value: CohoActionStatusChangeStatus; label: string }[] = [
   { value: "new", label: "New" },
@@ -117,8 +150,8 @@ export function ActionDetailModal({ action: initial, onClose }: DetailProps) {
       <div className="modal hh-act-modal" role="dialog" aria-modal="true" aria-labelledby="action-detail-title" data-testid="modal-action-detail">
         <div className="modal-head">
           <div>
-            <h2 id="action-detail-title">{action.title || action.typeName || "Untitled action"}</h2>
-            <div className="panel-caption">{action.typeName}{action.isCustom ? " · custom action" : ""}</div>
+            <h2 id="action-detail-title">{action.title || actionTypeLabel(action) || "Untitled action"}</h2>
+            <div className="panel-caption">{actionTypeLabel(action)}{action.isCustom ? " · custom action" : ""}</div>
           </div>
           <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}><X size={17} /></button>
         </div>
@@ -136,6 +169,8 @@ export function ActionDetailModal({ action: initial, onClose }: DetailProps) {
             {action.message && <div className="wide"><dt>Message</dt><dd className="pre">{action.message}</dd></div>}
             {action.notes && <div className="wide"><dt>Notes</dt><dd className="pre">{action.notes}</dd></div>}
           </dl>
+
+          {action.type === "xeroConnectionRequiresRelinking" && action.status !== "completed" && <XeroRelinkSteps message={action.message} />}
 
           <section className="hh-act-section" aria-label="Status">
             <h3>Status</h3>
