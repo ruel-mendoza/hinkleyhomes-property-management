@@ -18,6 +18,10 @@ page?: number;
 pageSize?: number;
 propertyReference?: string;
 /**
+ * Also list issues COHO has closed (hidden by default, as in COHO)
+ */
+includeClosed?: boolean;
+/**
  * Text to find in the job number, title, request, property, room, tenant or status, across every page (COHO has no search, so all issues are read)
  * @maxLength 200
  */

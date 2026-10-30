@@ -278,66 +278,51 @@ router.get("/coho/maintenance", async (req, res): Promise<void> => {
     return;
   }
 
-  const query = new URLSearchParams({
-    page: String(params.data.page ?? 1),
-    pageSize: String(params.data.pageSize ?? 50),
-    sortColumn: "created",
-    sortOrder: "desc",
-  });
+  // COHO's list can't search or leave out closed issues: an issue COHO closes
+  // (e.g. its automatic Fire Safety Review jobs) gets a dateClosed but can still
+  // say "reported". So every page is read (newest first) and filtered and paged
+  // here; COHO's own screen hides closed issues, and so does this by default.
+  const query = new URLSearchParams({ pageSize: "100", sortColumn: "created", sortOrder: "desc" });
   if (params.data.propertyReference) {
     query.set("propertyReference", params.data.propertyReference);
   }
-
-  // COHO's list has no search and sorts by date created (batches of jobs come
-  // out of number order), so a search reads every page and pages the matches here.
-  const search = params.data.search?.trim().toLowerCase();
-  if (search) {
-    const all: unknown[] = [];
-    query.set("pageSize", "100");
-    for (let page = 1; page <= 20; page++) {
-      query.set("page", String(page));
-      const payload = await requestCoho(req, res, `/maintenance?${query}`);
-      if (payload === undefined) return;
-      const source = asRecord(payload);
-      if (Array.isArray(source.items)) all.push(...source.items);
-      if (source.hasNextPage !== true) break;
-    }
-    const text = (value: unknown) => (typeof value === "string" ? value : "");
-    const matches = all.filter((item) => {
-      const issue = asRecord(item);
-      return [issue.jobNumber, issue.title, issue.requestMessage, issue.propertyName, issue.roomName, issue.tenantName, issue.publicStatus]
-        .map(text)
-        .join(" ")
-        .toLowerCase()
-        .includes(search);
-    });
-    const page = params.data.page ?? 1;
-    const pageSize = params.data.pageSize ?? 50;
-    sendParsed(req, res, ListCohoMaintenanceResponse, {
-      items: matches.slice((page - 1) * pageSize, page * pageSize),
-      page,
-      pageSize,
-      totalCount: matches.length,
-      hasNextPage: page * pageSize < matches.length,
-      hasPreviousPage: page > 1,
-    });
-    return;
+  const all: unknown[] = [];
+  for (let page = 1; page <= 20; page++) {
+    query.set("page", String(page));
+    const payload = await requestCoho(req, res, `/maintenance?${query}`);
+    if (payload === undefined) return;
+    const source = asRecord(payload);
+    if (Array.isArray(source.items)) all.push(...source.items);
+    if (source.hasNextPage !== true) break;
   }
 
-  const payload = await requestCoho(req, res, `/maintenance?${query}`);
-  if (payload === undefined) return;
-
-  const source = asRecord(payload);
-  const normalized = {
-    ...source,
-    items: Array.isArray(source.items) ? source.items : [],
-    page: positiveInteger(source.page, params.data.page ?? 1),
-    pageSize: positiveInteger(source.pageSize, params.data.pageSize ?? 50),
-    totalCount: Number.isInteger(source.totalCount) ? source.totalCount : 0,
-    hasNextPage: source.hasNextPage === true,
-    hasPreviousPage: source.hasPreviousPage === true,
-  };
-  sendParsed(req, res, ListCohoMaintenanceResponse, normalized);
+  // Read raw: the generated schema coerces the string "false" to true.
+  const includeClosed = req.query.includeClosed === "true";
+  const isClosed = (item: unknown) => Boolean(asRecord(item).dateClosed);
+  const closedCount = all.filter(isClosed).length;
+  const search = params.data.search?.trim().toLowerCase();
+  const text = (value: unknown) => (typeof value === "string" ? value : "");
+  const matches = all.filter((item) => {
+    if (!includeClosed && isClosed(item)) return false;
+    if (!search) return true;
+    const issue = asRecord(item);
+    return [issue.jobNumber, issue.title, issue.requestMessage, issue.propertyName, issue.roomName, issue.tenantName, issue.publicStatus]
+      .map(text)
+      .join(" ")
+      .toLowerCase()
+      .includes(search);
+  });
+  const page = params.data.page ?? 1;
+  const pageSize = params.data.pageSize ?? 50;
+  sendParsed(req, res, ListCohoMaintenanceResponse, {
+    items: matches.slice((page - 1) * pageSize, page * pageSize),
+    page,
+    pageSize,
+    totalCount: matches.length,
+    hasNextPage: page * pageSize < matches.length,
+    hasPreviousPage: page > 1,
+    closedCount: includeClosed ? 0 : closedCount,
+  });
 });
 
 router.get("/coho/maintenance/categories", async (req, res): Promise<void> => {

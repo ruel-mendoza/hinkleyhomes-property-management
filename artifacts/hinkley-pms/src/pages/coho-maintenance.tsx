@@ -63,8 +63,14 @@ function formatDate(value: string | Date | null | undefined): string {
       });
 }
 
+// COHO closes some issues (e.g. its automatic Fire Safety Review jobs) without
+// changing their status, so a closed date counts as closed too.
 function isClosed(issue: CohoMaintenance): boolean {
-  return /complete|closed/i.test(issue.publicStatus);
+  return /complete|closed/i.test(issue.publicStatus) || Boolean(issue.dateClosed);
+}
+
+function statusText(issue: CohoMaintenance): string {
+  return issue.dateClosed && !/complete/i.test(issue.publicStatus) ? "closed" : issue.publicStatus;
 }
 
 // Marked by a merge in this app (see api-server lib/maintenance-merge.ts).
@@ -137,6 +143,8 @@ export default function CohoMaintenancePage() {
     }, 350);
     return () => clearTimeout(timer);
   }, [search]);
+  // Hidden by default, as on COHO's own maintenance screen.
+  const [showClosed, setShowClosed] = useState(false);
   const [createOpen, setCreateOpen] = useState(prefill.open);
   useEffect(() => {
     // Drop the query so a refresh doesn't reopen the form.
@@ -177,8 +185,9 @@ export default function CohoMaintenancePage() {
       pageSize: PAGE_SIZE,
       ...(propertyReference ? { propertyReference } : {}),
       ...(searchTerm ? { search: searchTerm } : {}),
+      ...(showClosed ? { includeClosed: true } : {}),
     }),
-    [page, propertyReference, searchTerm],
+    [page, propertyReference, searchTerm, showClosed],
   );
   const issuesQuery = useListCohoMaintenance(listParams, {
     query: {
@@ -514,6 +523,18 @@ export default function CohoMaintenancePage() {
                 <span className="panel-caption">
                   {issuesQuery.data?.totalCount ?? 0} issues
                 </span>
+                <label className="panel-caption" style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={showClosed}
+                    onChange={(event) => {
+                      setShowClosed(event.target.checked);
+                      setPage(1);
+                    }}
+                    data-testid="toggle-maintenance-closed"
+                  />
+                  Show closed{!showClosed && issuesQuery.data?.closedCount ? ` (${issuesQuery.data.closedCount})` : ""}
+                </label>
               </div>
             </div>
 
@@ -582,8 +603,8 @@ export default function CohoMaintenancePage() {
                             </span>
                           </td>
                           <td>
-                            <span className={"status " + issue.publicStatus}>
-                              {issue.publicStatus}
+                            <span className={"status " + statusText(issue)}>
+                              {statusText(issue)}
                             </span>
                           </td>
                           <td>
@@ -624,8 +645,8 @@ export default function CohoMaintenancePage() {
                                   </span>
                                 </td>
                                 <td>
-                                  <span className={"status " + other.publicStatus}>
-                                    {other.publicStatus}
+                                  <span className={"status " + statusText(other)}>
+                                    {statusText(other)}
                                   </span>
                                 </td>
                                 <td>
@@ -891,7 +912,7 @@ export default function CohoMaintenancePage() {
                       />
                       <strong>{issue.jobNumber || "—"}</strong>
                       <span className="secondary-text">
-                        Reported {formatDate(issue.created)} · {issue.publicStatus}
+                        Reported {formatDate(issue.created)} · {statusText(issue)}
                       </span>
                       {keepGuid === issue.guid && <span className="status ready">Keep</span>}
                     </label>
@@ -970,7 +991,7 @@ export default function CohoMaintenancePage() {
                     <label htmlFor="edit-status">COHO status</label>
                     <input
                       id="edit-status"
-                      value={selected.publicStatus}
+                      value={statusText(selected)}
                       readOnly
                     />
                   </div>

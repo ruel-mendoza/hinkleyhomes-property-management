@@ -14,4 +14,6 @@ export interface CohoMaintenancePage {
   totalCount: number;
   hasNextPage: boolean;
   hasPreviousPage: boolean;
+  /** Issues COHO has closed that were left out (send includeClosed to list them) */
+  closedCount?: number;
 }

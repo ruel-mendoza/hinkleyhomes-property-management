@@ -1760,6 +1760,11 @@ export interface CohoMaintenance {
   dateMaintenanceCompleted?: string | null;
   /** @nullable */
   maintenanceDueBy?: string | null;
+  /**
+     * Set when COHO has closed the issue (it can still say reported)
+     * @nullable
+     */
+  dateClosed?: string | null;
   created: string;
 }
 
@@ -1770,6 +1775,8 @@ export interface CohoMaintenancePage {
   totalCount: number;
   hasNextPage: boolean;
   hasPreviousPage: boolean;
+  /** Issues COHO has closed that were left out (send includeClosed to list them) */
+  closedCount?: number;
 }
 
 export interface CohoMaintenanceCategory {
@@ -2909,6 +2916,10 @@ page?: number;
  */
 pageSize?: number;
 propertyReference?: string;
+/**
+ * Also list issues COHO has closed (hidden by default, as in COHO)
+ */
+includeClosed?: boolean;
 /**
  * Text to find in the job number, title, request, property, room, tenant or status, across every page (COHO has no search, so all issues are read)
  * @maxLength 200

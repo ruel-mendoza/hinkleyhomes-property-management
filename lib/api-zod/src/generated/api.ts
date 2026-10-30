@@ -548,6 +548,7 @@ export const ListCohoMaintenanceQueryParams = zod.object({
   "page": zod.coerce.number().int().min(1).optional(),
   "pageSize": zod.coerce.number().int().min(1).max(listCohoMaintenanceQueryPageSizeMax).optional(),
   "propertyReference": zod.coerce.string().optional(),
+  "includeClosed": zod.coerce.boolean().optional().describe('Also list issues COHO has closed (hidden by default, as in COHO)'),
   "search": zod.coerce.string().max(listCohoMaintenanceQuerySearchMax).optional().describe('Text to find in the job number, title, request, property, room, tenant or status, across every page (COHO has no search, so all issues are read)')
 })
 
@@ -572,13 +573,15 @@ export const ListCohoMaintenanceResponse = zod.object({
   "dateMaintenanceCarriedOut": zod.coerce.date().nullish(),
   "dateMaintenanceCompleted": zod.coerce.date().nullish(),
   "maintenanceDueBy": zod.coerce.date().nullish(),
+  "dateClosed": zod.coerce.date().nullish().describe('Set when COHO has closed the issue (it can still say reported)'),
   "created": zod.coerce.date()
 })),
   "page": zod.number().int(),
   "pageSize": zod.number().int(),
   "totalCount": zod.number().int(),
   "hasNextPage": zod.boolean(),
-  "hasPreviousPage": zod.boolean()
+  "hasPreviousPage": zod.boolean(),
+  "closedCount": zod.number().int().optional().describe('Issues COHO has closed that were left out (send includeClosed to list them)')
 })
 
 

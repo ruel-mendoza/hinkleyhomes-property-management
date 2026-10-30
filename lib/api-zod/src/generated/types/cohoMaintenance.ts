@@ -41,5 +41,10 @@ export interface CohoMaintenance {
   dateMaintenanceCompleted?: Date | null;
   /** @nullable */
   maintenanceDueBy?: Date | null;
+  /**
+     * Set when COHO has closed the issue (it can still say reported)
+     * @nullable
+     */
+  dateClosed?: Date | null;
   created: Date;
 }

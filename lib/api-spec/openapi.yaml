@@ -401,6 +401,12 @@ paths:
           in: query
           schema:
             type: string
+        - name: includeClosed
+          in: query
+          required: false
+          description: Also list issues COHO has closed (hidden by default, as in COHO)
+          schema:
+            type: boolean
         - name: search
           in: query
           required: false
@@ -3697,6 +3703,10 @@ components:
         maintenanceDueBy:
           type: ["string", "null"]
           format: date-time
+        dateClosed:
+          description: Set when COHO has closed the issue (it can still say reported)
+          type: ["string", "null"]
+          format: date-time
         created:
           type: string
           format: date-time
@@ -3718,6 +3728,9 @@ components:
           type: boolean
         hasPreviousPage:
           type: boolean
+        closedCount:
+          description: Issues COHO has closed that were left out (send includeClosed to list them)
+          type: integer
       required: [items, page, pageSize, totalCount, hasNextPage, hasPreviousPage]
     CohoMaintenanceCategory:
       type: object
