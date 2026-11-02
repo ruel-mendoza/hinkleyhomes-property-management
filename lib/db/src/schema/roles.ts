@@ -5,3 +5,8 @@ import { pgRole } from "drizzle-orm/pg-core";
 // table say what it may do; create the login and its grants first with
 // lib/db/sql/n8n-intake-writer.sql.
 export const n8nIntakeWriterRole = pgRole("n8n_intake_writer").existing();
+
+// Database login for the n8n "Telleroo events" workflow, which saves webhooks
+// and pay run status itself (the app may be asleep). Create it first with
+// lib/db/sql/n8n-telleroo-writer.sql.
+export const n8nTellerooWriterRole = pgRole("n8n_telleroo_writer").existing();

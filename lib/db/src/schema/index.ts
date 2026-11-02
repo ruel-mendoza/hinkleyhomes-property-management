@@ -9,3 +9,4 @@ export * from "./finance";
 export * from "./operations";
 export * from "./coho";
 export * from "./roles";
+export * from "./telleroo";

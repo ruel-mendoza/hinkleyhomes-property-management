@@ -1,0 +1,361 @@
+{
+  "name": "Hinkley PMS – Telleroo events",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telleroo-sandbox",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "3517e555-0636-48d1-87a1-e3d0eef4442b",
+      "name": "Telleroo webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "6ecc9fd5-9959-4cff-97b3-8f3d4adb71f2",
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Telleroo webhook token"
+        }
+      },
+      "notes": "Rejects any call without the authenticity token header (credential 'Telleroo webhook token': header name and value as agreed with Telleroo)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Telleroo posts { webhook: { type, pay_run_id | transaction_id, idempotent_key } }.\nconst TYPES = ['payment_sent', 'payment_failed', 'payment_cancelled', 'pay_run_awaiting_approval', 'pay_run_approved', 'pay_run_payments_sent'];\nconst out = [];\nfor (const item of $input.all()) {\n  const w = item.json.body?.webhook ?? {};\n  if (!TYPES.includes(w.type)) continue;\n  const ref = w.pay_run_id ?? w.transaction_id ?? '';\n  out.push({ json: {\n    dedupe_key: `${w.type}:${ref}:${w.idempotent_key ?? ''}`,\n    event_type: w.type,\n    pay_run_id: w.pay_run_id ?? null,\n    transaction_id: w.transaction_id ?? null,\n    idempotent_key: w.idempotent_key ?? null,\n    payload: w,\n  } });\n}\nreturn out;"
+      },
+      "id": "70985605-e069-44d5-bc1b-7bcb7e495a89",
+      "name": "Read event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "notes": "Unknown event types are ignored."
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into public.telleroo_events (dedupe_key, event_type, pay_run_id, transaction_id, idempotent_key, payload)\nselect dedupe_key, event_type, pay_run_id, transaction_id, idempotent_key, payload\nfrom jsonb_to_record($1::jsonb) as r(dedupe_key text, event_type text, pay_run_id text, transaction_id text, idempotent_key text, payload jsonb)\non conflict (dedupe_key) do nothing;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json)] }}"
+        }
+      },
+      "id": "b3a4cd39-8a62-4fb5-b507-6aef3bf63b86",
+      "name": "Save event",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        460,
+        -120
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "Postgres (Telleroo)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput",
+      "notes": "Every webhook is kept in telleroo_events; a repeat is saved once."
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select coalesce(\n  $1::jsonb->>'pay_run_id',\n  (select telleroo_id from public.telleroo_pay_runs\n   where $1::jsonb->>'idempotent_key' is not null\n     and payments @> jsonb_build_array(jsonb_build_object('idempotentKey', $1::jsonb->>'idempotent_key'))\n   order by updated_at desc limit 1)\n) as pay_run_id;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json)] }}"
+        }
+      },
+      "id": "fc7bc351-787f-467e-af32-b2e83bbba934",
+      "name": "Find pay run",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        460,
+        80
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "Postgres (Telleroo)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "notes": "Pay run events name their pay run. Payment events only carry our idempotent key, so look up the pay run that holds that payment."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "a3de0f48-4f92-4280-8278-09e1f4627bcd",
+              "leftValue": "={{ $json.pay_run_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "96bef9eb-b654-4d45-861f-61ec6049a031",
+      "name": "Pay run known?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        680,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "633079c7-55eb-46bb-9021-5d478bd7cfa0",
+      "name": "Every 30 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select telleroo_id as pay_run_id\nfrom public.telleroo_pay_runs\nwhere status not in ('paid', 'cancelled')\n  and last_checked_at < now() - interval '25 minutes'\norder by last_checked_at\nlimit 50;",
+        "options": {}
+      },
+      "id": "21ec6560-8b65-429f-8a15-e555ef6cd1dd",
+      "name": "Open pay runs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        460,
+        320
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "Postgres (Telleroo)"
+        }
+      },
+      "notes": "Catches anything a missed webhook would have told us."
+    },
+    {
+      "parameters": {
+        "url": "={{ ($vars.TELLEROO_API_URL || 'https://sandbox.telleroo.com') + '/payruns/' + encodeURIComponent($json.pay_run_id) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.telleroo.v3"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "da039bd7-51bc-4d84-953f-311edbb6605f",
+      "name": "Get pay run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        180
+      ],
+      "credentials": {
+        "oAuth2Api": {
+          "name": "Telleroo (sandbox)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "notes": "Read-only. Always re-reads the pay run rather than trusting the webhook."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Keep what the app needs; bank account numbers cut to the last 4 digits.\nconst last4 = (v) => { const d = String(v ?? '').replace(/\\D/g, ''); return d ? d.slice(-4) : null; };\nconst pounds = (v) => (v === null || v === undefined || v === '' || isNaN(Number(v)) ? null : Number(v).toFixed(2));\nconst out = [];\nfor (const item of $input.all()) {\n  const p = item.json.payrun;\n  if (!p?.id) continue;\n  const payments = [];\n  for (const state of ['initialized', 'accepted', 'rejected']) {\n    for (const x of p[`${state}_payments`] ?? []) {\n      payments.push({\n        state,\n        amount: x.amount === '' || x.amount == null ? null : String(x.amount),\n        payeeName: x.payee_name ?? null,\n        accountLast4: last4(x.account_no ?? x.iban),\n        reference: x.reference ?? null,\n        idempotentKey: x.idempotent_key ?? null,\n        info: x.info ?? null,\n      });\n    }\n  }\n  out.push({ json: {\n    telleroo_id: p.id,\n    idempotent_key: p.idempotent_key ?? null,\n    name: p.name ?? null,\n    account_id: p.account_id ?? null,\n    status: p.status ?? 'unknown',\n    payees_type: p.payees_type ?? null,\n    payments_reason: p.payments_reason ?? null,\n    scheduled_for: p.scheduled_for ?? null,\n    requested_amount: pounds(p.requested_amount),\n    accepted_amount: pounds(p.accepted_amount),\n    paid_amount: pounds(p.paid_amount),\n    due_amount: pounds(p.due_amount),\n    currency: p.currency_code ?? null,\n    payments,\n    telleroo_url: p.deeplink?.telleroo_payrun ?? null,\n    telleroo_created_at: p.created_at ?? null,\n  } });\n}\nreturn out;"
+      },
+      "id": "6d60320c-8889-4c00-a767-42b3ba2833fd",
+      "name": "Trim pay run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into public.telleroo_pay_runs\n  (telleroo_id, idempotent_key, name, account_id, status, payees_type, payments_reason, scheduled_for,\n   requested_amount, accepted_amount, paid_amount, due_amount, currency, payments, telleroo_url, telleroo_created_at, last_checked_at)\nselect telleroo_id, idempotent_key, name, account_id, status, payees_type, payments_reason, scheduled_for,\n   requested_amount, accepted_amount, paid_amount, due_amount, currency, coalesce(payments, '[]'::jsonb), telleroo_url, telleroo_created_at, now()\nfrom jsonb_to_record($1::jsonb) as r(\n  telleroo_id text, idempotent_key text, name text, account_id text, status text, payees_type text, payments_reason text,\n  scheduled_for timestamptz, requested_amount numeric(12,2), accepted_amount numeric(12,2), paid_amount numeric(12,2),\n  due_amount numeric(12,2), currency text, payments jsonb, telleroo_url text, telleroo_created_at timestamptz)\non conflict (telleroo_id) do update set\n  idempotent_key = excluded.idempotent_key, name = excluded.name, account_id = excluded.account_id, status = excluded.status,\n  payees_type = excluded.payees_type, payments_reason = excluded.payments_reason, scheduled_for = excluded.scheduled_for,\n  requested_amount = excluded.requested_amount, accepted_amount = excluded.accepted_amount, paid_amount = excluded.paid_amount,\n  due_amount = excluded.due_amount, currency = excluded.currency, payments = excluded.payments, telleroo_url = excluded.telleroo_url,\n  telleroo_created_at = excluded.telleroo_created_at, last_checked_at = now(), updated_at = now();",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json)] }}"
+        }
+      },
+      "id": "c44c66e0-c285-47a5-b425-70506e8d38ef",
+      "name": "Save pay run",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1340,
+        180
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "Postgres (Telleroo)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "content": "## Telleroo events (sandbox)\nSaves Telleroo webhooks and pay run status in Supabase, so nothing is lost while the app is asleep. **Read-only:** it never creates, submits or approves pay runs.\n\n**Webhook URL for Telleroo:** https://hinkleyhomes.app.n8n.cloud/webhook/telleroo-sandbox\nEvents: payment_sent, payment_failed, payment_cancelled, pay_run_awaiting_approval, pay_run_approved, pay_run_payments_sent\n\n**Credentials**\n- *Telleroo webhook token* (Header Auth): header name and token as agreed with Telleroo.\n- *Telleroo (sandbox)* (OAuth2 API): Authorization Code; Authorization URL https://sandbox.app.telleroo.com/oauth ; Access Token URL https://sandbox.telleroo.com/oauth/token ; scope `create` ; Authentication: Send in body; client id and secret from Telleroo. Redirect URL is shown in the credential (https://hinkleyhomes.app.n8n.cloud/rest/oauth2-credential/callback).\n- *Postgres (Telleroo)*: login n8n_telleroo_writer (lib/db/sql/n8n-telleroo-writer.sql).\n\n**Production:** duplicate, set path `telleroo`, Variable TELLEROO_API_URL = https://api.telleroo.com, and a production OAuth credential (admin.telleroo.com/oauth, api.telleroo.com/oauth/token).",
+        "height": 520,
+        "width": 620,
+        "color": 5
+      },
+      "id": "be6c04b0-b693-4e4c-9a05-08fa2c0cfd25",
+      "name": "Setup notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -560
+      ]
+    }
+  ],
+  "connections": {
+    "Telleroo webhook": {
+      "main": [
+        [
+          {
+            "node": "Read event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read event": {
+      "main": [
+        [
+          {
+            "node": "Save event",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Find pay run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find pay run": {
+      "main": [
+        [
+          {
+            "node": "Pay run known?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pay run known?": {
+      "main": [
+        [
+          {
+            "node": "Get pay run",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Every 30 minutes": {
+      "main": [
+        [
+          {
+            "node": "Open pay runs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Open pay runs": {
+      "main": [
+        [
+          {
+            "node": "Get pay run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get pay run": {
+      "main": [
+        [
+          {
+            "node": "Trim pay run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trim pay run": {
+      "main": [
+        [
+          {
+            "node": "Save pay run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
