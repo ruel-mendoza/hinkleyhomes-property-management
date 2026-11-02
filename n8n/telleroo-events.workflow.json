@@ -57,6 +57,7 @@
       ],
       "credentials": {
         "postgres": {
+          "id": "b1lUgXDUForsckrD",
           "name": "Postgres (Telleroo)"
         }
       },
@@ -84,6 +85,7 @@
       ],
       "credentials": {
         "postgres": {
+          "id": "b1lUgXDUForsckrD",
           "name": "Postgres (Telleroo)"
         }
       },
@@ -161,6 +163,7 @@
       ],
       "credentials": {
         "postgres": {
+          "id": "b1lUgXDUForsckrD",
           "name": "Postgres (Telleroo)"
         }
       },
@@ -234,6 +237,7 @@
       ],
       "credentials": {
         "postgres": {
+          "id": "b1lUgXDUForsckrD",
           "name": "Postgres (Telleroo)"
         }
       },
