@@ -1,5 +1,5 @@
 /* Finance pages (Rent & fees, Rent bank feed), in the app's dark panel style. */
-.hh-fin-note{padding:16px 17px;font-size:13px;color:#95a2b5}
+.hh-fin-note{padding:16px 17px;margin-bottom:14px;font-size:13px;color:#95a2b5}
 .hh-fin-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
 .hh-fin-tile{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:8px;background:#192538;border:1px solid #2a374d;color:#c6d1de;text-align:left;font:inherit}
 .hh-fin-tile span{font-size:12px;font-weight:700;color:#95a2b5}
@@ -103,7 +103,7 @@
 /* Invoices (Xero receivables and bills) */
 .hh-fin-tiles.six{grid-template-columns:repeat(6,minmax(0,1fr))}
 .hh-fin-sub.bad{color:#f08f91}
-.hh-inv-companies{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.hh-inv-companies{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px}
 .hh-inv-company{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:8px;border:2px solid #2a374d;background:#192538;color:#95a2b5;font:inherit;text-align:left;cursor:pointer;transition:border-color .12s,transform .12s}
 .hh-inv-company span{font-size:12px;font-weight:700}
 .hh-inv-company strong{font-size:18px;font-weight:800;color:#e7edf4;font-variant-numeric:tabular-nums}
@@ -112,7 +112,7 @@
 .hh-inv-company:hover{transform:translateY(-1px)}
 .hh-inv-company.active{border-color:#79cdb0;box-shadow:0 0 0 2px #79cdb040}
 .hh-inv-company:focus-visible{outline:2px solid #79cdb0;outline-offset:2px}
-.hh-inv-tabs{display:flex;gap:4px;padding:3px;margin-bottom:12px;border:1px solid #2a374d;border-radius:8px;background:#141f30;width:max-content}
+.hh-inv-tabs{display:flex;gap:4px;padding:3px;margin-bottom:14px;border:1px solid #2a374d;border-radius:8px;background:#141f30;width:max-content}
 .hh-inv-tabs button,.hh-inv-tabs a{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 14px;border:0;border-radius:6px;background:none;color:#b7c2d1;font:inherit;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none}
 .hh-inv-tabs button span,.hh-inv-tabs a span{min-width:20px;padding:1px 6px;border-radius:999px;background:#25324a;color:#c6d1de;font-size:11px}
 .hh-inv-tabs button.active,.hh-inv-tabs a.active{background:#173d35;color:#a9e6cf}
