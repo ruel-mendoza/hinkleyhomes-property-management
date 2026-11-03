@@ -1,12 +1,15 @@
-import { useMemo } from "react";
-import { AlertTriangle, FileText, Link2, Search, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, FileText, Link2, Search, Trash2, X } from "lucide-react";
 import {
   getListIntakeChecksQueryKey,
+  useClearNotInvoiceIntakeChecks,
   useListIntakeChecks,
   type IntakeCheckFilter,
   type IntakeFile,
 } from "@workspace/api-client-react";
 import { errorText } from "@/components/action-modals";
+import { ModalShell } from "@/components/properties/ModalShell";
 import { formatDate } from "@/services/properties";
 import "./finance.css";
 
@@ -49,11 +52,12 @@ export function InvoiceFileLinks({ files }: { files: IntakeFile[] }) {
   );
 }
 
-export function IntakeChecksTab({ get, setParams }: { get: (key: string) => string; setParams: (change: Record<string, string>) => void }) {
+export function IntakeChecksTab({ get, setParams, flash }: { get: (key: string) => string; setParams: (change: Record<string, string>) => void; flash: (message: string) => void }) {
   const verdict = (FILTERS.some(([key]) => key === get("verdict")) ? get("verdict") : "invoices") as IntakeCheckFilter;
   const term = get("q");
   const query = useListIntakeChecks({ verdict }, { query: { queryKey: getListIntakeChecksQueryKey({ verdict }), staleTime: 60_000 } });
   const counts = query.data?.counts;
+  const [clearing, setClearing] = useState(false);
   const items = useMemo(() => {
     const needle = term.trim().toLowerCase();
     const rows = query.data?.items ?? [];
@@ -72,10 +76,13 @@ export function IntakeChecksTab({ get, setParams }: { get: (key: string) => stri
         ))}
       </div>
 
-      <div className="hh-fin-filter">
-        <Search size={14} />
-        <input value={term} onChange={(event) => setParams({ q: event.target.value })} placeholder="Search sender, subject, supplier, invoice or bill-to" aria-label="Search" />
-        {term && <button type="button" className="icon-btn" onClick={() => setParams({ q: "" })} aria-label="Clear search"><X size={13} /></button>}
+      <div className="hh-intake-tools">
+        <div className="hh-fin-filter">
+          <Search size={14} />
+          <input value={term} onChange={(event) => setParams({ q: event.target.value })} placeholder="Search sender, subject, supplier, invoice or bill-to" aria-label="Search" />
+          {term && <button type="button" className="icon-btn" onClick={() => setParams({ q: "" })} aria-label="Clear search"><X size={13} /></button>}
+        </div>
+        {verdict === "not_invoice" && !!counts?.not_invoice && <button type="button" className="button" onClick={() => setClearing(true)} data-testid="button-clear-not-invoices"><Trash2 size={14} /> Clear all</button>}
       </div>
 
       {query.isLoading && <section className="panel hh-fin-note">Loading the inbox log…</section>}
@@ -120,6 +127,39 @@ export function IntakeChecksTab({ get, setParams }: { get: (key: string) => stri
       <p className="hh-fin-foot">
         Every email to accounts@ the intake check has looked at (the latest 500). Saved copies open in SharePoint with your Microsoft 365 login; invoice links open the supplier's invoice page, so check the address before paying anything from it.
       </p>
+
+      {clearing && counts && <ClearNotInvoicesModal count={counts.not_invoice} onClose={() => setClearing(false)} onDone={(message) => { setClearing(false); flash(message); }} />}
     </>
+  );
+}
+
+// Deletes every "not an invoice" email from the log. n8n skips emails it has
+// tagged "n8n: not an invoice" in Outlook, so they don't come back.
+function ClearNotInvoicesModal({ count, onClose, onDone }: { count: number; onClose: () => void; onDone: (message: string) => void }) {
+  const queryClient = useQueryClient();
+  const mutation = useClearNotInvoiceIntakeChecks({
+    mutation: {
+      onSuccess: ({ cleared }) => {
+        void queryClient.invalidateQueries({ queryKey: getListIntakeChecksQueryKey() });
+        onDone(`${cleared} ${cleared === 1 ? "email" : "emails"} cleared from Not invoices.`);
+      },
+    },
+  });
+  return (
+    <ModalShell
+      title="Clear Not invoices"
+      caption={`${count} ${count === 1 ? "email" : "emails"}`}
+      onClose={onClose}
+      onSubmit={(event) => { event.preventDefault(); mutation.mutate(); }}
+      testId="modal-clear-not-invoices"
+      footer={<>
+        <button type="button" className="button" onClick={onClose}>Cancel</button>
+        <button type="submit" className="button primary" disabled={mutation.isPending}>{mutation.isPending ? "Clearing…" : "Clear all"}</button>
+      </>}
+    >
+      <p className="hh-chk-summary">Every email in Not invoices is deleted from this list. The emails stay in accounts@ with their "n8n: not an invoice" tag, so the intake check won't pick them up again.</p>
+      {mutation.isError && <p className="hh-field-error" role="alert">{errorText(mutation.error)}</p>}
+      <p className="hh-fin-foot">Your name and each email's sender and subject are kept in the audit log.</p>
+    </ModalShell>
   );
 }

@@ -1985,6 +1985,14 @@ export const ListIntakeChecksResponse = zod.object({
 
 
 /**
+ * @summary Delete every not-invoice email from the inbox log (n8n skips emails it has tagged as not an invoice in Outlook, so they are not checked again); senders and subjects go to the audit log
+ */
+export const ClearNotInvoiceIntakeChecksResponse = zod.object({
+  "cleared": zod.number().int()
+})
+
+
+/**
  * @summary Mark an intake review done or dismissed; the review is deleted and a summary kept in the audit log
  */
 export const ResolveIntakeReviewParams = zod.object({

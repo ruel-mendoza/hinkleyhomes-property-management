@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { desc, eq, inArray, ne, sql } from "drizzle-orm";
-import { getDb, invoiceIntakeChecksTable, invoiceIntakeReviewsTable, isDatabaseConfigured } from "@workspace/db";
+import { auditLogTable, getDb, invoiceIntakeChecksTable, invoiceIntakeReviewsTable, isDatabaseConfigured } from "@workspace/db";
 import {
+  ClearNotInvoiceIntakeChecksResponse,
   ListIntakeChecksQueryParams,
   ListIntakeChecksResponse,
   ListIntakeReviewsResponse,
@@ -76,6 +77,41 @@ router.get("/invoices/intake-checks", async (req, res): Promise<void> => {
   } catch (error) {
     req.log.error({ err: error }, "Intake checks could not be read");
     res.status(503).json({ error: "The inbox log isn't set up yet: run the database push." });
+  }
+});
+
+// Deletes every "Not invoices" row. Safe because the n8n intake check skips any
+// email tagged "n8n: not an invoice" in Outlook, so they are not checked
+// again. What was deleted (sender, subject) goes to the audit log.
+router.post("/invoices/intake-checks/clear-not-invoices", async (req, res): Promise<void> => {
+  if (!isDatabaseConfigured()) {
+    res.status(503).json({ error: "The database is not configured." });
+    return;
+  }
+  const t = invoiceIntakeChecksTable;
+  const staff = res.locals.staff as { userId?: string; email?: string } | undefined;
+  try {
+    const cleared = await getDb().transaction(async (tx) => {
+      const rows = await tx.delete(t).where(eq(t.verdict, "not_invoice")).returning({ internetMessageId: t.internetMessageId, senderEmail: t.senderEmail, subject: t.subject });
+      if (rows.length) {
+        await tx.insert(auditLogTable).values({
+          actorEmail: staff?.email ?? null,
+          actorUserId: staff?.userId ?? null,
+          action: "intake_check.clear_not_invoices",
+          tableName: "invoice_intake_checks",
+          recordId: "not_invoice",
+          before: { emails: rows },
+          after: { deleted: rows.length },
+          requestId: req.id !== undefined && req.id !== null ? String(req.id) : null,
+          ipAddress: req.ip ?? null,
+        });
+      }
+      return rows.length;
+    });
+    res.json(ClearNotInvoiceIntakeChecksResponse.parse({ cleared }));
+  } catch (error) {
+    req.log.error({ err: error }, "Not-invoice intake checks could not be cleared");
+    res.status(503).json({ error: "The list could not be cleared. Try again in a minute." });
   }
 });
 

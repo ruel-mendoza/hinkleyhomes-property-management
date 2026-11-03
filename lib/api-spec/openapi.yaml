@@ -1230,6 +1230,20 @@ paths:
                 $ref: "#/components/schemas/IntakeCheckList"
         "503":
           description: Database is not configured
+  /invoices/intake-checks/clear-not-invoices:
+    post:
+      operationId: clearNotInvoiceIntakeChecks
+      tags: [xero]
+      summary: Delete every not-invoice email from the inbox log (n8n skips emails it has tagged as not an invoice in Outlook, so they are not checked again); senders and subjects go to the audit log
+      responses:
+        "200":
+          description: How many emails were cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntakeChecksCleared"
+        "503":
+          description: Database is not configured
   /invoices/intake-reviews/{id}/resolve:
     post:
       operationId: resolveIntakeReview
@@ -4439,6 +4453,12 @@ components:
           type: ["string", "null"]
           maxLength: 1000
       required: [outcome]
+    IntakeChecksCleared:
+      type: object
+      properties:
+        cleared:
+          type: integer
+      required: [cleared]
     IntakeReviewResolved:
       type: object
       properties:

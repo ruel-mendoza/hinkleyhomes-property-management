@@ -69,6 +69,7 @@ import type {
   GetStaysPerformanceParams,
   HealthStatus,
   IntakeCheckList,
+  IntakeChecksCleared,
   IntakeReviewList,
   IntakeReviewResolve,
   IntakeReviewResolved,
@@ -4679,6 +4680,80 @@ export function useListIntakeChecks<TData = Awaited<ReturnType<typeof listIntake
 
 
 
+
+export const getClearNotInvoiceIntakeChecksUrl = () => {
+
+
+
+
+  return `/api/invoices/intake-checks/clear-not-invoices`
+}
+
+/**
+ * @summary Delete every not-invoice email from the inbox log (n8n skips emails it has tagged as not an invoice in Outlook, so they are not checked again); senders and subjects go to the audit log
+ */
+export const clearNotInvoiceIntakeChecks = async ( options?: Parameters<typeof customFetch>[1]): Promise<IntakeChecksCleared> => {
+
+  return customFetch<IntakeChecksCleared>(getClearNotInvoiceIntakeChecksUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getClearNotInvoiceIntakeChecksMutationKey = () => ['clearNotInvoiceIntakeChecks'] as const;
+
+export const getClearNotInvoiceIntakeChecksMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearNotInvoiceIntakeChecks>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof clearNotInvoiceIntakeChecks>>, TError,void, TContext> => {
+
+const mutationKey = getClearNotInvoiceIntakeChecksMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof clearNotInvoiceIntakeChecks>>, void> = () => {
+
+
+          return  clearNotInvoiceIntakeChecks(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ClearNotInvoiceIntakeChecksMutationResult = NonNullable<Awaited<ReturnType<typeof clearNotInvoiceIntakeChecks>>>
+
+    export type ClearNotInvoiceIntakeChecksMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Delete every not-invoice email from the inbox log (n8n skips emails it has tagged as not an invoice in Outlook, so they are not checked again); senders and subjects go to the audit log
+ */
+export const useClearNotInvoiceIntakeChecks = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearNotInvoiceIntakeChecks>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof clearNotInvoiceIntakeChecks>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getClearNotInvoiceIntakeChecksMutationOptions(options));
+    }
 
 export const getResolveIntakeReviewUrl = (id: string,) => {
 

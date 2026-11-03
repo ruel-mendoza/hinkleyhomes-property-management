@@ -119,6 +119,7 @@ export * from './intakeCheck';
 export * from './intakeCheckFilter';
 export * from './intakeCheckList';
 export * from './intakeCheckListCounts';
+export * from './intakeChecksCleared';
 export * from './intakeFile';
 export * from './intakeFileKind';
 export * from './intakeReview';

@@ -2430,6 +2430,10 @@ export interface IntakeReviewResolve {
   note?: string | null;
 }
 
+export interface IntakeChecksCleared {
+  cleared: number;
+}
+
 export interface IntakeReviewResolved {
   id: string;
 }

@@ -160,7 +160,7 @@ export default function InvoicesPage() {
       {intake ? (
         <>
           {tabBar}
-          {tab === "inbox" ? <IntakeChecksTab get={get} setParams={setParams} /> : <IntakeReviewsTab flash={flash} />}
+          {tab === "inbox" ? <IntakeChecksTab get={get} setParams={setParams} flash={flash} /> : <IntakeReviewsTab flash={flash} />}
         </>
       ) : <>
       {query.isLoading && <section className="panel hh-fin-note">Loading invoices from Xero for all five companies…</section>}
