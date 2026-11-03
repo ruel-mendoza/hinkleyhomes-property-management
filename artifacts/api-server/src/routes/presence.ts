@@ -24,10 +24,9 @@ const PAGES: [RegExp, string][] = [
   [/^\/compliance\/?$/, "Compliance"],
   [/^\/actions\/?$/, "Actions"],
   [/^\/maintenance\/?$/, "Maintenance"],
-  [/^\/finance\/?$/, "Rent & fees"],
-  [/^\/bank-feed\/?$/, "Rent bank feed"],
-  [/^\/invoices\/?$/, "Invoices"],
-  [/^\/checks\/?$/, "Finance checks"],
+  [/^\/rent\/?$/, "Rent"],
+  [/^\/receivables\/?$/, "Owed to us"],
+  [/^\/bills\/?$/, "Supplier bills"],
   [/^\/property-aliases\/?$/, "Property aliases"],
 ];
 const pageName = (path: string) => PAGES.find(([pattern]) => pattern.test(path.split(/[?#]/)[0]))?.[1] ?? "Other page";

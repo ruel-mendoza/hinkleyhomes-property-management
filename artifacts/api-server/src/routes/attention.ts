@@ -44,11 +44,11 @@ async function financeAlerts(): Promise<Item[]> {
     items.push({
       key: "bank_details", severity: "high", label: "Supplier bank details changed", count: bank.length, amount: null,
       detail: `${typeof supplier === "string" && supplier ? supplier : bank[0].summary} · phone them before the next payment`,
-      href: "/checks?tab=alerts",
+      href: "/bills?tab=alerts",
     });
   }
   const n = prices[0]?.n ?? 0;
-  if (n) items.push({ key: "price_alerts", severity: "warn", label: "Bill prices well above usual", count: n, amount: null, detail: null, href: "/checks?tab=alerts" });
+  if (n) items.push({ key: "price_alerts", severity: "warn", label: "Bill prices well above usual", count: n, amount: null, detail: null, href: "/bills?tab=alerts" });
   return items;
 }
 
@@ -62,7 +62,7 @@ async function intakeReviews(): Promise<Item[]> {
   return [{
     key: "intake_reviews", severity: "warn", label: "Invoices for review", count: rows.length, amount: null,
     detail: `oldest ${daysAgo(oldest.createdAt) ? `${plural(daysAgo(oldest.createdAt), "day")} old` : "from today"}${oldest.supplier || oldest.sender ? ` (${oldest.supplier || oldest.sender})` : ""}`,
-    href: "/invoices?tab=review",
+    href: "/bills?tab=review",
   }];
 }
 
@@ -73,7 +73,7 @@ async function heldBills(): Promise<Item[]> {
   return [{
     key: "held_bills", severity: "warn", label: "Supplier bills held", count: held.length, amount: null,
     detail: failed ? `${failed} could not be read or written to Xero` : "need a property or a decision",
-    href: "/checks?tab=coding",
+    href: "/bills?tab=coding",
   }];
 }
 
@@ -87,8 +87,8 @@ async function actNowOverdue(): Promise<Item[]> {
     .where(and(isNull(t.clearedOn), eq(t.priority, 1), gte(t.lastSeenOn, recent)))
     .groupBy(t.ledger);
   return rows.filter((row) => row.n > 0).map((row) => row.ledger === "receivable"
-    ? { key: "overdue_receivable", severity: "high" as const, label: "Overdue to us: act now", count: row.n, amount: Number(row.amount), detail: "high value or long overdue", href: "/checks" }
-    : { key: "overdue_payable", severity: "warn" as const, label: "Our bills overdue: act now", count: row.n, amount: Number(row.amount), detail: "suppliers waiting to be paid", href: "/checks" });
+    ? { key: "overdue_receivable", severity: "high" as const, label: "Overdue to us: act now", count: row.n, amount: Number(row.amount), detail: "high value or long overdue", href: "/receivables?order=act" }
+    : { key: "overdue_payable", severity: "warn" as const, label: "Our bills overdue: act now", count: row.n, amount: Number(row.amount), detail: "suppliers waiting to be paid", href: "/bills?tab=pay&order=act" });
 }
 
 async function cohoActions(propertyReference: string | undefined): Promise<Item[]> {

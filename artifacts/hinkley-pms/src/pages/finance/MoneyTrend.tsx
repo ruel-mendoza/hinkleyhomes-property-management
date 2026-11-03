@@ -77,7 +77,7 @@ function RevenueTrend() {
               {readable.map((item) => <option key={item.tenantId} value={item.tenantId}>{item.name}</option>)}
             </select>
           )}
-          <Link href="/finance">Rent &amp; fees →</Link>
+          <Link href="/rent">Rent &amp; fees →</Link>
         </div>
       </div>
       <div className="hh-fin-chart">
@@ -135,7 +135,7 @@ function BankFeedMeter() {
     <section className="panel">
       <div className="panel-head">
         <div><div className="panel-title">Rent bank feed</div><div className="panel-caption">Bank lines matched to rent in COHO</div></div>
-        <Link href="/bank-feed">Bank feed →</Link>
+        <Link href="/rent?tab=bank">Bank feed →</Link>
       </div>
       <div className="hh-meter">
         {feed.isLoading ? <p className="hh-fin-note">Loading from COHO…</p>

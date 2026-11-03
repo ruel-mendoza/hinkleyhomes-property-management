@@ -6,9 +6,10 @@ import { getGetFinanceBankFeedQueryKey, useGetFinanceBankFeed, useSyncRentMatchA
 import { errorText } from "@/components/action-modals";
 import { MonthlyBars, SERIES_COLOURS } from "@/components/charts/MonthlyBars";
 import { downloadText, formatDate } from "@/services/properties";
+import { RentTabs } from "./RentTabs";
 import "./finance.css";
 
-// Rent bank feed: COHO's bank lines and whether each has been matched to rent,
+// Rent > Bank feed: COHO's bank lines and whether each has been matched to rent,
 // plus our suggestion of which unmatched line may pay an overdue tenancy.
 // Each suggestion is also raised as a COHO action (hourly, or "Add to COHO
 // actions") so staff see it in COHO; the matching itself is done in COHO.
@@ -48,7 +49,7 @@ export default function BankFeedPage() {
       if (value && !(key === "status" && value === "unmatched")) next.set(key, value);
       else next.delete(key);
     }
-    navigate(`/bank-feed${next.size ? `?${next}` : ""}`, { replace: true });
+    navigate(`/rent${next.size ? `?${next}` : ""}`, { replace: true });
   };
   const term = get("q"), from = get("from"), to = get("to"), min = get("min"), max = get("max"), showSnoozed = get("snoozed") === "1";
 
@@ -91,13 +92,14 @@ export default function BankFeedPage() {
       <div className="page-head">
         <div>
           <div className="eyebrow">Hinkley Homes · COHO finance</div>
-          <h1 className="page-title">Rent bank feed</h1>
+          <h1 className="page-title">Rent</h1>
           <p className="page-sub">Bank lines COHO receives and whether each is matched to rent{data?.accounts.length ? ` · ${data.accounts.join(", ")}` : ""}{data ? ` · since ${formatDate(data.from)}` : ""}</p>
         </div>
         <div className="head-actions">
           <button type="button" className="button" onClick={exportCsv} disabled={!lines.length} data-testid="button-bank-feed-export"><Download size={14} /> Export (CSV)</button>
         </div>
       </div>
+      <RentTabs active="bank" />
 
       {query.isLoading && <section className="panel hh-fin-note">Loading from COHO…</section>}
       {query.isError && <p className="hh-props-alert" role="alert"><AlertTriangle size={14} /> The bank feed could not be loaded from COHO: {errorText(query.error)}</p>}

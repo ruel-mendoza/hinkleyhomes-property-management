@@ -7,7 +7,7 @@ import {
   type AttentionItem,
   type MoneyOverview,
 } from "@workspace/api-client-react";
-import { receivablesQueryOptions } from "@/pages/finance/InvoicesPage";
+import { receivablesQueryOptions } from "@/pages/finance/XeroLedger";
 import "./money.css";
 
 // Operations overview, top: what someone should act on today, ranked. The
@@ -44,7 +44,7 @@ function moneyItems(money: MoneyOverview | undefined, propertyReference: string 
     }
     const possible = arrears.filter((row) => row.possiblePayment);
     if (possible.length) {
-      items.push({ key: "possible_payments", severity: "info", label: "Payments not yet matched in COHO", count: possible.length, amount: null, detail: "tenants in arrears who may have paid", href: "/bank-feed?status=suggested" });
+      items.push({ key: "possible_payments", severity: "info", label: "Payments not yet matched in COHO", count: possible.length, amount: null, detail: "tenants in arrears who may have paid", href: "/rent?tab=bank&status=suggested" });
     }
     const noDeposit = inScope(coho.tenanciesWithoutDeposit);
     if (noDeposit.length) {
@@ -93,7 +93,7 @@ export function NeedsAttention({ money, propertyReference }: { money?: MoneyOver
   const data = receivables.data;
   if (data && !propertyReference) {
     const due = data.invoices.filter((invoice) => invoice.followUp?.nextChaseDate && invoice.followUp.nextChaseDate <= data.asOf);
-    if (due.length) items.push({ key: "chase_today", severity: "warn", label: "Invoices to chase today", count: due.length, amount: due.reduce((sum, invoice) => sum + invoice.amountDue, 0), detail: "next chase date reached", href: "/invoices?chase=1" });
+    if (due.length) items.push({ key: "chase_today", severity: "warn", label: "Invoices to chase today", count: due.length, amount: due.reduce((sum, invoice) => sum + invoice.amountDue, 0), detail: "next chase date reached", href: "/receivables?chase=1" });
   }
   items.sort((a, b) => RANK[a.severity] - RANK[b.severity] || (b.amount ?? 0) - (a.amount ?? 0) || b.count - a.count);
 

@@ -20,7 +20,7 @@ import {
 import { errorText } from "@/components/action-modals";
 import { ModalShell } from "@/components/properties/ModalShell";
 import { formatDate } from "@/services/properties";
-import { CompanyTag } from "./InvoicesPage";
+import { CompanyTag } from "./XeroLedger";
 
 // Bill coding: the supplier bills the hourly n8n workflow read from Xero, which
 // property each line belongs to, and what was (or would be) written to Xero.

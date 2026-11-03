@@ -113,10 +113,10 @@
 .hh-inv-company.active{border-color:#79cdb0;box-shadow:0 0 0 2px #79cdb040}
 .hh-inv-company:focus-visible{outline:2px solid #79cdb0;outline-offset:2px}
 .hh-inv-tabs{display:flex;gap:4px;padding:3px;margin-bottom:12px;border:1px solid #2a374d;border-radius:8px;background:#141f30;width:max-content}
-.hh-inv-tabs button{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 14px;border:0;border-radius:6px;background:none;color:#b7c2d1;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
-.hh-inv-tabs button span{min-width:20px;padding:1px 6px;border-radius:999px;background:#25324a;color:#c6d1de;font-size:11px}
-.hh-inv-tabs button.active{background:#173d35;color:#a9e6cf}
-.hh-inv-tabs button:focus-visible{outline:2px solid #79cdb0;outline-offset:1px}
+.hh-inv-tabs button,.hh-inv-tabs a{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 14px;border:0;border-radius:6px;background:none;color:#b7c2d1;font:inherit;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none}
+.hh-inv-tabs button span,.hh-inv-tabs a span{min-width:20px;padding:1px 6px;border-radius:999px;background:#25324a;color:#c6d1de;font-size:11px}
+.hh-inv-tabs button.active,.hh-inv-tabs a.active{background:#173d35;color:#a9e6cf}
+.hh-inv-tabs button:focus-visible,.hh-inv-tabs a:focus-visible{outline:2px solid #79cdb0;outline-offset:1px}
 .hh-inv-actions{white-space:nowrap;text-align:right}
 .hh-inv-actions .button{display:inline-flex;align-items:center;gap:5px;margin-right:4px}
 .hh-inv-history{margin-top:14px;border-top:1px solid #2a374d;padding-top:10px}
@@ -190,7 +190,7 @@
 .hh-co-chip-name i{width:8px;height:8px;border-radius:50%;flex:none}
 .hh-rem-off{align-self:flex-start;padding:1px 7px;border-radius:999px;background:#25324a;border:1px solid #3a4a62;color:#c6d1de;font-size:11px;font-weight:700}
 /* Finance checks page */
-.hh-inv-tabs button span.hh-chk-count.bad{background:#5a1f3a;color:#f6cfe0}
+.hh-inv-tabs button span.hh-chk-count.bad,.hh-inv-tabs a span.hh-chk-count.bad{background:#5a1f3a;color:#f6cfe0}
 .hh-chk-matrix th[scope=row]{white-space:nowrap}
 .hh-chk-cell{font-variant-numeric:tabular-nums;white-space:nowrap}
 .hh-chk-cell.overdue{background:#3a2229;color:#f6cfe0}
@@ -223,3 +223,15 @@ td.hh-chk-summary{min-width:260px;width:60ch}
 .hh-trend-head-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .hh-trend-select{height:30px;max-width:200px;padding:0 8px;border:1px solid #37475e;border-radius:6px;background:#1c2a3e;color:#dbe3ee;font:inherit;font-size:12px}
 .hh-chart-legend i.dashed{height:3px;border-radius:2px}
+
+/* Owed to us / Supplier bills: Run checks in the header, list tools, priority under the due date */
+.hh-chk-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hh-chk-last{font-size:12px;color:#95a2b5}
+.hh-ledger-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 10px}
+.hh-ledger-tools .hh-fin-filter{flex:1 1 260px;margin:0}
+.hh-inv-rank{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.hh-perf-strip-links{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Rent: tabs under the header */
+.hh-rent-tabs{margin-bottom:14px}
+.hh-inv-tabs{max-width:100%;overflow-x:auto}

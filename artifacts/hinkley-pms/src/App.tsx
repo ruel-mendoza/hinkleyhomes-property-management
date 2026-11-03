@@ -7,7 +7,7 @@ import { ClerkProvider, useAuth, useClerk, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import NotFound from '@/pages/not-found';
-import { Link, Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import { Link, Redirect, Route, Switch, useLocation, useSearch, Router as WouterRouter } from 'wouter';
 import {
   AlertTriangle, ArrowUpRight, BedDouble, Building2, CalendarDays, ClipboardList, FileSearch, FileText, House, Landmark, LayoutDashboard, LogOut, Menu, PlugZap, PoundSterling, Search, ShieldCheck, Tags, TrendingUp, Users, Wallet, Wrench, X,
 } from 'lucide-react';
@@ -33,11 +33,12 @@ import OccupancyPage, { OccupancyCard } from '@/pages/occupancy/OccupancyPage';
 import PerformancePage, { PerformanceStrip } from '@/pages/performance/PerformancePage';
 import StaysPage, { StaysStrip } from '@/pages/stays/StaysPage';
 import CompliancePage, { complianceQuery } from '@/pages/compliance/CompliancePage';
-import FinanceIncomePage from '@/pages/finance/FinanceIncomePage';
-import BankFeedPage, { bankFeedQueryOptions } from '@/pages/finance/BankFeedPage';
+import RentPage from '@/pages/finance/RentPage';
+import { bankFeedQueryOptions } from '@/pages/finance/BankFeedPage';
 import { MoneyTrend } from '@/pages/finance/MoneyTrend';
-import InvoicesPage, { ReceivablesStrip } from '@/pages/finance/InvoicesPage';
-import ChecksPage from '@/pages/finance/ChecksPage';
+import { ReceivablesStrip } from '@/pages/finance/XeroLedger';
+import OwedToUsPage from '@/pages/finance/OwedToUsPage';
+import SupplierBillsPage from '@/pages/finance/SupplierBillsPage';
 import PropertyAliasesPage from '@/pages/properties/PropertyAliasesPage';
 import ListingsWidget from '@/pages/listings-widget';
 import { AccountsNotices, MoneyPanels, formatPounds } from '@/components/overview/MoneyPanels';
@@ -57,7 +58,7 @@ const LEGACY_DEMO_STORAGE = 'hinkley-pms-demo-v1';
 const navGroups = [
   { label: 'CORE', items: [['/dashboard', 'Overview', LayoutDashboard], ['/properties', 'Properties', Building2], ['/property-aliases', 'Property aliases', Tags]] },
   { label: 'OPERATIONS', items: [['/calendar', 'Calendar', CalendarDays], ['/occupancy', 'Occupancy', Users], ['/stays', 'Stays', BedDouble], ['/performance', 'Performance', TrendingUp], ['/compliance', 'Compliance', ShieldCheck], ['/actions', 'Actions', ClipboardList], ['/maintenance', 'Maintenance', Wrench]] },
-  { label: 'FINANCE', items: [['/finance', 'Rent & fees', Wallet], ['/bank-feed', 'Rent bank feed', Landmark], ['/invoices', 'Invoices', FileText], ['/checks', 'Finance checks', FileSearch]] },
+  { label: 'FINANCE', items: [['/rent', 'Rent', Wallet], ['/receivables', 'Owed to us', FileText], ['/bills', 'Supplier bills', FileSearch]] },
 ] as const;
 const initials = (s: string) => s.split(' ').map(a => a[0]).slice(0, 2).join('').toUpperCase();
 const greeting = (date: Date) => date.getHours() < 12 ? 'Good morning' : date.getHours() < 18 ? 'Good afternoon' : 'Good evening';
@@ -101,7 +102,7 @@ function AppShell() {
   useEffect(() => { try { localStorage.removeItem(LEGACY_DEMO_STORAGE); } catch { /* storage unavailable */ } }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 2600); return () => clearTimeout(t); }, [toast]);
   useEffect(() => { setSideOpen(false); }, [path]);
-  const nav = <>{navGroups.map(group => <div className="nav-group" key={group.label}><div className="nav-label">{group.label}</div>{group.items.map(([href, label, Icon]) => <Link href={href} key={href} className={'nav-link ' + (path === href || path.startsWith(`${href}/`) ? 'active' : '')} data-testid={`link-nav-${label.toLowerCase().replaceAll(' ', '-')}`}><Icon size={15} /><span>{label}</span>{href === '/compliance' && expiredCount > 0 && <span className="nav-badge" title={`${expiredCount} expired compliance ${expiredCount === 1 ? 'item' : 'items'}`} aria-label={`${expiredCount} expired`}>{expiredCount}</span>}{href === '/bank-feed' && rentToMatch > 0 && <span className="nav-badge info" title={`${rentToMatch} ${rentToMatch === 1 ? 'payment looks' : 'payments look'} like overdue rent, ready to match in COHO`} aria-label={`${rentToMatch} ready to match`}>{rentToMatch}</span>}</Link>)}</div>)}</>;
+  const nav = <>{navGroups.map(group => <div className="nav-group" key={group.label}><div className="nav-label">{group.label}</div>{group.items.map(([href, label, Icon]) => <Link href={href} key={href} className={'nav-link ' + (path === href || path.startsWith(`${href}/`) ? 'active' : '')} data-testid={`link-nav-${label.toLowerCase().replaceAll(' ', '-')}`}><Icon size={15} /><span>{label}</span>{href === '/compliance' && expiredCount > 0 && <span className="nav-badge" title={`${expiredCount} expired compliance ${expiredCount === 1 ? 'item' : 'items'}`} aria-label={`${expiredCount} expired`}>{expiredCount}</span>}{href === '/rent' && rentToMatch > 0 && <span className="nav-badge info" title={`${rentToMatch} ${rentToMatch === 1 ? 'payment looks' : 'payments look'} like overdue rent, ready to match in COHO`} aria-label={`${rentToMatch} ready to match`}>{rentToMatch}</span>}</Link>)}</div>)}</>;
   const term = global.trim().toLowerCase();
   const globalResults = term
     ? cohoProperties
@@ -137,10 +138,13 @@ function AppShell() {
           <Route path="/stays" component={StaysPage} />
           <Route path="/performance"><PerformancePage selectedPropertyReference={selectedPropertyReference} /></Route>
           <Route path="/compliance"><CompliancePage selectedPropertyReference={selectedPropertyReference} /></Route>
-          <Route path="/finance"><FinanceIncomePage selectedPropertyReference={selectedPropertyReference} /></Route>
-          <Route path="/bank-feed" component={BankFeedPage} />
-          <Route path="/invoices" component={InvoicesPage} />
-          <Route path="/checks" component={ChecksPage} />
+          <Route path="/rent"><RentPage selectedPropertyReference={selectedPropertyReference} /></Route>
+          <Route path="/receivables" component={OwedToUsPage} />
+          <Route path="/bills" component={SupplierBillsPage} />
+          <Route path="/finance"><FinanceRedirect from="/finance" /></Route>
+          <Route path="/bank-feed"><FinanceRedirect from="/bank-feed" /></Route>
+          <Route path="/invoices"><FinanceRedirect from="/invoices" /></Route>
+          <Route path="/checks"><FinanceRedirect from="/checks" /></Route>
           <Route path="/property-aliases" component={PropertyAliasesPage} />
           <Route path="/maintenance"><CohoMaintenancePage selectedPropertyReference={selectedPropertyReference} /></Route>
           <Route path="/properties"><PropertiesPage /></Route>
@@ -217,12 +221,26 @@ const clerkAppearance = {
   options: { logoPlacement: 'inside' as const, logoLinkUrl: basePath || '/', logoImageUrl: `${window.location.origin}${basePath}/logo.svg` },
   variables: { colorPrimary: '#267966', colorForeground: '#e8edf5', colorMutedForeground: '#99a6ba', colorDanger: '#ef8e91', colorBackground: '#172337', colorInput: '#111b2b', colorInputForeground: '#edf2f7', colorNeutral: '#34425a', fontFamily: '"DM Sans", sans-serif', fontSize: '0.9375rem', borderRadius: '0.7rem' }
 };
+// The old Finance pages (Rent & fees, Rent bank feed, Invoices, Finance checks) became Rent, Owed to us and Supplier bills; old links land on the same tab, keeping their filters.
+function financeRedirectTarget(from: string, search: string): string {
+  const params = new URLSearchParams(search); const tab = params.get('tab') ?? ''; params.delete('tab');
+  const to = (path: string, extra: Record<string, string> = {}) => { for (const [key, value] of Object.entries(extra)) params.set(key, value); return `${path}${params.size ? `?${params}` : ''}`; };
+  if (from === '/finance') return to('/rent');
+  if (from === '/bank-feed') return to('/rent', { tab: 'bank' });
+  if (from === '/invoices') return tab === 'bills' ? to('/bills', { tab: 'pay' }) : tab === 'inbox' || tab === 'review' ? to('/bills', { tab }) : to('/receivables');
+  if (tab === 'alerts' || tab === 'coding') return to('/bills', { tab });
+  if (tab === 'reminders') return to('/receivables', { tab: 'reminders' });
+  const ledger = params.get('ledger'); const order = params.get('priority') === '1' ? 'act' : params.get('changed') === '1' ? 'changed' : 'priority';
+  for (const key of ['ledger', 'priority', 'changed']) params.delete(key);
+  return ledger === 'payable' ? to('/bills', { tab: 'pay', order }) : to('/receivables', { order });
+}
+function FinanceRedirect({ from }: { from: string }) { const search = useSearch(); return <Redirect to={financeRedirectTarget(from, search)} replace />; }
 function HomeRedirect() { const { isLoaded, isSignedIn } = useAuth(); if (!isLoaded) return <AuthLoadingPage />; return isSignedIn ? <Redirect to="/dashboard" /> : <AuthLandingPage />; }
 function SignedOutOnly({ children }: { children: ReactNode }) { const { isLoaded, isSignedIn } = useAuth(); if (!isLoaded) return <AuthLoadingPage />; return isSignedIn ? <Redirect to="/dashboard" /> : <>{children}</>; }
 function ProtectedCRM() { const { isLoaded, isSignedIn } = useAuth(); const { user, isLoaded: userLoaded } = useUser(); const { signOut } = useClerk(); if (!isLoaded || !userLoaded) return <AuthLoadingPage />; if (!isSignedIn) return <Redirect to="/sign-in" />; const email = user?.primaryEmailAddress?.emailAddress ?? ''; if (!isAllowedStaffEmail(email)) return <AccessRestrictedPage onSignOut={() => void signOut({ redirectUrl: basePath || '/' })} />; return <AppShell />; }
 function ClerkQueryClientCacheInvalidator() { const { addListener } = useClerk(); const client = useRef<string | null | undefined>(undefined); useEffect(() => addListener(({ user }) => { const userId = user?.id ?? null; if (client.current !== undefined && client.current !== userId) queryClient.clear(); client.current = userId; }), []); return null; }
 function RoutedErrorBoundary({ children }: { children: ReactNode }) { const [location] = useLocation(); return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>; }
-function Router() { return <RoutedErrorBoundary><Switch><Route path="/" component={HomeRedirect} /><Route path="/sign-in/*?" component={() => <SignedOutOnly><SignInPage /></SignedOutOnly>} /><Route path="/sign-up/*?" component={() => <SignedOutOnly><SignUpPage /></SignedOutOnly>} /><Route path="/dashboard" component={ProtectedCRM} /><Route path="/calendar" component={ProtectedCRM} /><Route path="/actions" component={ProtectedCRM} /><Route path="/occupancy" component={ProtectedCRM} /><Route path="/stays" component={ProtectedCRM} /><Route path="/performance" component={ProtectedCRM} /><Route path="/compliance" component={ProtectedCRM} /><Route path="/finance" component={ProtectedCRM} /><Route path="/bank-feed" component={ProtectedCRM} /><Route path="/invoices" component={ProtectedCRM} /><Route path="/checks" component={ProtectedCRM} /><Route path="/property-aliases" component={ProtectedCRM} /><Route path="/maintenance" component={ProtectedCRM} /><Route path="/properties" component={ProtectedCRM} /><Route path="/properties/:id" component={ProtectedCRM} /><Route path="/widget" component={ListingsWidget} /><Route component={NotFound} /></Switch></RoutedErrorBoundary>; }
+function Router() { return <RoutedErrorBoundary><Switch><Route path="/" component={HomeRedirect} /><Route path="/sign-in/*?" component={() => <SignedOutOnly><SignInPage /></SignedOutOnly>} /><Route path="/sign-up/*?" component={() => <SignedOutOnly><SignUpPage /></SignedOutOnly>} /><Route path="/dashboard" component={ProtectedCRM} /><Route path="/calendar" component={ProtectedCRM} /><Route path="/actions" component={ProtectedCRM} /><Route path="/occupancy" component={ProtectedCRM} /><Route path="/stays" component={ProtectedCRM} /><Route path="/performance" component={ProtectedCRM} /><Route path="/compliance" component={ProtectedCRM} /><Route path="/finance" component={ProtectedCRM} /><Route path="/bank-feed" component={ProtectedCRM} /><Route path="/invoices" component={ProtectedCRM} /><Route path="/checks" component={ProtectedCRM} /><Route path="/rent" component={ProtectedCRM} /><Route path="/receivables" component={ProtectedCRM} /><Route path="/bills" component={ProtectedCRM} /><Route path="/property-aliases" component={ProtectedCRM} /><Route path="/maintenance" component={ProtectedCRM} /><Route path="/properties" component={ProtectedCRM} /><Route path="/properties/:id" component={ProtectedCRM} /><Route path="/widget" component={ListingsWidget} /><Route component={NotFound} /></Switch></RoutedErrorBoundary>; }
 function ClerkApp() { const [, setLocation] = useLocation(); function stripBase(path: string) { return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || '/' : path; } return <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={clerkAppearance} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} localization={{ signIn: { start: { title: 'Welcome back', subtitle: 'Sign in to access your Hinkley Homes staff account' } }, signUp: { start: { title: 'Create your account', subtitle: 'Use your Hinkley Homes company email to register' } } }} routerPush={to => setLocation(stripBase(to))} routerReplace={to => setLocation(stripBase(to), { replace: true })}><QueryClientProvider client={queryClient}><TooltipProvider><ClerkQueryClientCacheInvalidator /><Router /><Toaster /></TooltipProvider></QueryClientProvider></ClerkProvider>; }
 function App() { return <WouterRouter base={basePath}><ClerkApp /></WouterRouter>; }
 export default App;

@@ -1,15 +1,17 @@
 import { useMemo, useState } from "react";
-import { Link, useLocation, useSearch } from "wouter";
+import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Copy, Download, MessageSquarePlus, Search, Send, X } from "lucide-react";
 import {
+  getGetOverdueReportQueryKey,
   getGetReceivablesQueryKey,
   getInvoicePaymentLink,
+  useGetOverdueReport,
   useGetReceivables,
-  useListIntakeReviews,
   useRunInvoiceAction,
   useUpdateInvoiceFollowUp,
   type InvoiceFollowUpOutcome,
+  type OverdueItem,
   type ReminderStatus,
   type PayableBill,
   type ReceivableInvoice,
@@ -18,16 +20,28 @@ import { errorText } from "@/components/action-modals";
 import { ModalShell } from "@/components/properties/ModalShell";
 import { downloadText, formatDate } from "@/services/properties";
 import { ReminderBanner, ReminderCell, ReminderSettingsModal, SendReminderModal } from "./ReminderControls";
-import { IntakeReviewsTab, intakeReviewsQueryOptions } from "./IntakeReviewsTab";
-import { IntakeChecksTab } from "./IntakeChecksTab";
 import "./finance.css";
 
-// Invoices (Xero, Phase 1): what each company is owed and owes, with our own
-// follow-up tracker. Nothing here sends anything to Xero or customers.
+// The Xero invoice or bill list shared by "Owed to us" (sales invoices) and
+// Supplier bills > To pay: open items across all five companies, with the
+// priority the daily checks gave each overdue one, and our own follow-up
+// tracker on invoices. Nothing here sends anything to Xero or customers.
 
 const pence = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 const pounds = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 });
 export const receivablesQueryOptions = { query: { queryKey: getGetReceivablesQueryKey(), staleTime: 5 * 60_000 } };
+export const overdueReportQueryOptions = { query: { queryKey: getGetOverdueReportQueryKey(), staleTime: 5 * 60_000 } };
+
+// The daily checks' priority for an overdue item (see api-server lib/overdue-ranking.ts).
+const PRIORITY: Record<number, [string, string]> = {
+  1: ["Act now", "overdue"],
+  2: ["This week", "pending"],
+  3: ["Monitor", "na"],
+};
+const RISK_CLASS = { High: "overdue", Medium: "pending", Low: "completed" } as const;
+// "Most overdue" keeps Xero's order; the others use the daily checks' ranking.
+type Order = "due" | "priority" | "act" | "changed";
+const ORDERS: [Order, string][] = [["due", "Most overdue first"], ["priority", "Priority first"], ["act", "Act now only"], ["changed", "New or more urgent"]];
 
 export const OUTCOMES: Record<InvoiceFollowUpOutcome, [string, string]> = {
   not_contacted: ["Not contacted", "na"],
@@ -38,7 +52,7 @@ export const OUTCOMES: Record<InvoiceFollowUpOutcome, [string, string]> = {
   write_off_review: ["Write-off review", "overdue"],
 };
 
-type Tab = "receivables" | "bills" | "inbox" | "review";
+export type Ledger = "receivables" | "bills";
 type Bucket = "all" | "not_due" | "1_30" | "31_60" | "61_90" | "90_plus";
 const BUCKETS: { key: Bucket; label: string; test: (days: number) => boolean }[] = [
   { key: "not_due", label: "Not yet due", test: (days) => days <= 0 },
@@ -68,45 +82,46 @@ export function CompanyTag({ tenantId, name }: { tenantId: string; name: string 
 const bucketTone = (key: Bucket) => (key === "not_due" ? "info" : key === "1_30" ? "neutral" : key === "31_60" ? "warn" : "bad");
 const dueText = (days: number) => (days > 0 ? `${days} ${days === 1 ? "day" : "days"} overdue` : days === 0 ? "due today" : `due in ${-days} ${days === -1 ? "day" : "days"}`);
 
-export default function InvoicesPage() {
-  const search = useSearch();
-  const [, navigate] = useLocation();
-  const params = new URLSearchParams(search);
-  const get = (key: string) => params.get(key) ?? "";
-  const setParams = (change: Record<string, string>) => {
-    const next = new URLSearchParams(search);
-    for (const [key, value] of Object.entries(change)) value ? next.set(key, value) : next.delete(key);
-    navigate(`/invoices${next.size ? `?${next}` : ""}`, { replace: true });
-  };
-  const tab: Tab = (["bills", "inbox", "review"] as const).find((key) => key === get("tab")) ?? "receivables";
-  const intake = tab === "inbox" || tab === "review";
+type Params = { get: (key: string) => string; setParams: (change: Record<string, string>) => void; flash: (message: string) => void };
+
+export function LedgerView({ ledger, get, setParams, flash }: { ledger: Ledger } & Params) {
+  const isInvoices = ledger === "receivables";
   const bucket = (BUCKETS.some((item) => item.key === get("age")) ? get("age") : "all") as Bucket;
+  const order = (ORDERS.some(([key]) => key === get("order")) ? get("order") : "due") as Order;
   const company = get("company");
   const term = get("q");
-  const dueOnly = get("chase") === "1";
+  const dueOnly = isInvoices && get("chase") === "1";
 
   const query = useGetReceivables(receivablesQueryOptions);
   const data = query.data;
-  const reviewOpen = useListIntakeReviews(intakeReviewsQueryOptions()).data?.openCount;
+  const overdue = useGetOverdueReport(overdueReportQueryOptions).data;
   const [editing, setEditing] = useState<ReceivableInvoice | null>(null);
   const [sending, setSending] = useState<ReceivableInvoice | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toast, setToast] = useState("");
-  const flash = (message: string) => { setToast(message); setTimeout(() => setToast(""), 3200); };
 
-  const rows = (tab === "receivables" ? data?.invoices : data?.bills) ?? [];
+  // The daily checks' ranking for each overdue item, matched by company and Xero id.
+  const ranked = useMemo(() => new Map((overdue?.items ?? []).filter((item) => item.ledger === (isInvoices ? "receivable" : "payable")).map((item) => [`${item.tenantId}-${item.invoiceId}`, item])), [overdue, isInvoices]);
+  const rowId = (row: ReceivableInvoice | PayableBill) => ("invoiceId" in row ? row.invoiceId : row.billId);
+  const rankOf = (row: ReceivableInvoice | PayableBill) => ranked.get(`${row.tenantId}-${rowId(row)}`);
+
+  const rows: (ReceivableInvoice | PayableBill)[] = (isInvoices ? data?.invoices : data?.bills) ?? [];
   const inCompany = rows.filter((row) => !company || row.tenantId === company);
   const visible = useMemo(() => {
     const needle = term.trim().toLowerCase();
     const range = BUCKETS.find((item) => item.key === bucket);
-    return inCompany.filter((row) =>
-      (!range || range.test(row.daysOverdue)) &&
-      (!dueOnly || (tab === "receivables" && (row as ReceivableInvoice).followUp?.nextChaseDate && (row as ReceivableInvoice).followUp!.nextChaseDate! <= (data?.asOf ?? ""))) &&
-      (!needle || [row.number, row.contactName, row.description, row.property, "reference" in row ? row.reference : null].some((value) => value?.toLowerCase().includes(needle))),
-    );
-  }, [inCompany, bucket, term, dueOnly, tab, data]);
+    const list = inCompany.filter((row) => {
+      const rank = rankOf(row);
+      return (!range || range.test(row.daysOverdue)) &&
+        (!dueOnly || ((row as ReceivableInvoice).followUp?.nextChaseDate && (row as ReceivableInvoice).followUp!.nextChaseDate! <= (data?.asOf ?? ""))) &&
+        (order !== "act" || rank?.priority === 1) &&
+        (order !== "changed" || (rank && rank.change !== "ongoing")) &&
+        (!needle || [row.number, row.contactName, row.description, row.property, "reference" in row ? row.reference : null].some((value) => value?.toLowerCase().includes(needle)));
+    });
+    return order === "due" ? list : [...list].sort((a, b) => (rankOf(a)?.priority ?? 9) - (rankOf(b)?.priority ?? 9) || b.amountDue - a.amountDue);
+  }, [inCompany, bucket, term, dueOnly, order, data, ranked]);
   const bucketTotal = (key: Bucket) => inCompany.filter((row) => BUCKETS.find((item) => item.key === key)!.test(row.daysOverdue)).reduce((sum, row) => sum + row.amountDue, 0);
   const chaseDue = (data?.invoices ?? []).filter((invoice) => invoice.followUp?.nextChaseDate && invoice.followUp.nextChaseDate <= data!.asOf).length;
+  const actNow = inCompany.filter((row) => rankOf(row)?.priority === 1).length;
 
   const copyLink = async (invoice: ReceivableInvoice) => {
     try {
@@ -121,66 +136,47 @@ export default function InvoicesPage() {
   const exportCsv = () => {
     if (!data) return;
     const cell = (value: string | number | null | undefined) => (value === null || value === undefined ? "" : /[",\r\n]/.test(String(value)) || /^[=+\-@]/.test(String(value)) ? `"${String(value).replace(/^([=+\-@])/, "'$1").replace(/"/g, '""')}"` : String(value));
-    const lines = tab === "receivables"
-      ? [["company", "invoice", "contact", "reference", "property", "dueDate", "daysOverdue", "amountDue", "followUp", "nextChase"].join(","), ...(visible as ReceivableInvoice[]).map((row) => [row.company, row.number, row.contactName, row.reference, row.property, row.dueDate, row.daysOverdue, row.amountDue, row.followUp ? OUTCOMES[row.followUp.outcome][0] : "", row.followUp?.nextChaseDate].map(cell).join(","))]
-      : [["company", "bill", "supplier", "description", "property", "dueDate", "daysOverdue", "amountDue", "status"].join(","), ...(visible as PayableBill[]).map((row) => [row.company, row.number, row.contactName, row.description, row.property, row.dueDate, row.daysOverdue, row.amountDue, row.status].map(cell).join(","))];
-    downloadText(`hinkley-${tab}-${data.asOf}.csv`, lines.join("\r\n"));
+    const priority = (row: ReceivableInvoice | PayableBill) => { const rank = rankOf(row); return rank ? PRIORITY[rank.priority][0] : ""; };
+    const lines = isInvoices
+      ? [["company", "invoice", "contact", "reference", "property", "dueDate", "daysOverdue", "amountDue", "priority", "followUp", "nextChase"].join(","), ...(visible as ReceivableInvoice[]).map((row) => [row.company, row.number, row.contactName, row.reference, row.property, row.dueDate, row.daysOverdue, row.amountDue, priority(row), row.followUp ? OUTCOMES[row.followUp.outcome][0] : "", row.followUp?.nextChaseDate].map(cell).join(","))]
+      : [["company", "bill", "supplier", "description", "property", "dueDate", "daysOverdue", "amountDue", "priority", "status"].join(","), ...(visible as PayableBill[]).map((row) => [row.company, row.number, row.contactName, row.description, row.property, row.dueDate, row.daysOverdue, row.amountDue, priority(row), row.status].map(cell).join(","))];
+    downloadText(`hinkley-${isInvoices ? "owed-to-us" : "bills-to-pay"}-${data.asOf}.csv`, lines.join("\r\n"));
   };
 
-  const tabBar = (
-    <div className="hh-inv-tabs" role="tablist" aria-label="Invoices, bills, inbox or invoices for review">
-      <button type="button" role="tab" aria-selected={tab === "receivables"} className={tab === "receivables" ? "active" : ""} onClick={() => setParams({ tab: "", age: "", chase: "", status: "", verdict: "" })}>
-        Owed to us {data && <span>{data.invoices.length}</span>}
-      </button>
-      <button type="button" role="tab" aria-selected={tab === "bills"} className={tab === "bills" ? "active" : ""} onClick={() => setParams({ tab: "bills", age: "", chase: "", status: "", verdict: "" })}>
-        Bills to pay {data && <span>{data.bills.length}</span>}
-      </button>
-      <button type="button" role="tab" aria-selected={tab === "inbox"} className={tab === "inbox" ? "active" : ""} onClick={() => setParams({ tab: "inbox", age: "", chase: "", q: "", status: "", company: "" })}>
-        Inbox
-      </button>
-      <button type="button" role="tab" aria-selected={tab === "review"} className={tab === "review" ? "active" : ""} onClick={() => setParams({ tab: "review", age: "", chase: "", q: "", verdict: "", company: "" })}>
-        For review {reviewOpen !== undefined && <span className={reviewOpen ? "hh-chk-count bad" : ""}>{reviewOpen}</span>}
-      </button>
-    </div>
-  );
+  // Priority and what changed since the last daily check, under the due date.
+  const rankCell = (row: ReceivableInvoice | PayableBill) => {
+    const rank = rankOf(row);
+    if (!rank) return null;
+    const why = [rank.riskReasons.length ? rank.riskReasons.join("; ") : `${rank.ageBucket} overdue`, `${rank.valueBand} value, ${rank.riskProfile.toLowerCase()} risk`].join(" · ");
+    return (
+      <span className="hh-inv-rank" title={why}>
+        <span className={`status ${PRIORITY[rank.priority][1]}`}>{PRIORITY[rank.priority][0]}</span>
+        {rank.change === "new" && <span className="status upcoming">New</span>}
+        {rank.change === "escalated" && <span className="status overdue">More urgent</span>}
+      </span>
+    );
+  };
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <div className="eyebrow">Hinkley Homes · Xero</div>
-          <h1 className="page-title">Invoices</h1>
-          <p className="page-sub">{tab === "inbox" ? "Every email to accounts@ the intake check looked at, with the saved invoice or its link" : tab === "review" ? "Invoices emailed to accounts@ that the intake check sent for a person to look at" : <>What each company is owed and owes in Xero, with follow-ups{data ? ` · as of ${formatDate(data.asOf)}` : ""}</>}</p>
-        </div>
-        <div className="head-actions">
-          {!intake && <button type="button" className="button" onClick={exportCsv} disabled={!visible.length} data-testid="button-invoices-export"><Download size={14} /> Export (CSV)</button>}
-        </div>
-      </div>
-
-      {intake ? (
-        <>
-          {tabBar}
-          {tab === "inbox" ? <IntakeChecksTab get={get} setParams={setParams} flash={flash} /> : <IntakeReviewsTab flash={flash} />}
-        </>
-      ) : <>
-      {query.isLoading && <section className="panel hh-fin-note">Loading invoices from Xero for all five companies…</section>}
-      {query.isError && <p className="hh-props-alert" role="alert"><AlertTriangle size={14} /> Invoices could not be loaded: {errorText(query.error)}</p>}
+      {query.isLoading && <section className="panel hh-fin-note">Loading {isInvoices ? "invoices" : "bills"} from Xero for all five companies…</section>}
+      {query.isError && <p className="hh-props-alert" role="alert"><AlertTriangle size={14} /> {isInvoices ? "Invoices" : "Bills"} could not be loaded: {errorText(query.error)}</p>}
       {data?.companies.filter((item) => item.error).map((item) => <p key={item.tenantId} className="hh-props-alert" role="alert"><AlertTriangle size={14} /> {item.name}: {item.error}</p>)}
-      {data && !data.followUpsAvailable && <p className="hh-props-alert" role="alert"><AlertTriangle size={14} /> Follow-ups can't be saved yet: the follow-up tables haven't been created in the database.</p>}
+      {isInvoices && data && !data.followUpsAvailable && <p className="hh-props-alert" role="alert"><AlertTriangle size={14} /> Follow-ups can't be saved yet: the follow-up tables haven't been created in the database.</p>}
 
       {data && (
         <>
-          {tab === "receivables" && data.followUpsAvailable && <ReminderBanner status={data.reminders} onSettings={() => setSettingsOpen(true)} />}
+          {isInvoices && data.followUpsAvailable && <ReminderBanner status={data.reminders} onSettings={() => setSettingsOpen(true)} />}
 
           <div className="hh-inv-companies" role="group" aria-label="Filter by company">
             <button type="button" className={`hh-inv-company ${!company ? "active" : ""}`} aria-pressed={!company} onClick={() => setParams({ company: "" })}>
               <span>All companies</span>
-              <strong>{pounds.format(tab === "receivables" ? data.companies.reduce((sum, item) => sum + item.receivableOverdue, 0) : data.companies.reduce((sum, item) => sum + item.billsOverdue, 0))}</strong>
-              <small>{tab === "receivables" ? "overdue to us" : "overdue bills"}</small>
+              <strong>{pounds.format(data.companies.reduce((sum, item) => sum + (isInvoices ? item.receivableOverdue : item.billsOverdue), 0))}</strong>
+              <small>{isInvoices ? "overdue to us" : "overdue bills"}</small>
             </button>
             {data.companies.map((item) => {
-              const amount = tab === "receivables" ? item.receivableOverdue : item.billsOverdue;
-              const count = tab === "receivables" ? item.overdueCount : item.billsOverdueCount;
+              const amount = isInvoices ? item.receivableOverdue : item.billsOverdue;
+              const count = isInvoices ? item.overdueCount : item.billsOverdueCount;
               return (
                 <button key={item.tenantId} type="button" className={`hh-inv-company ${company === item.tenantId ? "active" : ""} ${amount ? "has" : ""}`} aria-pressed={company === item.tenantId} onClick={() => setParams({ company: company === item.tenantId ? "" : item.tenantId })}>
                   <span className="hh-co-chip-name"><i style={{ background: COMPANY_COLOURS[item.tenantId] ?? "#6f7f96" }} aria-hidden="true" />{companyShortName(item.name)}</span>
@@ -191,8 +187,6 @@ export default function InvoicesPage() {
             })}
           </div>
 
-          {tabBar}
-
           <div className="hh-fin-tiles six" role="group" aria-label="Filter by age">
             {BUCKETS.map((item) => {
               const amount = bucketTotal(item.key);
@@ -200,26 +194,38 @@ export default function InvoicesPage() {
               return (
                 <button key={item.key} type="button" className={`hh-fin-tile button-tile ${amount ? bucketTone(item.key) : ""} ${active ? "active" : ""}`} aria-pressed={active} onClick={() => setParams({ age: active ? "" : item.key })}>
                   <span>{item.label}</span><strong>{pounds.format(amount)}</strong>
-                  <small>{inCompany.filter((row) => item.test(row.daysOverdue)).length} {tab === "receivables" ? "invoices" : "bills"}</small>
+                  <small>{inCompany.filter((row) => item.test(row.daysOverdue)).length} {isInvoices ? "invoices" : "bills"}</small>
                 </button>
               );
             })}
-            {tab === "receivables" && (
+            {isInvoices ? (
               <button type="button" className={`hh-fin-tile button-tile ${chaseDue ? "warn" : ""} ${dueOnly ? "active" : ""}`} aria-pressed={dueOnly} onClick={() => setParams({ chase: dueOnly ? "" : "1" })}>
                 <span>Chase today</span><strong>{chaseDue}</strong><small>Next chase date reached</small>
+              </button>
+            ) : (
+              <button type="button" className={`hh-fin-tile button-tile ${actNow ? "bad" : ""} ${order === "act" ? "active" : ""}`} aria-pressed={order === "act"} onClick={() => setParams({ order: order === "act" ? "" : "act" })}>
+                <span>Act now</span><strong>{actNow}</strong><small>Priority 1 in the daily check</small>
               </button>
             )}
           </div>
 
-          <div className="hh-fin-filter">
-            <Search size={14} />
-            <input value={term} onChange={(event) => setParams({ q: event.target.value })} placeholder={tab === "receivables" ? "Search invoice, contact, reference or property" : "Search bill, supplier or property"} aria-label="Search" data-testid="input-invoices-search" />
-            {term && <button type="button" className="icon-btn" onClick={() => setParams({ q: "" })} aria-label="Clear search"><X size={13} /></button>}
+          {isInvoices && order !== "due" && <RiskMatrix items={[...ranked.values()].filter((item) => !company || item.tenantId === company)} />}
+
+          <div className="hh-ledger-tools">
+            <div className="hh-fin-filter">
+              <Search size={14} />
+              <input value={term} onChange={(event) => setParams({ q: event.target.value })} placeholder={isInvoices ? "Search invoice, contact, reference or property" : "Search bill, supplier or property"} aria-label="Search" data-testid="input-invoices-search" />
+              {term && <button type="button" className="icon-btn" onClick={() => setParams({ q: "" })} aria-label="Clear search"><X size={13} /></button>}
+            </div>
+            <select className="select-control" value={order} onChange={(event) => setParams({ order: event.target.value === "due" ? "" : event.target.value })} aria-label="Order and filter by priority">
+              {ORDERS.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </select>
+            <button type="button" className="button" onClick={exportCsv} disabled={!visible.length} data-testid="button-invoices-export"><Download size={14} /> Export (CSV)</button>
           </div>
 
           <section className="panel table-panel">
             <div className="table-wrap">
-              {tab === "receivables" ? (
+              {isInvoices ? (
                 <table className="hh-fin-table hh-inv-table">
                   <colgroup><col className="c-invoice" /><col className="c-for" /><col className="c-due" /><col className="c-amount" /><col className="c-follow" /><col className="c-actions" /></colgroup>
                   <thead><tr><th>Invoice</th><th>For</th><th>Due</th><th className="num">Amount due</th><th>Follow-up &amp; reminders</th><th aria-label="Actions" /></tr></thead>
@@ -238,7 +244,7 @@ export default function InvoicesPage() {
                             {row.property && <small className="hh-fin-sub">{row.property}</small>}
                             {row.cohoProperty && <small className="hh-fin-sub info">Rent also tracked in COHO: <Link href={`/properties/${encodeURIComponent(row.cohoProperty.propertyReference)}`}>{row.cohoProperty.propertyName}</Link></small>}
                           </td>
-                          <td className="hh-nowrap">{row.dueDate ? formatDate(row.dueDate) : "—"}<small className={`hh-fin-sub ${row.daysOverdue > 30 ? "bad" : row.daysOverdue > 0 ? "warn" : ""}`}>{dueText(row.daysOverdue)}</small></td>
+                          <td className="hh-nowrap">{row.dueDate ? formatDate(row.dueDate) : "—"}<small className={`hh-fin-sub ${row.daysOverdue > 30 ? "bad" : row.daysOverdue > 0 ? "warn" : ""}`}>{dueText(row.daysOverdue)}</small>{rankCell(row)}</td>
                           <td className="num">{pence.format(row.amountDue)}{row.amountDue !== row.total && <small className="hh-fin-sub">of {pence.format(row.total)}</small>}</td>
                           <td>
                             {outcome && <span className={`status ${outcome[1]}`}>{outcome[0]}</span>}
@@ -272,7 +278,7 @@ export default function InvoicesPage() {
                           <span className="hh-inv-contact">{row.contactName}</span>
                         </td>
                         <td><span className="hh-inv-for" title={row.description ?? undefined}>{row.description ?? "—"}</span>{row.property && <small className="hh-fin-sub">{row.property}</small>}</td>
-                        <td className="hh-nowrap">{row.dueDate ? formatDate(row.dueDate) : "—"}<small className={`hh-fin-sub ${row.daysOverdue > 30 ? "bad" : row.daysOverdue > 0 ? "warn" : ""}`}>{dueText(row.daysOverdue)}</small></td>
+                        <td className="hh-nowrap">{row.dueDate ? formatDate(row.dueDate) : "—"}<small className={`hh-fin-sub ${row.daysOverdue > 30 ? "bad" : row.daysOverdue > 0 ? "warn" : ""}`}>{dueText(row.daysOverdue)}</small>{rankCell(row)}</td>
                         <td className="num">{pence.format(row.amountDue)}{row.amountDue !== row.total && <small className="hh-fin-sub">of {pence.format(row.total)}</small>}</td>
                         <td><span className={`status ${row.status === "SUBMITTED" ? "pending" : row.daysOverdue > 0 ? "overdue" : "upcoming"}`}>{row.status === "SUBMITTED" ? "Awaiting approval" : row.daysOverdue > 0 ? "Overdue" : "To pay"}</span></td>
                       </tr>
@@ -283,16 +289,42 @@ export default function InvoicesPage() {
               )}
             </div>
           </section>
-          <p className="hh-fin-foot">Read-only from Xero. Follow-ups are kept in this app only; sending invoices and reminders is still done in Xero.</p>
+          <p className="hh-fin-foot">
+            Read-only from Xero{data ? `, as of ${formatDate(data.asOf)}` : ""}. {isInvoices ? "Follow-ups are kept in this app only; sending invoices is still done in Xero. " : ""}
+            Priority comes from the daily check: Act now is high value with medium or high risk, or medium value with high risk. Hover over it to see why.
+          </p>
         </>
       )}
-      </>}
 
       {editing && <FollowUpModal invoice={editing} reminders={data?.reminders ?? null} onClose={() => setEditing(null)} onSaved={(message) => { setEditing(null); flash(message); }} />}
       {sending && data?.reminders && <SendReminderModal invoice={sending} status={data.reminders} onClose={() => setSending(null)} onDone={(message) => { setSending(null); flash(message); }} />}
       {settingsOpen && <ReminderSettingsModal onClose={() => setSettingsOpen(false)} onSaved={(message) => { setSettingsOpen(false); flash(message); }} />}
-      {toast && <div className="toast-msg" role="status">{toast}</div>}
     </>
+  );
+}
+
+function RiskMatrix({ items }: { items: OverdueItem[] }) {
+  const bands = ["High", "Medium", "Low"] as const;
+  return (
+    <section className="panel table-panel">
+      <div className="panel-head"><div><div className="panel-title">Value × risk</div><div className="panel-caption">Overdue invoices owed to us, from the daily check: count and amount</div></div></div>
+      <div className="table-wrap">
+        <table className="hh-fin-table hh-chk-matrix">
+          <thead><tr><th>Value</th>{bands.map((risk) => <th key={risk}>{risk} risk</th>)}</tr></thead>
+          <tbody>
+            {bands.map((value) => (
+              <tr key={value}>
+                <th scope="row">{value} value</th>
+                {bands.map((risk) => {
+                  const cell = items.filter((item) => item.valueBand === value && item.riskProfile === risk);
+                  return <td key={risk} className={cell.length ? `hh-chk-cell ${RISK_CLASS[risk]}` : "hh-chk-cell empty"}>{cell.length} · {pounds.format(cell.reduce((sum, item) => sum + item.amountDue, 0))}</td>;
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -402,7 +434,8 @@ function FollowUpModal({ invoice, reminders, onClose, onSaved }: { invoice: Rece
   );
 }
 
-// Operations overview strip: money owed to the group in Xero and bills overdue.
+// Overview strip: money owed to the group in Xero and bills overdue, with
+// links to Owed to us and Supplier bills.
 export function ReceivablesStrip() {
   const query = useGetReceivables(receivablesQueryOptions);
   const data = query.data;
@@ -413,7 +446,7 @@ export function ReceivablesStrip() {
   const chase = data?.invoices.filter((invoice) => invoice.followUp?.nextChaseDate && invoice.followUp.nextChaseDate <= data.asOf).length ?? 0;
   return (
     <section className="panel hh-perf-strip" aria-label="Xero invoices">
-      <div><div className="panel-title">Invoices · Xero</div><div className="panel-caption">All five companies</div></div>
+      <div><div className="panel-title">Invoices &amp; bills · Xero</div><div className="panel-caption">All five companies</div></div>
       <div className="hh-perf-strip-stats">
         {query.isLoading ? <div><span>Loading…</span></div>
           : !data ? <div><span>Invoices could not be loaded from Xero</span></div>
@@ -427,7 +460,7 @@ export function ReceivablesStrip() {
               </>
             )}
       </div>
-      <Link href="/invoices" className="button">Open invoices</Link>
+      <div className="hh-perf-strip-links"><Link href="/receivables" className="button">Owed to us</Link><Link href="/bills" className="button">Supplier bills</Link></div>
     </section>
   );
 }

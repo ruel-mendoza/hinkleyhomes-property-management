@@ -20,7 +20,7 @@ import {
 } from "@workspace/api-client-react";
 import { errorText } from "@/components/action-modals";
 import { ModalShell } from "@/components/properties/ModalShell";
-import { CompanyTag } from "@/pages/finance/InvoicesPage";
+import { CompanyTag } from "@/pages/finance/XeroLedger";
 import { TargetSelect, splitTarget } from "@/pages/finance/BillCodingTab";
 import "@/pages/finance/finance.css";
 

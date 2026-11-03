@@ -5,9 +5,10 @@ import { getGetFinanceIncomeQueryKey, useGetFinanceIncome, type FinanceItem } fr
 import { errorText } from "@/components/action-modals";
 import { MonthlyBars, SERIES_COLOURS } from "@/components/charts/MonthlyBars";
 import { downloadText, formatDate } from "@/services/properties";
+import { RentTabs } from "./RentTabs";
 import "./finance.css";
 
-// Rent & fees: COHO financial items (rent invoiced as client money, management
+// Rent > Invoiced & fees: COHO financial items (rent invoiced as client money, management
 // fees as Hinkley income) for the last 12 months. Charts, tiles and tables are
 // worked out from the item list, so the property and owner filters apply to all
 // of them. Expenses are kept in Xero.
@@ -33,7 +34,7 @@ export default function FinanceIncomePage({ selectedPropertyReference }: { selec
   const setParams = (change: Record<string, string>) => {
     const next = new URLSearchParams(search);
     for (const [key, value] of Object.entries(change)) value ? next.set(key, value) : next.delete(key);
-    navigate(`/finance${next.size ? `?${next}` : ""}`, { replace: true });
+    navigate(`/rent${next.size ? `?${next}` : ""}`, { replace: true });
   };
   const property = selectedPropertyReference ?? get("property");
   const owner = get("owner");
@@ -95,10 +96,11 @@ export default function FinanceIncomePage({ selectedPropertyReference }: { selec
       <div className="page-head">
         <div>
           <div className="eyebrow">Hinkley Homes · COHO finance</div>
-          <h1 className="page-title">Rent &amp; fees</h1>
+          <h1 className="page-title">Rent</h1>
           <p className="page-sub">Rent invoiced and management fees{data ? ` · ${formatDate(data.from)} to ${formatDate(data.asOf)}` : " · last 12 months"}</p>
         </div>
       </div>
+      <RentTabs active="income" />
 
       {query.isLoading && <section className="panel hh-fin-note">Loading from COHO…</section>}
       {query.isError && <p className="hh-props-alert" role="alert"><AlertTriangle size={14} /> Rent and fees could not be loaded from COHO: {errorText(query.error)}</p>}
@@ -127,7 +129,7 @@ export default function FinanceIncomePage({ selectedPropertyReference }: { selec
             <div className="hh-fin-tile"><span>Rent invoiced</span><strong>{pounds.format(rentTotal)}</strong><small>{scopeLabel} · client money</small></div>
             <div className="hh-fin-tile"><span>Management fees</span><strong>{pounds.format(feesTotal)}</strong><small>Hinkley Homes income</small></div>
             <div className="hh-fin-tile"><span>Fee rate</span><strong>{rentTotal ? `${((feesTotal / rentTotal) * 100).toFixed(1)}%` : "—"}</strong><small>Fees as a share of rent</small></div>
-            <div className={`hh-fin-tile ${unpaidItems.length ? "bad" : ""}`}><span>Unpaid rent</span><strong>{pounds.format(unpaidItems.reduce((total, item) => total + item.unpaid, 0))}</strong><small>{unpaidItems.length} {unpaidItems.length === 1 ? "invoice" : "invoices"} · <Link href="/bank-feed?status=suggested">check bank feed</Link></small></div>
+            <div className={`hh-fin-tile ${unpaidItems.length ? "bad" : ""}`}><span>Unpaid rent</span><strong>{pounds.format(unpaidItems.reduce((total, item) => total + item.unpaid, 0))}</strong><small>{unpaidItems.length} {unpaidItems.length === 1 ? "invoice" : "invoices"} · <Link href="/rent?tab=bank&status=suggested">check bank feed</Link></small></div>
           </div>
 
           <div className="hh-fin-charts">
