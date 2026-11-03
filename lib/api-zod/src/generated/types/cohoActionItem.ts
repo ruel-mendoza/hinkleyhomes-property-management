@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CohoActionCategory } from './cohoActionCategory';
+import type { CohoActionItemMaintenanceJob } from './cohoActionItemMaintenanceJob';
 import type { CohoActionStatus } from './cohoActionStatus';
 
 export interface CohoActionItem {
@@ -53,4 +54,9 @@ export interface CohoActionItem {
   canManuallyComplete: boolean;
   /** Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited */
   isCustom: boolean;
+  /**
+     * The COHO maintenance job this action is about (same property, matching title or job number); only filled on the list
+     * @nullable
+     */
+  maintenanceJob?: CohoActionItemMaintenanceJob;
 }

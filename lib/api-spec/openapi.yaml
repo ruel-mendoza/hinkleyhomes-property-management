@@ -3994,6 +3994,15 @@ components:
         isCustom:
           description: Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited
           type: boolean
+        maintenanceJob:
+          description: The COHO maintenance job this action is about (same property, matching title or job number); only filled on the list
+          type: ["object", "null"]
+          properties:
+            guid:
+              type: string
+            jobNumber:
+              type: ["string", "null"]
+          required: [guid, jobNumber]
       required: [reference, title, message, notes, status, type, typeName, category, dueDate, overdue, snoozed, snoozedUntil, completedAt, propertyReference, propertyName, roomReference, roomName, assignedToName, tags, progressionStepsCompleted, progressionStepsCount, firstSeenAt, lastChangedAt, removedFromCoho, archived, assignedToGuid, canManuallyComplete, isCustom]
     CohoActionCreate:
       type: object

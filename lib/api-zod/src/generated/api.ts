@@ -146,7 +146,11 @@ export const ListCohoActionsResponse = zod.object({
   "archived": zod.boolean(),
   "assignedToGuid": zod.string().nullable(),
   "canManuallyComplete": zod.boolean().describe('COHO only lets staff mark an action completed when this is true; others complete themselves'),
-  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited')
+  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited'),
+  "maintenanceJob": zod.object({
+  "guid": zod.string(),
+  "jobNumber": zod.string().nullable()
+}).nullish().describe('The COHO maintenance job this action is about (same property, matching title or job number); only filled on the list')
 })),
   "page": zod.number().int(),
   "pageSize": zod.number().int(),
@@ -223,7 +227,11 @@ export const CreateCohoActionResponse = zod.object({
   "archived": zod.boolean(),
   "assignedToGuid": zod.string().nullable(),
   "canManuallyComplete": zod.boolean().describe('COHO only lets staff mark an action completed when this is true; others complete themselves'),
-  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited')
+  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited'),
+  "maintenanceJob": zod.object({
+  "guid": zod.string(),
+  "jobNumber": zod.string().nullable()
+}).nullish().describe('The COHO maintenance job this action is about (same property, matching title or job number); only filled on the list')
 })
 
 
@@ -292,7 +300,11 @@ export const UpdateCohoActionResponse = zod.object({
   "archived": zod.boolean(),
   "assignedToGuid": zod.string().nullable(),
   "canManuallyComplete": zod.boolean().describe('COHO only lets staff mark an action completed when this is true; others complete themselves'),
-  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited')
+  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited'),
+  "maintenanceJob": zod.object({
+  "guid": zod.string(),
+  "jobNumber": zod.string().nullable()
+}).nullish().describe('The COHO maintenance job this action is about (same property, matching title or job number); only filled on the list')
 })
 
 
@@ -339,7 +351,11 @@ export const UpdateCohoActionStatusResponse = zod.object({
   "archived": zod.boolean(),
   "assignedToGuid": zod.string().nullable(),
   "canManuallyComplete": zod.boolean().describe('COHO only lets staff mark an action completed when this is true; others complete themselves'),
-  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited')
+  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited'),
+  "maintenanceJob": zod.object({
+  "guid": zod.string(),
+  "jobNumber": zod.string().nullable()
+}).nullish().describe('The COHO maintenance job this action is about (same property, matching title or job number); only filled on the list')
 })
 
 
@@ -386,7 +402,11 @@ export const AssignCohoActionResponse = zod.object({
   "archived": zod.boolean(),
   "assignedToGuid": zod.string().nullable(),
   "canManuallyComplete": zod.boolean().describe('COHO only lets staff mark an action completed when this is true; others complete themselves'),
-  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited')
+  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited'),
+  "maintenanceJob": zod.object({
+  "guid": zod.string(),
+  "jobNumber": zod.string().nullable()
+}).nullish().describe('The COHO maintenance job this action is about (same property, matching title or job number); only filled on the list')
 })
 
 
@@ -433,7 +453,11 @@ export const SnoozeCohoActionResponse = zod.object({
   "archived": zod.boolean(),
   "assignedToGuid": zod.string().nullable(),
   "canManuallyComplete": zod.boolean().describe('COHO only lets staff mark an action completed when this is true; others complete themselves'),
-  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited')
+  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited'),
+  "maintenanceJob": zod.object({
+  "guid": zod.string(),
+  "jobNumber": zod.string().nullable()
+}).nullish().describe('The COHO maintenance job this action is about (same property, matching title or job number); only filled on the list')
 })
 
 
@@ -476,7 +500,11 @@ export const UnsnoozeCohoActionResponse = zod.object({
   "archived": zod.boolean(),
   "assignedToGuid": zod.string().nullable(),
   "canManuallyComplete": zod.boolean().describe('COHO only lets staff mark an action completed when this is true; others complete themselves'),
-  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited')
+  "isCustom": zod.boolean().describe('Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited'),
+  "maintenanceJob": zod.object({
+  "guid": zod.string(),
+  "jobNumber": zod.string().nullable()
+}).nullish().describe('The COHO maintenance job this action is about (same property, matching title or job number); only filled on the list')
 })
 
 

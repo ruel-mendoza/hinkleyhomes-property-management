@@ -320,6 +320,7 @@ router.get("/coho/maintenance", async (req, res): Promise<void> => {
   const reminders = await remindersForJobs(pageItems.map((issue) => ({
     guid: text(issue.guid),
     jobNumber: stringOrNull(issue.jobNumber),
+    title: stringOrNull(issue.title),
     propertyReference: stringOrNull(issue.propertyReference),
   })).filter((job) => job.guid)).catch((error: unknown) => {
     req.log.warn({ err: error }, "Maintenance reminders could not be read");

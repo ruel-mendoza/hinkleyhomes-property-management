@@ -65,14 +65,16 @@ const ukDateTime = (value: string | null | undefined) =>
 
 export default function ActionsPage({ selectedPropertyReference: topBarProperty }: { selectedPropertyReference?: string }) {
   // The top-bar property wins; otherwise ?property= (e.g. from a Properties card).
-  const urlProperty = new URLSearchParams(useSearch()).get("property") || undefined;
+  const urlParams = new URLSearchParams(useSearch());
+  const urlProperty = urlParams.get("property") || undefined;
   const selectedPropertyReference = topBarProperty ?? urlProperty;
   const queryClient = useQueryClient();
   const [category, setCategory] = useState<CohoActionCategory | "all">("all");
   const [status, setStatus] = useState<ListCohoActionsStatus>("open");
   const [includeSnoozed, setIncludeSnoozed] = useState(false);
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
+  // ?search= comes from a reminder link on the Maintenance page.
+  const [searchInput, setSearchInput] = useState(() => urlParams.get("search") ?? "");
+  const [search, setSearch] = useState(() => (urlParams.get("search") ?? "").trim());
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<CohoActionItem | null>(null);
   const [creating, setCreating] = useState(false);
@@ -219,6 +221,7 @@ export default function ActionsPage({ selectedPropertyReference: topBarProperty 
                     <div className="hh-act-title">
                       <strong>{action.title || actionTypeLabel(action) || "Untitled action"}{new Date(action.firstSeenAt).getTime() > dayAgo && <span className="hh-act-new">NEW</span>}</strong>
                       <small>{actionTypeLabel(action)}{action.progressionStepsCount > 0 ? ` · step ${action.progressionStepsCompleted}/${action.progressionStepsCount}` : ""}</small>
+                      {action.maintenanceJob?.jobNumber && <Link href={`/maintenance?search=${encodeURIComponent(action.maintenanceJob.jobNumber)}`} className="hh-act-job" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} title="Open this job on the Maintenance page"><Wrench size={11} /> Job {action.maintenanceJob.jobNumber}</Link>}
                     </div>
                   </td>
                   <td>{action.propertyName || action.propertyReference || "—"}{action.roomName && <div className="hh-act-sub">{action.roomName}</div>}</td>

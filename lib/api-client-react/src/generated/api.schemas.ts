@@ -1964,6 +1964,16 @@ export const CohoActionStatus = {
   completed: 'completed',
 } as const;
 
+/**
+ * The COHO maintenance job this action is about (same property, matching title or job number); only filled on the list
+ * @nullable
+ */
+export type CohoActionItemMaintenanceJob = {
+  guid: string;
+  /** @nullable */
+  jobNumber: string | null;
+} | null;
+
 export interface CohoActionItem {
   reference: string;
   /** @nullable */
@@ -2009,6 +2019,11 @@ export interface CohoActionItem {
   canManuallyComplete: boolean;
   /** Custom actions (MISC_CUSTOM_ACTION) are the only ones whose title, message, notes and due date can be edited */
   isCustom: boolean;
+  /**
+     * The COHO maintenance job this action is about (same property, matching title or job number); only filled on the list
+     * @nullable
+     */
+  maintenanceJob?: CohoActionItemMaintenanceJob;
 }
 
 export interface CohoActionCreate {

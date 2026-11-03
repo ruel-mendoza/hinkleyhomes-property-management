@@ -3,7 +3,8 @@
 .mnt-dup-toggle:hover{filter:brightness(1.12)}
 .mnt-dup-row td{background:#162131}
 .mnt-actions{display:flex;gap:6px;flex-wrap:wrap}
-.mnt-reminder{display:flex;align-items:flex-start;gap:5px;margin-top:5px;font-size:12px;line-height:1.35;color:#a9b6c7}
+.mnt-reminder{display:flex;align-items:flex-start;gap:5px;margin-top:5px;font-size:12px;line-height:1.35;color:#a9b6c7;text-decoration:none}
+.mnt-reminder:hover{text-decoration:underline}
 .mnt-reminder svg{flex:none;margin-top:2px;color:#79cdb0}
 .mnt-reminder.overdue{color:#f0b49b}
 .mnt-reminder.overdue svg{color:#d95926}

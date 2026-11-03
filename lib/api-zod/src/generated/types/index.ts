@@ -41,6 +41,7 @@ export * from './cohoActionCategoryCounts';
 export * from './cohoActionCreate';
 export * from './cohoActionEdit';
 export * from './cohoActionItem';
+export * from './cohoActionItemMaintenanceJob';
 export * from './cohoActionLastSync';
 export * from './cohoActionLastSyncStatus';
 export * from './cohoActionList';

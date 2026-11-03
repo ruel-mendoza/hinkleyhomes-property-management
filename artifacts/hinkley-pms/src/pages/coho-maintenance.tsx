@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useLocation, useSearch } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import {
   AlertCircle,
   ArrowLeft,
@@ -131,6 +131,8 @@ export default function CohoMaintenancePage({ selectedPropertyReference }: { sel
       open: params.get("report") === "1",
       property: params.get("property") ?? "",
       room: params.get("room") ?? "",
+      // ?search= comes from a job link on the Actions page.
+      search: params.get("search") ?? "",
     };
   });
   const [page, setPage] = useState(1);
@@ -139,9 +141,9 @@ export default function CohoMaintenancePage({ selectedPropertyReference }: { sel
   const propertyReference = selectedPropertyReference ?? pickedProperty;
   useEffect(() => setPage(1), [selectedPropertyReference]);
   const [newPropertyReference, setNewPropertyReference] = useState(prefill.property);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(prefill.search);
   // Searched on the server across every page (COHO's list can't search), after a pause in typing.
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(prefill.search.trim());
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearchTerm(search.trim());
@@ -386,7 +388,7 @@ export default function CohoMaintenancePage({ selectedPropertyReference }: { sel
           <div className="eyebrow">Hinkley Homes · Operations</div>
           <h1 className="page-title">Maintenance</h1>
           <p className="page-sub">
-            Repair jobs from COHO, with the reminders COHO has raised for each one.
+            Repair jobs from COHO, with the matching COHO actions for each one.
           </p>
         </div>
         <div className="head-actions">
@@ -482,10 +484,10 @@ export default function CohoMaintenancePage({ selectedPropertyReference }: { sel
               <div className="metric-foot">Not marked complete or closed</div>
             </div>
             <div className="panel metric">
-              <div className="metric-top">Reminders on this page</div>
+              <div className="metric-top">Linked actions</div>
               <div className="metric-value">{reminderCount}</div>
               <div className="metric-foot">
-                {overdueReminders > 0 ? `${overdueReminders} overdue` : "Open COHO reminders on these jobs"}
+                {overdueReminders > 0 ? `${overdueReminders} overdue` : "Open COHO actions on these jobs"}
               </div>
             </div>
           </div>
@@ -616,11 +618,11 @@ export default function CohoMaintenancePage({ selectedPropertyReference }: { sel
                               {statusText(issue)}
                             </span>
                             {issue.reminders.map((reminder) => (
-                              <span key={reminder.reference} className={`mnt-reminder ${reminder.overdue ? "overdue" : ""}`}>
+                              <Link key={reminder.reference} href={`/actions?${new URLSearchParams({ ...(issue.propertyReference ? { property: issue.propertyReference } : {}), search: reminder.title })}`} className={`mnt-reminder ${reminder.overdue ? "overdue" : ""}`} title="Open this action on the Actions page">
                                 <BellRing size={11} aria-hidden="true" />
                                 {reminder.title}
                                 {reminder.dueDate && ` · ${reminder.overdue ? "was due" : "due"} ${formatDate(reminder.dueDate)}`}
-                              </span>
+                              </Link>
                             ))}
                           </td>
                           <td>
