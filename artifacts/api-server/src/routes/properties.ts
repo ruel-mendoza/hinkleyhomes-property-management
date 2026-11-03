@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
   auditLogTable,
   buildingPropertiesTable,
@@ -96,7 +96,7 @@ propertiesRouter.get("/properties", async (req, res): Promise<void> => {
     db
       .select({ reference: t.cohoPropertyReference, count: sql<number>`count(*)::int` })
       .from(t)
-      .where(and(inArray(t.status, [...OPEN_STATUSES]), eq(t.archived, false), eq(t.snoozed, false), isNull(t.removedFromCohoAt)))
+      .where(and(inArray(t.status, [...OPEN_STATUSES]), ne(t.category, "maintenance"), eq(t.archived, false), eq(t.snoozed, false), isNull(t.removedFromCohoAt)))
       .groupBy(t.cohoPropertyReference),
     db
       .select({ property: propertiesTable, entityName: entitiesTable.name })

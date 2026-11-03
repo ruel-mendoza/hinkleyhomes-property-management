@@ -116,7 +116,7 @@ paths:
     get:
       operationId: listCohoActions
       tags: [coho]
-      summary: List COHO actions from the Supabase mirror
+      summary: List COHO actions from the Supabase mirror (without a category, maintenance actions are left out; they show on the Maintenance page)
       parameters:
         - name: category
           in: query
@@ -3724,7 +3724,25 @@ components:
         created:
           type: string
           format: date-time
-      required: [guid, severity, publicStatus, detailedStatus, created]
+        reminders:
+          description: Open COHO actions (from the synced copy) that mention this job's guid or job number
+          type: array
+          items:
+            $ref: "#/components/schemas/CohoMaintenanceReminder"
+      required: [guid, severity, publicStatus, detailedStatus, created, reminders]
+    CohoMaintenanceReminder:
+      type: object
+      properties:
+        reference:
+          type: string
+        title:
+          type: string
+        dueDate:
+          type: ["string", "null"]
+          format: date-time
+        overdue:
+          type: boolean
+      required: [reference, title, dueDate, overdue]
     CohoMaintenancePage:
       type: object
       properties:

@@ -25,6 +25,7 @@ import {
 } from "@workspace/api-zod";
 import { cohoApiKey } from "../lib/integrations-env";
 import { mergeMaintenance } from "../lib/maintenance-merge";
+import { remindersForJobs } from "../lib/maintenance-reminders";
 
 const router: IRouter = Router();
 const COHO_PUBLIC_API = "https://api.coho.life/v1.1/public";
@@ -314,8 +315,18 @@ router.get("/coho/maintenance", async (req, res): Promise<void> => {
   });
   const page = params.data.page ?? 1;
   const pageSize = params.data.pageSize ?? 50;
+  const pageItems = matches.slice((page - 1) * pageSize, page * pageSize).map(asRecord);
+  // Each job's open COHO reminders; the list still loads if they can't be read.
+  const reminders = await remindersForJobs(pageItems.map((issue) => ({
+    guid: text(issue.guid),
+    jobNumber: stringOrNull(issue.jobNumber),
+    propertyReference: stringOrNull(issue.propertyReference),
+  })).filter((job) => job.guid)).catch((error: unknown) => {
+    req.log.warn({ err: error }, "Maintenance reminders could not be read");
+    return new Map();
+  });
   sendParsed(req, res, ListCohoMaintenanceResponse, {
-    items: matches.slice((page - 1) * pageSize, page * pageSize),
+    items: pageItems.map((issue) => ({ ...issue, reminders: reminders.get(text(issue.guid)) ?? [] })),
     page,
     pageSize,
     totalCount: matches.length,

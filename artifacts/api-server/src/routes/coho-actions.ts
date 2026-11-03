@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, ne, or, sql, type SQL } from "drizzle-orm";
 import { auditLogTable, cohoActionsTable, getDb, isDatabaseConfigured, type CohoAction } from "@workspace/db";
 import {
   AssignCohoActionBody,
@@ -94,7 +94,8 @@ router.get("/coho/actions", async (req, res): Promise<void> => {
       or(ilike(t.title, pattern), ilike(t.propertyName, pattern), ilike(t.roomName, pattern), ilike(t.typeName, pattern), ilike(t.assignedToName, pattern))!,
     );
   }
-  const withCategory = category ? [...filters, eq(t.category, category)] : filters;
+  // Repair reminders live on the Maintenance page, next to their job, so "all" leaves them out.
+  const withCategory = [...filters, category ? eq(t.category, category) : ne(t.category, "maintenance")];
 
   const db = getDb();
   const [rows, [{ total }], counts, lastSync] = await Promise.all([

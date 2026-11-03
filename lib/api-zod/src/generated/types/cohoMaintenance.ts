@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CohoMaintenanceReminder } from './cohoMaintenanceReminder';
 
 export interface CohoMaintenance {
   guid: string;
@@ -47,4 +48,6 @@ export interface CohoMaintenance {
      */
   dateClosed?: Date | null;
   created: Date;
+  /** Open COHO actions (from the synced copy) that mention this job's guid or job number */
+  reminders: CohoMaintenanceReminder[];
 }

@@ -142,7 +142,7 @@ function AppShell() {
           <Route path="/invoices" component={InvoicesPage} />
           <Route path="/checks" component={ChecksPage} />
           <Route path="/property-aliases" component={PropertyAliasesPage} />
-          <Route path="/maintenance" component={CohoMaintenancePage} />
+          <Route path="/maintenance"><CohoMaintenancePage selectedPropertyReference={selectedPropertyReference} /></Route>
           <Route path="/properties"><PropertiesPage /></Route>
           <Route path="/properties/:id">{(params) => <PropertyDetailPage id={decodeURIComponent(params.id)} />}</Route>
           <Route component={NotFound} />
@@ -191,7 +191,7 @@ function Overview({ profileName, configured, statusLoading, properties, properti
     <MoneyPanels data={moneyQuery.data} loading={moneyQuery.isLoading} failed={moneyQuery.isError} propertyReference={propertyReference} lead={<NeedsAttention money={moneyQuery.data} propertyReference={propertyReference} />} />
     <MoneyTrend side={<OccupancyCard propertyReference={propertyReference} />} />
     <ReceivablesStrip />
-    <section className="panel arrival-panel"><div className="panel-head"><div><div className="panel-title">Coming up in COHO</div><div className="panel-caption">Tenancies, viewings, maintenance and actions in the next 7 days</div></div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Link href="/maintenance" className="button" style={{ textDecoration: 'none' }}><Wrench size={13} /> Maintenance</Link><Link href="/calendar" className="button" style={{ textDecoration: 'none' }}>Open calendar <ArrowUpRight size={13} /></Link></div></div>
+    <section className="panel arrival-panel"><div className="panel-head"><div><div className="panel-title">Coming up in COHO</div><div className="panel-caption">Tenancies, viewings, repairs and COHO actions in the next 7 days</div></div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Link href="/maintenance" className="button" style={{ textDecoration: 'none' }}><Wrench size={13} /> Maintenance</Link><Link href="/actions" className="button" style={{ textDecoration: 'none' }}><ClipboardList size={13} /> Actions</Link><Link href="/calendar" className="button" style={{ textDecoration: 'none' }}>Open calendar <ArrowUpRight size={13} /></Link></div></div>
       {!configured ? <div className="empty-state"><PlugZap size={21} /><h3>COHO is not configured</h3><p>Add the COHO API key to see live activity.</p></div>
         : calendarQuery.isLoading ? <div className="empty-state"><CalendarDays size={21} /><h3>Loading COHO activity…</h3></div>
           : calendarQuery.isError ? <div className="empty-state"><CalendarDays size={21} /><h3>COHO activity could not be loaded</h3><p>Try again in a moment.</p></div>

@@ -8,6 +8,9 @@
 .hh-act-tab strong{font-size:13px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hh-act-tab small{font-size:12px;color:#95a2b5}
 .hh-act-tab.active small{color:#a9dcc8}
+.hh-act-tablist{display:contents}
+.hh-act-repairs{text-decoration:none;border-style:dashed}
+.hh-act-repairs .hh-act-repairs-go{margin-left:auto;color:#95a2b5}
 .hh-act-sync{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:#95a2b5}
 .hh-act-sync .failed{color:#f08f91}
 .hh-act-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap}

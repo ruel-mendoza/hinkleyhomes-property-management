@@ -5,6 +5,8 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  BellRing,
+  Building2,
   Check,
   ChevronDown,
   ChevronRight,
@@ -57,6 +59,7 @@ function formatDate(value: string | Date | null | undefined): string {
   return Number.isNaN(date.getTime())
     ? "—"
     : date.toLocaleDateString("en-GB", {
+        timeZone: "Europe/London",
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -117,7 +120,7 @@ function groupIssues(issues: CohoMaintenance[]): IssueGroup[] {
   });
 }
 
-export default function CohoMaintenancePage() {
+export default function CohoMaintenancePage({ selectedPropertyReference }: { selectedPropertyReference?: string }) {
   const queryClient = useQueryClient();
   // ?report=1&property=…&room=… (from the calendar) opens "New issue" prefilled.
   const urlSearch = useSearch();
@@ -131,7 +134,10 @@ export default function CohoMaintenancePage() {
     };
   });
   const [page, setPage] = useState(1);
-  const [propertyReference, setPropertyReference] = useState("");
+  const [pickedProperty, setPropertyReference] = useState("");
+  // The top-bar property wins; otherwise the filter on this page.
+  const propertyReference = selectedPropertyReference ?? pickedProperty;
+  useEffect(() => setPage(1), [selectedPropertyReference]);
   const [newPropertyReference, setNewPropertyReference] = useState(prefill.property);
   const [search, setSearch] = useState("");
   // Searched on the server across every page (COHO's list can't search), after a pause in typing.
@@ -348,6 +354,8 @@ export default function CohoMaintenancePage() {
   const allIssues = issuesQuery.data?.items ?? [];
   const groups = useMemo(() => groupIssues(allIssues), [allIssues]);
   const duplicateCount = allIssues.length - groups.length;
+  const reminderCount = allIssues.reduce((sum, issue) => sum + issue.reminders.length, 0);
+  const overdueReminders = allIssues.reduce((sum, issue) => sum + issue.reminders.filter((reminder) => reminder.overdue).length, 0);
   const matches = (issue: CohoMaintenance) =>
     [
       issue.jobNumber,
@@ -378,11 +386,10 @@ export default function CohoMaintenancePage() {
           <div className="eyebrow">Hinkley Homes · Operations</div>
           <h1 className="page-title">Maintenance</h1>
           <p className="page-sub">
-            Live issues from COHO Public API {statusQuery.data?.apiVersion ?? "1.1"}
+            Repair jobs from COHO, with the reminders COHO has raised for each one.
           </p>
         </div>
         <div className="head-actions">
-          {configured && <span className="demo-pill">COHO KEY CONFIGURED</span>}
           <button
             className="button"
             onClick={() => {
@@ -475,11 +482,11 @@ export default function CohoMaintenancePage() {
               <div className="metric-foot">Not marked complete or closed</div>
             </div>
             <div className="panel metric">
-              <div className="metric-top">COHO properties</div>
-              <div className="metric-value">
-                {propertiesQuery.data?.totalCount ?? "—"}
+              <div className="metric-top">Reminders on this page</div>
+              <div className="metric-value">{reminderCount}</div>
+              <div className="metric-foot">
+                {overdueReminders > 0 ? `${overdueReminders} overdue` : "Open COHO reminders on these jobs"}
               </div>
-              <div className="metric-foot">Available for issue mapping</div>
             </div>
           </div>
 
@@ -500,7 +507,9 @@ export default function CohoMaintenancePage() {
                 )}
               </div>
               <div className="filter-bar">
-                <select
+                {selectedPropertyReference ? (
+                  <span className="status upcoming"><Building2 size={12} /> Selected property only</span>
+                ) : <select
                   className="select-control"
                   aria-label="Filter by COHO property"
                   value={propertyReference}
@@ -519,7 +528,7 @@ export default function CohoMaintenancePage() {
                       {property.name || property.reference || "Unnamed property"}
                     </option>
                   ))}
-                </select>
+                </select>}
                 <span className="panel-caption">
                   {issuesQuery.data?.totalCount ?? 0} issues
                 </span>
@@ -606,6 +615,13 @@ export default function CohoMaintenancePage() {
                             <span className={"status " + statusText(issue)}>
                               {statusText(issue)}
                             </span>
+                            {issue.reminders.map((reminder) => (
+                              <span key={reminder.reference} className={`mnt-reminder ${reminder.overdue ? "overdue" : ""}`}>
+                                <BellRing size={11} aria-hidden="true" />
+                                {reminder.title}
+                                {reminder.dueDate && ` · ${reminder.overdue ? "was due" : "due"} ${formatDate(reminder.dueDate)}`}
+                              </span>
+                            ))}
                           </td>
                           <td>
                             <div className="mnt-actions">

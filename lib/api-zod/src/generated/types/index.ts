@@ -67,6 +67,7 @@ export * from './cohoMaintenanceMergeDuplicate';
 export * from './cohoMaintenanceMergeResult';
 export * from './cohoMaintenanceMergeResultFailedItem';
 export * from './cohoMaintenancePage';
+export * from './cohoMaintenanceReminder';
 export * from './cohoMaintenanceUpdate';
 export * from './cohoMaintenanceUpdateSeverity';
 export * from './cohoPropertiesPage';

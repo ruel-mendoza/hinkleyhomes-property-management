@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useSearch } from "wouter";
+import { Link, useSearch } from "wouter";
 import {
   ArrowLeft,
   ArrowRight,
@@ -37,7 +37,6 @@ const TABS: { key: CohoActionCategory | "all"; label: string; Icon: typeof House
   { key: "all", label: "All", Icon: ClipboardList },
   { key: "property", label: "Property", Icon: House },
   { key: "tenancy", label: "Tenancy", Icon: Users },
-  { key: "maintenance", label: "Maintenance", Icon: Wrench },
   { key: "onboarding", label: "Onboarding", Icon: Hand },
   { key: "viewing", label: "Viewing", Icon: Eye },
   { key: "other", label: "Other", Icon: Megaphone },
@@ -133,7 +132,7 @@ export default function ActionsPage({ selectedPropertyReference: topBarProperty 
   const data = listQuery.data;
   const items = data?.items ?? [];
   const counts = data?.categoryCounts;
-  const allCount = counts ? Object.values(counts).reduce((sum, n) => sum + n, 0) : 0;
+  const allCount = counts ? TABS.reduce((sum, tab) => sum + (tab.key === "all" ? 0 : counts[tab.key]), 0) : 0;
   const firstRow = data ? (data.page - 1) * data.pageSize + 1 : 0;
   const lastRow = data ? firstRow + items.length - 1 : 0;
   const dayAgo = Date.now() - 86_400_000;
@@ -144,7 +143,7 @@ export default function ActionsPage({ selectedPropertyReference: topBarProperty 
         <div>
           <div className="eyebrow">Hinkley Homes · COHO</div>
           <h1 className="page-title">Actions</h1>
-          <p className="page-sub">Every COHO action, saved to Supabase and kept up to date. Click an action to change its status, assign it or snooze it.</p>
+          <p className="page-sub">COHO's to-dos for properties, tenancies, onboarding and viewings. Click one to change its status, assign it or snooze it. Repair reminders are on the Maintenance page, next to their job.</p>
         </div>
         <div className="head-actions hh-act-sync">
           <span className={syncMessage.startsWith("Sync failed") ? "failed" : ""} role="status">
@@ -159,16 +158,23 @@ export default function ActionsPage({ selectedPropertyReference: topBarProperty 
         </div>
       </div>
 
-      <div className="hh-act-tabs" role="tablist" aria-label="Action categories">
-        {TABS.map(({ key, label, Icon }) => {
-          const count = key === "all" ? allCount : (counts?.[key] ?? 0);
-          return (
-            <button key={key} role="tab" aria-selected={category === key} className={`hh-act-tab ${category === key ? "active" : ""}`} onClick={() => setCategory(key)} data-testid={`tab-actions-${key}`}>
-              <Icon size={18} />
-              <span><strong>{label}</strong><small>{counts ? `${count} ${count === 1 ? "action" : "actions"}` : "…"}</small></span>
-            </button>
-          );
-        })}
+      <div className="hh-act-tabs">
+        <div role="tablist" aria-label="Action categories" className="hh-act-tablist">
+          {TABS.map(({ key, label, Icon }) => {
+            const count = key === "all" ? allCount : (counts?.[key] ?? 0);
+            return (
+              <button key={key} role="tab" aria-selected={category === key} className={`hh-act-tab ${category === key ? "active" : ""}`} onClick={() => setCategory(key)} data-testid={`tab-actions-${key}`}>
+                <Icon size={18} />
+                <span><strong>{label}</strong><small>{counts ? `${count} ${count === 1 ? "action" : "actions"}` : "…"}</small></span>
+              </button>
+            );
+          })}
+        </div>
+        <Link href="/maintenance" className="hh-act-tab hh-act-repairs" data-testid="link-actions-repairs">
+          <Wrench size={18} />
+          <span><strong>Repairs</strong><small>{counts ? `${counts.maintenance} on Maintenance` : "On Maintenance"}</small></span>
+          <ArrowRight size={14} className="hh-act-repairs-go" />
+        </Link>
       </div>
 
       <section className="panel table-panel">

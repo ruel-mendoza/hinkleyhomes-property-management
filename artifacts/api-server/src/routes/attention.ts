@@ -102,14 +102,17 @@ async function cohoActions(propertyReference: string | undefined): Promise<Item[
       propertyReference ? eq(t.cohoPropertyReference, propertyReference) : undefined,
     ))
     .orderBy(asc(t.dueDate));
-  if (!rows.length) return [];
-  const maintenance = rows.filter((row) => row.category === "maintenance").length;
-  const oldest = rows.find((row) => row.dueDate);
-  return [{
-    key: "coho_actions", severity: maintenance ? "warn" : "info", label: "COHO actions overdue", count: rows.length, amount: null,
-    detail: [maintenance ? `${maintenance} maintenance` : null, oldest?.dueDate ? `oldest due ${plural(daysAgo(oldest.dueDate), "day")} ago${oldest.propertyName ? ` (${oldest.propertyName})` : ""}` : null].filter(Boolean).join(" · ") || null,
-    href: "/actions",
-  }];
+  // Repair reminders show on the Maintenance page next to their job, so they get their own line.
+  const oldestDetail = (list: typeof rows) => {
+    const oldest = list.find((row) => row.dueDate);
+    return oldest?.dueDate ? `oldest due ${plural(daysAgo(oldest.dueDate), "day")} ago${oldest.propertyName ? ` (${oldest.propertyName})` : ""}` : null;
+  };
+  const repairs = rows.filter((row) => row.category === "maintenance");
+  const others = rows.filter((row) => row.category !== "maintenance");
+  const items: Item[] = [];
+  if (repairs.length) items.push({ key: "maintenance_reminders", severity: "warn", label: "Repair reminders overdue", count: repairs.length, amount: null, detail: oldestDetail(repairs), href: "/maintenance" });
+  if (others.length) items.push({ key: "coho_actions", severity: "info", label: "COHO actions overdue", count: others.length, amount: null, detail: oldestDetail(others), href: "/actions" });
+  return items;
 }
 
 // One COHO call per bucket (every property at once), kept for 10 minutes.

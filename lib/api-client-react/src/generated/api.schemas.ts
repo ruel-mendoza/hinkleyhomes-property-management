@@ -1725,6 +1725,14 @@ export interface CohoCalendarPage {
   items: CohoCalendarEntry[];
 }
 
+export interface CohoMaintenanceReminder {
+  reference: string;
+  title: string;
+  /** @nullable */
+  dueDate: string | null;
+  overdue: boolean;
+}
+
 export interface CohoMaintenance {
   guid: string;
   /** @nullable */
@@ -1766,6 +1774,8 @@ export interface CohoMaintenance {
      */
   dateClosed?: string | null;
   created: string;
+  /** Open COHO actions (from the synced copy) that mention this job's guid or job number */
+  reminders: CohoMaintenanceReminder[];
 }
 
 export interface CohoMaintenancePage {

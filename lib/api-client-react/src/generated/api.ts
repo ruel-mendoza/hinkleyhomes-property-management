@@ -574,7 +574,7 @@ export const getListCohoActionsUrl = (params?: ListCohoActionsParams,) => {
 }
 
 /**
- * @summary List COHO actions from the Supabase mirror
+ * @summary List COHO actions from the Supabase mirror (without a category, maintenance actions are left out; they show on the Maintenance page)
  */
 export const listCohoActions = async (params?: ListCohoActionsParams, options?: Parameters<typeof customFetch>[1]): Promise<CohoActionList> => {
 
@@ -621,7 +621,7 @@ export type ListCohoActionsQueryError = ErrorType<void>
 
 
 /**
- * @summary List COHO actions from the Supabase mirror
+ * @summary List COHO actions from the Supabase mirror (without a category, maintenance actions are left out; they show on the Maintenance page)
  */
 
 export function useListCohoActions<TData = Awaited<ReturnType<typeof listCohoActions>>, TError = ErrorType<void>>(

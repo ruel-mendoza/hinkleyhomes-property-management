@@ -96,7 +96,7 @@ export const ListCohoCalendarResponse = zod.object({
 
 
 /**
- * @summary List COHO actions from the Supabase mirror
+ * @summary List COHO actions from the Supabase mirror (without a category, maintenance actions are left out; they show on the Maintenance page)
  */
 export const listCohoActionsQueryPropertyReferenceMax = 200;
 
@@ -574,7 +574,13 @@ export const ListCohoMaintenanceResponse = zod.object({
   "dateMaintenanceCompleted": zod.coerce.date().nullish(),
   "maintenanceDueBy": zod.coerce.date().nullish(),
   "dateClosed": zod.coerce.date().nullish().describe('Set when COHO has closed the issue (it can still say reported)'),
-  "created": zod.coerce.date()
+  "created": zod.coerce.date(),
+  "reminders": zod.array(zod.object({
+  "reference": zod.string(),
+  "title": zod.string(),
+  "dueDate": zod.coerce.date().nullable(),
+  "overdue": zod.boolean()
+})).describe('Open COHO actions (from the synced copy) that mention this job\'s guid or job number')
 })),
   "page": zod.number().int(),
   "pageSize": zod.number().int(),
