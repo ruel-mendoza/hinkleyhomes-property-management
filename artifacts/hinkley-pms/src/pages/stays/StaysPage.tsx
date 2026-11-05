@@ -245,15 +245,15 @@ function AvailabilityPanel({ query }: { query: { data?: StayAvailability; isLoad
 }
 
 // ChargeAutomation guest checks: what to sort first, else ready, plus what passed.
-// Everyone on the booking: the lead guest from Smoobu, the others from
-// ChargeAutomation once they've done online check-in.
+// The other guests on the booking (the lead guest is already in the row),
+// from ChargeAutomation once they've done online check-in.
 function GuestList({ booking }: { booking: StayBooking }) {
-  const names = [booking.guestName ?? "Lead guest", ...(booking.checks?.otherGuests ?? [])];
-  const missing = (booking.guests ?? 0) - names.length;
+  const names = booking.checks?.otherGuests ?? [];
+  const missing = (booking.guests ?? 0) - 1 - names.length;
   return (
     <div className="hh-stay-guests">
-      <ol>{names.map((name, index) => <li key={index}><span className="hh-stay-guest-no">{index + 1}</span><span>{name}</span>{index === 0 && <span className="hh-stay-guest-lead">Lead guest</span>}</li>)}</ol>
-      {missing > 0 && <p>{missing === 1 ? "1 more guest has" : `${missing} more guests have`} no name yet. Names are added when the guest completes online check-in in ChargeAutomation.</p>}
+      {names.length > 0 && <ul>{names.map((name, index) => <li key={index}>{name}</li>)}</ul>}
+      {missing > 0 && <p>{names.length ? (missing === 1 ? "1 more guest has" : `${missing} more guests have`) : (missing === 1 ? "The other guest has" : `The other ${missing} guests have`)} no name yet. Names are added when the guest completes online check-in in ChargeAutomation.</p>}
     </div>
   );
 }
