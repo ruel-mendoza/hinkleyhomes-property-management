@@ -252,8 +252,8 @@ function GuestList({ booking }: { booking: StayBooking }) {
   const missing = (booking.guests ?? 0) - names.length;
   return (
     <div className="hh-stay-guests">
-      <ol>{names.map((name, index) => <li key={index}>{name}{index === 0 && <span className="secondary-text"> · lead guest</span>}</li>)}</ol>
-      {missing > 0 && <p className="secondary-text">{missing === 1 ? "1 more guest has" : `${missing} more guests have`} no name yet. Names are added when the guest completes online check-in in ChargeAutomation.</p>}
+      <ol>{names.map((name, index) => <li key={index}><span className="hh-stay-guest-no">{index + 1}</span><span>{name}</span>{index === 0 && <span className="hh-stay-guest-lead">Lead guest</span>}</li>)}</ol>
+      {missing > 0 && <p>{missing === 1 ? "1 more guest has" : `${missing} more guests have`} no name yet. Names are added when the guest completes online check-in in ChargeAutomation.</p>}
     </div>
   );
 }
