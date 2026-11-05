@@ -97,9 +97,13 @@ export default function StaysPage() {
             {data.guestChecks && tile("notReady", <ShieldCheck size={17} />, data.counts.notReady, "not ready to arrive", data.counts.notReady ? "warn" : "")}
             {availability.data && <button type="button" onClick={() => scrollToId("stays-availability")} title="Go to availability"><DoorOpen size={17} /><strong>{availability.data.freeTonight}</strong> free tonight</button>}
           </div>
-          <GuestMessagesPanel messages={data.messages} />
-          <ChangeoversPanel data={data} />
-          <BookingsPanel data={data} filter={filter} onClear={() => setFilter(null)} />
+          <div className="hh-stay-grid">
+            <BookingsPanel data={data} filter={filter} onClear={() => setFilter(null)} />
+            <div className="hh-stay-side">
+              <GuestMessagesPanel messages={data.messages} />
+              <ChangeoversPanel data={data} />
+            </div>
+          </div>
           <AvailabilityPanel query={availability} />
           <p className="hh-stay-foot">
             Read-only from Smoobu across <Link href="/properties?tab=smoobu">{data.apartments} {data.apartments === 1 ? "apartment" : "apartments"}</Link>. Prices and availability are set in Smoobu by PriceLabs, and replies to guests are sent from Smoobu. Only guest names are kept here.
@@ -120,7 +124,7 @@ function GuestMessagesPanel({ messages }: { messages: StaysOverview["messages"] 
       {messages.error ? <div className="empty-state"><MessageSquare size={21} /><h3>Messages could not be loaded</h3><p>{messages.error}</p></div>
         : !messages.threads.length ? <div className="empty-state"><MessageSquare size={21} /><h3>No guest messages yet</h3></div>
           : (
-            <ul className="hh-stay-threads">
+            <ul className="hh-stay-threads hh-stay-list">
               {messages.threads.map((thread, index) => (
                 <li key={thread.bookingId ?? index}>
                   <div>
@@ -138,27 +142,25 @@ function GuestMessagesPanel({ messages }: { messages: StaysOverview["messages"] 
 
 function ChangeoversPanel({ data }: { data: StaysOverview }) {
   return (
-    <section className="panel table-panel hh-stay-panel">
+    <section className="panel hh-stay-panel">
       <div className="panel-head"><div><div className="panel-title">Changeovers this week</div><div className="panel-caption">Every departure needs a clean; same-day turnarounds first. The guest's cleaning fee is the cleaning allowance.</div></div></div>
-      <div className="table-wrap">
-        <table>
-          <thead><tr><th>Day</th><th>Apartment</th><th>Leaving</th><th>Arriving</th><th>Cleaning allowance</th></tr></thead>
-          <tbody>
-            {data.changeovers.map((changeover, index) => (
-              <tr key={`${changeover.date}-${changeover.apartmentName}-${index}`}>
-                <td><strong>{dayLabel(changeover.date, data.asOf)}</strong></td>
-                <td>{changeover.apartmentName}</td>
-                <td>{changeover.leavingGuest ?? "Guest"}{changeover.checkOutTime && <small className="hh-stay-sub">Out by {changeover.checkOutTime}</small>}</td>
-                <td>
-                  {changeover.sameDay ? <><span className="status pending">Same day</span> {changeover.arrivingGuest ?? "Guest"}{changeover.checkInTime && <small className="hh-stay-sub">In from {changeover.checkInTime}</small>}</> : <span className="secondary-text">No arrival that day</span>}
-                </td>
-                <td>{changeover.cleaningFee === null ? "—" : pounds.format(changeover.cleaningFee)}</td>
-              </tr>
-            ))}
-            {!data.changeovers.length && <tr><td colSpan={5}><div className="empty-state"><ArrowLeftRight size={21} /><h3>No changeovers in the next 7 days</h3></div></td></tr>}
-          </tbody>
-        </table>
-      </div>
+      {!data.changeovers.length ? <div className="empty-state"><ArrowLeftRight size={21} /><h3>No changeovers in the next 7 days</h3></div> : (
+        <ul className="hh-stay-list">
+          {data.changeovers.map((changeover, index) => (
+            <li key={`${changeover.date}-${changeover.apartmentName}-${index}`} className="hh-stay-co">
+              <div>
+                <strong>{dayLabel(changeover.date, data.asOf)} · {changeover.apartmentName}</strong>
+                <small>Out: {changeover.leavingGuest ?? "Guest"}{changeover.checkOutTime && ` by ${changeover.checkOutTime}`}</small>
+                <small>{changeover.sameDay ? <>In: {changeover.arrivingGuest ?? "Guest"}{changeover.checkInTime && ` from ${changeover.checkInTime}`}</> : "No arrival that day"}</small>
+              </div>
+              <div className="hh-stay-co-end">
+                {changeover.sameDay && <span className="status pending">Same day</span>}
+                <span>{changeover.cleaningFee === null ? "—" : pounds.format(changeover.cleaningFee)}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
