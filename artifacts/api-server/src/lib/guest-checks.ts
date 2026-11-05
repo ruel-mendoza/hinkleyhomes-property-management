@@ -20,6 +20,10 @@ const num = (value: unknown): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 const first = (value: unknown): Raw => obj(Array.isArray(value) ? value[0] : value);
+// Names of the other guests (additional_guests[].full_name); undefined when the
+// booking doesn't say, so a missing list never wipes names already stored.
+const otherGuestNames = (value: unknown): string[] | undefined =>
+  Array.isArray(value) ? value.map((guest) => text(obj(guest).full_name)?.slice(0, 120)).filter((name): name is string => Boolean(name)).slice(0, 20) : undefined;
 
 export class ChargeAutomationError extends Error {
   constructor(message: string, readonly status?: number) {
@@ -106,6 +110,8 @@ export async function handleChargeAutomationEvent(body: unknown): Promise<{ even
       const confirmed = await confirmedPreCheckin(caBookingId);
       if (confirmed === false) return { event, result: "not confirmed by ChargeAutomation" };
       patch.preCheckinCompletedAt = new Date();
+      const names = otherGuestNames(data.additional_guests);
+      if (names) patch.otherGuestNames = names;
       break;
     }
     case "booking.payment.successful":
@@ -179,10 +185,11 @@ export async function syncGuestChecks(from: string, to: string): Promise<number>
       const smoobuBookingId = text(item.external_id) ?? caBookingId;
       if (!smoobuBookingId || num(item.status) === 0) continue;
       const done = item.pre_checkin_completed === true || item.pre_checkin_completed === 1;
-      const values = { chargeAutomationBookingId: caBookingId, preCheckinCompletedAt: done ? sql`coalesce(${g.preCheckinCompletedAt}, now())` : null };
+      const names = otherGuestNames(item.additional_guests);
+      const values = { chargeAutomationBookingId: caBookingId, preCheckinCompletedAt: done ? sql`coalesce(${g.preCheckinCompletedAt}, now())` : null, ...(names ? { otherGuestNames: names } : {}) };
       await getDb()
         .insert(g)
-        .values({ smoobuBookingId, chargeAutomationBookingId: caBookingId, preCheckinCompletedAt: done ? new Date() : null })
+        .values({ smoobuBookingId, chargeAutomationBookingId: caBookingId, preCheckinCompletedAt: done ? new Date() : null, ...(names ? { otherGuestNames: names } : {}) })
         .onConflictDoUpdate({ target: g.smoobuBookingId, set: values });
       stored += 1;
     }
@@ -200,6 +207,7 @@ export type StayGuestChecks = {
   deposit: "authorized" | "failed" | null;
   depositAmount: number | null;
   payment: "successful" | "failed" | null;
+  otherGuests: string[];
   issues: string[];
 };
 
@@ -223,6 +231,7 @@ export async function guestChecksFor(bookings: { smoobuBookingId: string; arriva
         deposit: oneOf(row.depositStatus, ["authorized", "failed"] as const),
         depositAmount: row.depositAmount === null ? null : Number(row.depositAmount),
         payment: oneOf(row.paymentStatus, ["successful", "failed"] as const),
+        otherGuests: row.otherGuestNames ?? [],
       };
       const issues = [
         checks.payment === "failed" && "Payment failed",

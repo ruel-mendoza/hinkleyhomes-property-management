@@ -131,7 +131,8 @@ export const shortStayBookingsTable = pgTable(
 // Keyed by the Smoobu booking id (the same number as ChargeAutomation's own booking
 // id and pms_booking_id for bookings Smoobu sent it), so an
 // event that arrives before the booking is synced still counts. No guest
-// documents, contact details or card data are kept.
+// documents, contact details or card data are kept; for the other guests on a
+// booking (added at online check-in) only their names are kept.
 export const guestChecksTable = pgTable("guest_checks", {
   id: id(),
   smoobuBookingId: text("smoobu_booking_id").notNull().unique(),
@@ -147,6 +148,8 @@ export const guestChecksTable = pgTable("guest_checks", {
   depositAmount: money("deposit_amount"),
   // "successful" | "failed" (the latest payment event)
   paymentStatus: text("payment_status"),
+  // Names of the guests besides the lead guest, from online check-in.
+  otherGuestNames: text("other_guest_names").array(),
   lastEventAt: timestamp("last_event_at", { withTimezone: true }).notNull().defaultNow(),
   ...timestamps,
 }).enableRLS();

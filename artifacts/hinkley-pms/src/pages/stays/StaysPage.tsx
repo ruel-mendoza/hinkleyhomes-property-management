@@ -1,7 +1,7 @@
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeftRight, BedDouble, CalendarDays, DoorOpen, ExternalLink, LogIn, LogOut, MessageSquare, PlugZap, RefreshCw, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, BedDouble, CalendarDays, ChevronDown, ChevronUp, DoorOpen, ExternalLink, LogIn, LogOut, MessageSquare, PlugZap, RefreshCw, ShieldCheck } from "lucide-react";
 import { getGetStayAvailabilityQueryKey, getGetStaysQueryKey, useGetStayAvailability, useGetStays, useSyncStays, type StayAvailability, type StayBooking, type StaysOverview } from "@workspace/api-client-react";
 import { errorText } from "@/components/action-modals";
 import { formatDate } from "@/services/properties";
@@ -165,6 +165,9 @@ function ChangeoversPanel({ data }: { data: StaysOverview }) {
 
 function BookingsPanel({ data, filter, onClear }: { data: StaysOverview; filter: BookingFilter | null; onClear: () => void }) {
   const bookings = filter ? data.bookings.filter((booking) => FILTERS[filter].test(booking, data.asOf)) : data.bookings;
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const toggle = (id: string) => setOpen((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  const columns = data.guestChecks ? 6 : 5;
   return (
     <section className="panel table-panel hh-stay-panel" id="stays-bookings">
       <div className="panel-head">
@@ -176,8 +179,14 @@ function BookingsPanel({ data, filter, onClear }: { data: StaysOverview; filter:
           <thead><tr><th>Guest</th><th>Apartment</th><th>Stay</th><th>Channel</th><th>Price</th>{data.guestChecks && <th>Guest checks <small className="hh-stay-sub">ChargeAutomation</small></th>}</tr></thead>
           <tbody>
             {bookings.map((booking) => (
-              <tr key={booking.id}>
-                <td><strong>{booking.guestName ?? "Guest"}</strong>{booking.guests !== null && <small className="hh-stay-sub">{booking.guests} {booking.guests === 1 ? "guest" : "guests"}</small>}</td>
+              <Fragment key={booking.id}>
+              <tr>
+                <td>
+                  <strong>{booking.guestName ?? "Guest"}</strong>
+                  {booking.guests !== null && (booking.guests > 1
+                    ? <button type="button" className="hh-stay-sub hh-stay-guests-toggle" aria-expanded={open.has(booking.id)} onClick={() => toggle(booking.id)}>{booking.guests} guests {open.has(booking.id) ? <ChevronUp size={12} /> : <ChevronDown size={12} />}</button>
+                    : <small className="hh-stay-sub">1 guest</small>)}
+                </td>
                 <td>{booking.apartmentName}</td>
                 <td>{dayLabel(booking.arrival, data.asOf)} → {dayLabel(booking.departure, data.asOf)}<small className="hh-stay-sub">{booking.nights} {booking.nights === 1 ? "night" : "nights"}</small></td>
                 <td>{booking.channel ?? "—"}</td>
@@ -187,9 +196,11 @@ function BookingsPanel({ data, filter, onClear }: { data: StaysOverview; filter:
                 </td>
                 {data.guestChecks && <td><GuestChecksCell checks={booking.checks} arrived={booking.arrival <= data.asOf} /></td>}
               </tr>
+              {open.has(booking.id) && <tr className="hh-stay-guests-row"><td colSpan={columns}><GuestList booking={booking} /></td></tr>}
+              </Fragment>
             ))}
-            {!bookings.length && filter && <tr><td colSpan={data.guestChecks ? 6 : 5}><div className="empty-state"><BedDouble size={21} /><h3>No bookings to show</h3><p>Nothing matches "{FILTERS[filter].label}" right now.</p></div></td></tr>}
-            {!data.bookings.length && !filter && <tr><td colSpan={data.guestChecks ? 6 : 5}><div className="empty-state"><BedDouble size={21} /><h3>No bookings this week</h3><p>{data.lastSync ? "Smoobu has no stays in the next 7 days." : "Run Sync now to read bookings from Smoobu."}</p></div></td></tr>}
+            {!bookings.length && filter && <tr><td colSpan={columns}><div className="empty-state"><BedDouble size={21} /><h3>No bookings to show</h3><p>Nothing matches "{FILTERS[filter].label}" right now.</p></div></td></tr>}
+            {!data.bookings.length && !filter && <tr><td colSpan={columns}><div className="empty-state"><BedDouble size={21} /><h3>No bookings this week</h3><p>{data.lastSync ? "Smoobu has no stays in the next 7 days." : "Run Sync now to read bookings from Smoobu."}</p></div></td></tr>}
           </tbody>
         </table>
       </div>
@@ -234,6 +245,19 @@ function AvailabilityPanel({ query }: { query: { data?: StayAvailability; isLoad
 }
 
 // ChargeAutomation guest checks: what to sort first, else ready, plus what passed.
+// Everyone on the booking: the lead guest from Smoobu, the others from
+// ChargeAutomation once they've done online check-in.
+function GuestList({ booking }: { booking: StayBooking }) {
+  const names = [booking.guestName ?? "Lead guest", ...(booking.checks?.otherGuests ?? [])];
+  const missing = (booking.guests ?? 0) - names.length;
+  return (
+    <div className="hh-stay-guests">
+      <ol>{names.map((name, index) => <li key={index}>{name}{index === 0 && <span className="secondary-text"> · lead guest</span>}</li>)}</ol>
+      {missing > 0 && <p className="secondary-text">{missing === 1 ? "1 more guest has" : `${missing} more guests have`} no name yet. Names are added when the guest completes online check-in in ChargeAutomation.</p>}
+    </div>
+  );
+}
+
 function GuestChecksCell({ checks, arrived }: { checks: StayBooking["checks"]; arrived: boolean }) {
   if (!checks) return <span className="secondary-text">—</span>;
   const passed = [

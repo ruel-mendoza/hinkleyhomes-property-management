@@ -25,6 +25,8 @@ export interface StayGuestChecks {
   depositAmount: number | null;
   /** @nullable */
   payment: StayGuestChecksPayment;
+  /** Names of the guests besides the lead guest, given at online check-in */
+  otherGuests: string[];
   /** Plain-English problems to sort before the guest arrives; empty when ready */
   issues: string[];
 }

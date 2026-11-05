@@ -1686,12 +1686,17 @@ components:
         payment:
           type: ["string", "null"]
           enum: [successful, failed, null]
+        otherGuests:
+          description: Names of the guests besides the lead guest, given at online check-in
+          type: array
+          items:
+            type: string
         issues:
           description: Plain-English problems to sort before the guest arrives; empty when ready
           type: array
           items:
             type: string
-      required: [preCheckin, idVerification, cardVerification, deposit, depositAmount, payment, issues]
+      required: [preCheckin, idVerification, cardVerification, deposit, depositAmount, payment, otherGuests, issues]
     StayChangeover:
       type: object
       properties:

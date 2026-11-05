@@ -1009,6 +1009,7 @@ export const GetStaysResponse = zod.object({
   "deposit": zod.union([zod.literal('authorized'),zod.literal('failed'),zod.literal(null)]).nullable(),
   "depositAmount": zod.number().nullable(),
   "payment": zod.union([zod.literal('successful'),zod.literal('failed'),zod.literal(null)]).nullable(),
+  "otherGuests": zod.array(zod.string()).describe('Names of the guests besides the lead guest, given at online check-in'),
   "issues": zod.array(zod.string()).describe('Plain-English problems to sort before the guest arrives; empty when ready')
 }).describe('Online check-in, ID, card and deposit checks and the latest payment, from ChargeAutomation'),zod.null()]).describe('What ChargeAutomation has reported for this booking; null when it has sent nothing')
 })),
