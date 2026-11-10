@@ -114,7 +114,8 @@ export default function AccountsPage() {
   const view = useMonthEnd();
   const { money, receivables, rows } = view;
   const xeroError = money.data?.xero.error;
-  const moneyState = <PanelState loading={money.isLoading} failed={money.isError} what="banking" />;
+  // Only an element while loading or failed; null lets each panel show its content.
+  const moneyState = money.isLoading || money.isError || !money.data ? <PanelState loading={money.isLoading} failed={!money.isLoading} what="banking" /> : null;
 
   return (
     <>
