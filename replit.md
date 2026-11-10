@@ -1,10 +1,15 @@
-# [Project name]
+# Hinkley Homes PMS
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Staff property operations workspace for Hinkley Homes Group.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- Start the existing managed workflows `artifacts/hinkley-pms: web` (frontend at `/`) and `artifacts/api-server: API Server` (backend at `/api`). They supply the required `PORT` and frontend `BASE_PATH`; do not run a root-level dev command.
+- After importing or pulling, run `pnpm install --frozen-lockfile` to install every workspace package. A filtered package update alone does not install the other workspaces.
+- Reuse the existing Clerk instance, as requested by the user; do not provision a replacement. Set `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`, and `VITE_CLERK_PUBLISHABLE_KEY` in Secrets (both publishable-key settings use the same value).
+- Setup verification: API health is `GET /api/healthz`; database access was checked read-only, with no schema push or data changes. The landing page was visually verified; signed-in screens still require an authenticated session.
+- COHO, Smoobu, ChargeAutomation and Xero integrations need their original settings restored separately before live integration data is available. Refer to `.env.example`; never commit credential values.
+- `pnpm --filter @workspace/api-server run dev` — API dev command used by its managed workflow; the server listens on the workflow-provided `PORT`
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
