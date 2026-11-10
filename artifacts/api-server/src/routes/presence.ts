@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Response } from "express";
-import { desc, gte, sql } from "drizzle-orm";
+import { and, desc, gte, ne, sql } from "drizzle-orm";
 import { getDb, isDatabaseConfigured, staffPresenceTable, type StaffPresence } from "@workspace/db";
 import { GetPresenceResponse, SendPresenceHeartbeatBody } from "@workspace/api-zod";
 
@@ -31,7 +31,9 @@ const PAGES: [RegExp, string][] = [
 ];
 const pageName = (path: string) => PAGES.find(([pattern]) => pattern.test(path.split(/[?#]/)[0]))?.[1] ?? "Other page";
 
-function view(row: StaffPresence, now: number, youId: string | undefined) {
+const sameEmail = (a: string | null | undefined, b: string | null | undefined) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+
+function view(row: StaffPresence, now: number, you: { userId?: string; email?: string } | undefined) {
   const age = now - row.lastSeenAt.getTime();
   const status = age <= ONLINE_MS && row.tabVisible ? "online" : age <= AWAY_MS ? "away" : "offline";
   return {
@@ -42,12 +44,12 @@ function view(row: StaffPresence, now: number, youId: string | undefined) {
     currentPage: status === "offline" ? null : row.currentPage,
     lastSeenAt: row.lastSeenAt.toISOString(),
     sessionStartedAt: row.sessionStartedAt.toISOString(),
-    isYou: row.userId === youId,
+    isYou: row.userId === you?.userId || sameEmail(row.email, you?.email),
   } as const;
 }
 
 async function presenceList(res: Response) {
-  const staff = res.locals.staff as { userId?: string } | undefined;
+  const staff = res.locals.staff as { userId?: string; email?: string } | undefined;
   const now = Date.now();
   const rows = await getDb()
     .select()
@@ -55,7 +57,15 @@ async function presenceList(res: Response) {
     .where(gte(staffPresenceTable.lastSeenAt, new Date(now - LIST_DAYS * 86_400_000)))
     .orderBy(desc(staffPresenceTable.lastSeenAt));
   const order = { online: 0, away: 1, offline: 2 };
-  const users = rows.map((row) => view(row, now, staff?.userId)).sort((a, b) => order[a.status] - order[b.status] || b.lastSeenAt.localeCompare(a.lastSeenAt));
+  // One row per person: a new sign-in account (e.g. after a Clerk change) keeps the same email, so keep the latest row per email.
+  const seen = new Set<string>();
+  const latest = rows.filter((row) => {
+    const key = row.email?.toLowerCase() ?? row.userId;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const users = latest.map((row) => view(row, now, staff)).sort((a, b) => order[a.status] - order[b.status] || b.lastSeenAt.localeCompare(a.lastSeenAt));
   return GetPresenceResponse.parse({ asOf: new Date(now).toISOString(), onlineCount: users.filter((user) => user.status === "online").length, users });
 }
 
@@ -106,6 +116,8 @@ presenceRouter.post("/presence/heartbeat", async (req, res): Promise<void> => {
           lastSeenAt: sql`now()`,
         },
       });
+    // Tidy up rows left by the same person under an older sign-in account.
+    if (staff.email) await getDb().delete(t).where(and(sql`lower(${t.email}) = lower(${staff.email})`, ne(t.userId, staff.userId)));
     res.json(await presenceList(res));
   } catch (error) {
     req.log.error({ err: error }, "Staff presence heartbeat failed");
