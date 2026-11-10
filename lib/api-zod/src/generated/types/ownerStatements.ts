@@ -19,4 +19,9 @@ export interface OwnerStatements {
   housekeeping: number;
   landlordNet: number;
   toReview: number;
+  /**
+     * Why landlord payouts couldn't be checked in Xero; null when the check ran
+     * @nullable
+     */
+  xeroError: string | null;
 }

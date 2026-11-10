@@ -1,3 +1,5 @@
+import { readXeroGatewayEnv } from "./integrations-env";
+import { findPayouts, type PaymentFound } from "./owner-payments";
 import { rentalNinjaGet, rentalNinjaList } from "./rental-ninja";
 
 // Owner statements (Rental Ninja) for one month. Each statement splits a
@@ -46,8 +48,11 @@ function summarise(statement: RnStatement) {
     other: sum(others, (payout) => payout.net ?? 0),
     landlordNet: landlord ? round(landlord.net ?? 0) : 0,
     toReview: statement.to_review === true,
+    payment: null as PaymentFound | null,
   };
 }
+
+const ukToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
 
 const ukMonth = (date: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(date).slice(0, 7);
 export function lastMonth(): string {
@@ -71,6 +76,22 @@ async function loadMonth(month: string) {
     detailed.push(...batch);
   }
   const statements = detailed.map(summarise).sort((a, b) => a.landlord.localeCompare(b.landlord, "en-GB"));
+  // Look for each landlord payout in Xero; the statements still show if Xero can't be read.
+  let xeroError: string | null = null;
+  const gateway = readXeroGatewayEnv();
+  if (gateway.status !== "configured") {
+    xeroError = "Payouts can't be checked: the n8n Xero gateway isn't configured.";
+  } else {
+    try {
+      const payments = await findPayouts(
+        statements.filter((statement) => statement.end).map((statement) => ({ statementId: statement.id, landlord: statement.landlord, net: statement.landlordNet, end: statement.end })),
+        ukToday(),
+      );
+      for (const statement of statements) statement.payment = payments.get(statement.id) ?? null;
+    } catch (error) {
+      xeroError = `Payouts couldn't be checked in Xero: ${(error as Error).message}`;
+    }
+  }
   const total = (pick: (statement: (typeof statements)[number]) => number) => round(statements.reduce((acc, statement) => acc + pick(statement), 0));
   return {
     month,
@@ -82,6 +103,7 @@ async function loadMonth(month: string) {
     housekeeping: total((statement) => statement.housekeeping),
     landlordNet: total((statement) => statement.landlordNet),
     toReview: statements.filter((statement) => statement.toReview).length,
+    xeroError,
   };
 }
 
@@ -89,6 +111,7 @@ export async function ownerStatements(month: string, refresh = false) {
   const cached = cache.get(month);
   if (!refresh && cached && Date.now() - cached.at < CACHE_MS) return cached.body;
   const body = await loadMonth(month);
-  cache.set(month, { at: Date.now(), body });
+  // A failed Xero check is retried on the next load rather than kept for 10 minutes.
+  if (!body.xeroError) cache.set(month, { at: Date.now(), body });
   return body;
 }

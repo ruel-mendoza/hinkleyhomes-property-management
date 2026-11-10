@@ -163,6 +163,64 @@ export interface StayAvailability {
   apartments: StayApartmentAvailability[];
 }
 
+/**
+ * paid = a paid bill or a bank payment; billed = a bill not yet paid; waiting = not in Xero but still within 7 days of the period end; missing = not in Xero
+ */
+export type OwnerStatementPaymentStatus = typeof OwnerStatementPaymentStatus[keyof typeof OwnerStatementPaymentStatus];
+
+
+export const OwnerStatementPaymentStatus = {
+  paid: 'paid',
+  billed: 'billed',
+  waiting: 'waiting',
+  missing: 'missing',
+} as const;
+
+/**
+ * bill = a supplier bill to the landlord; payment = money spent from a bank account
+ * @nullable
+ */
+export type OwnerStatementPaymentKind = typeof OwnerStatementPaymentKind[keyof typeof OwnerStatementPaymentKind] | null;
+
+
+export const OwnerStatementPaymentKind = {
+  bill: 'bill',
+  payment: 'payment',
+} as const;
+
+export interface OwnerStatementPayment {
+  status: OwnerStatementPaymentStatus;
+  /**
+     * Xero company (short name), e.g. Management or Lettings
+     * @nullable
+     */
+  company: string | null;
+  /**
+     * bill = a supplier bill to the landlord; payment = money spent from a bank account
+     * @nullable
+     */
+  kind: OwnerStatementPaymentKind;
+  /**
+     * Paid date (bill) or payment date, YYYY-MM-DD
+     * @nullable
+     */
+  date: string | null;
+  /**
+     * Total of the Xero records matched
+     * @nullable
+     */
+  amount: number | null;
+  /** How many Xero records make up the payout (more than 1 when it was paid in parts) */
+  parts: number;
+  /**
+     * Other statements paid by the same Xero record, by landlord name
+     * @nullable
+     */
+  sharedWith: string | null;
+  /** @nullable */
+  reference: string | null;
+}
+
 export interface OwnerStatement {
   id: number;
   /** Statement name in Rental Ninja */
@@ -191,6 +249,8 @@ export interface OwnerStatement {
   /** What the landlord receives; negative means the landlord owes it */
   landlordNet: number;
   toReview: boolean;
+  /** Where the landlord payout was found in Xero; null when there is nothing to pay or Xero couldn't be checked */
+  payment: OwnerStatementPayment | null;
 }
 
 export interface OwnerStatements {
@@ -205,6 +265,11 @@ export interface OwnerStatements {
   housekeeping: number;
   landlordNet: number;
   toReview: number;
+  /**
+     * Why landlord payouts couldn't be checked in Xero; null when the check ran
+     * @nullable
+     */
+  xeroError: string | null;
 }
 
 /**

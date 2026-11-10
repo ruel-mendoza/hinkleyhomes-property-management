@@ -1856,7 +1856,43 @@ components:
           type: number
         toReview:
           type: boolean
-      required: [id, name, landlord, start, end, income, landlordCosts, hinkleyFee, feeCompany, housekeeping, other, landlordNet, toReview]
+        payment:
+          description: Where the landlord payout was found in Xero; null when there is nothing to pay or Xero couldn't be checked
+          oneOf:
+            - $ref: "#/components/schemas/OwnerStatementPayment"
+            - type: "null"
+      required: [id, name, landlord, start, end, income, landlordCosts, hinkleyFee, feeCompany, housekeeping, other, landlordNet, toReview, payment]
+    OwnerStatementPaymentStatus:
+      description: paid = a paid bill or a bank payment; billed = a bill not yet paid; waiting = not in Xero but still within 7 days of the period end; missing = not in Xero
+      type: string
+      enum: [paid, billed, waiting, missing]
+    OwnerStatementPayment:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/OwnerStatementPaymentStatus"
+        company:
+          description: Xero company (short name), e.g. Management or Lettings
+          type: ["string", "null"]
+        kind:
+          description: bill = a supplier bill to the landlord; payment = money spent from a bank account
+          type: ["string", "null"]
+          enum: [bill, payment, null]
+        date:
+          description: Paid date (bill) or payment date, YYYY-MM-DD
+          type: ["string", "null"]
+        amount:
+          description: Total of the Xero records matched
+          type: ["number", "null"]
+        parts:
+          description: How many Xero records make up the payout (more than 1 when it was paid in parts)
+          type: integer
+        sharedWith:
+          description: Other statements paid by the same Xero record, by landlord name
+          type: ["string", "null"]
+        reference:
+          type: ["string", "null"]
+      required: [status, company, kind, date, amount, parts, sharedWith, reference]
     OwnerStatements:
       type: object
       properties:
@@ -1882,7 +1918,10 @@ components:
           type: number
         toReview:
           type: integer
-      required: [month, asOf, statements, income, landlordCosts, hinkleyFee, housekeeping, landlordNet, toReview]
+        xeroError:
+          description: Why landlord payouts couldn't be checked in Xero; null when the check ran
+          type: ["string", "null"]
+      required: [month, asOf, statements, income, landlordCosts, hinkleyFee, housekeeping, landlordNet, toReview, xeroError]
     StaysOverview:
       type: object
       properties:

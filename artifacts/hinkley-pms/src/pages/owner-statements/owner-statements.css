@@ -10,6 +10,15 @@
 .os-table .os-net.bad { color: #f08f91 }
 .os-table .os-total td { font-weight: 800; color: #e2e9f1; background: #172236; border-bottom: 0 }
 .os-ok { font-size: 12px; color: #79d0a9 }
+.os-muted { color: #6f7f96 }
+.os-banner { margin-bottom: 13px; padding: 10px 14px; border-radius: 10px; background: #403421; color: #edc16b; font-size: 13px }
+.os-todo { margin-top: 13px }
+.os-todo ul { list-style: none; margin: 0; padding: 0 }
+.os-todo li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid #29364a }
+.os-todo li span { display: flex; flex-direction: column; gap: 2px; min-width: 0 }
+.os-todo li strong { color: #e2e9f1; font-size: 13px }
+.os-todo li small { font-size: 12px; color: #95a2b5 }
+.os-todo li b { font-size: 14px; color: #e2e9f1; font-variant-numeric: tabular-nums; white-space: nowrap }
 
 @media (max-width: 460px) {
   .os-table th, .os-table td { padding: 9px 10px }

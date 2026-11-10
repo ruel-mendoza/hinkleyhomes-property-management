@@ -19,6 +19,20 @@ function recentMonths(): string[] {
 
 const queryOptions = (month?: string) => ({ query: { queryKey: getGetOwnerStatementsQueryKey(month ? { month } : undefined), staleTime: 10 * 60_000, retry: false } });
 
+const shortDay = (date: string | null) => (date ? new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }) : "");
+
+// Where the landlord payout was found in Xero.
+function PaidCell({ statement }: { statement: OwnerStatement }) {
+  const payment = statement.payment;
+  if (!payment) return <td><span className="os-muted">—</span></td>;
+  const how = payment.company ? `${payment.company} ${payment.kind === "bill" ? "bill" : "payment"}${payment.parts > 1 ? ` in ${payment.parts} parts` : ""}` : "";
+  const shared = payment.sharedWith ? ` · paid with ${payment.sharedWith}` : "";
+  if (payment.status === "paid") return <td><span className="status completed">Paid {shortDay(payment.date)}</span><small>{how}{shared}</small></td>;
+  if (payment.status === "billed") return <td><span className="status pending">Billed, not paid</span><small>{how}{shared}</small></td>;
+  if (payment.status === "waiting") return <td><span className="status">Due soon</span><small>Usually paid within a week</small></td>;
+  return <td><span className="status overdue">Not in Xero</span></td>;
+}
+
 function flag(statement: OwnerStatement): { tone: string; label: string } | null {
   const noPayouts = (statement.income ?? 0) > 0 && !statement.hinkleyFee && !statement.housekeeping && !statement.landlordNet && !statement.other;
   if (noPayouts) return { tone: "overdue", label: "No payouts yet" };
@@ -33,7 +47,10 @@ export default function OwnerStatementsPage() {
   const query = useGetOwnerStatements({ month }, queryOptions(month));
   const data = query.data;
   const statements = data?.statements ?? [];
-  const flagged = statements.filter(flag).length;
+  const toPay = statements.filter((statement) => statement.payment);
+  const paid = toPay.filter((statement) => statement.payment?.status === "paid");
+  const notInXero = toPay.filter((statement) => statement.payment?.status === "missing");
+  const notInXeroTotal = notInXero.reduce((sum, statement) => sum + statement.landlordNet, 0);
 
   return (
     <>
@@ -67,11 +84,13 @@ export default function OwnerStatementsPage() {
           <div className="metric-foot">Management and Lettings</div>
         </div>
         <div className="panel metric">
-          <div className="metric-top">Housekeeping</div>
-          <div className="metric-value">{data ? whole.format(data.housekeeping) : "—"}</div>
-          <div className="metric-foot">{data && flagged ? `${flagged} statements to check` : "Cleaning charged on statements"}</div>
+          <div className="metric-top">Landlords paid in Xero</div>
+          <div className="metric-value">{data && !data.xeroError ? `${paid.length} of ${toPay.length}` : "—"}</div>
+          <div className="metric-foot">{data?.xeroError ? "Xero couldn't be checked" : notInXero.length ? `${whole.format(notInXeroTotal)} not in Xero yet` : "Management bills and Lettings payments"}</div>
         </div>
       </div>
+
+      {data?.xeroError && <div className="os-banner">{data.xeroError}</div>}
 
       <section className="panel">
         <div className="panel-head">
@@ -87,7 +106,7 @@ export default function OwnerStatementsPage() {
                 <div className="table-wrap">
                   <table className="os-table">
                     <thead>
-                      <tr><th>Landlord</th><th className="num">Income</th><th className="num">Costs charged</th><th className="num">Hinkley fee</th><th className="num">Housekeeping</th><th className="num">Landlord payout</th><th>Check</th></tr>
+                      <tr><th>Landlord</th><th className="num">Income</th><th className="num">Costs charged</th><th className="num">Hinkley fee</th><th className="num">Housekeeping</th><th className="num">Landlord payout</th><th>Paid in Xero</th><th>Check</th></tr>
                     </thead>
                     <tbody>
                       {statements.map((statement) => {
@@ -100,6 +119,7 @@ export default function OwnerStatementsPage() {
                             <td className="num">{pounds.format(statement.hinkleyFee)}</td>
                             <td className="num">{pounds.format(statement.housekeeping + statement.other)}</td>
                             <td className={`num os-net${statement.landlordNet < 0 ? " bad" : ""}`}>{pounds.format(statement.landlordNet)}</td>
+                            <PaidCell statement={statement} />
                             <td>{note ? <span className={`status ${note.tone}`}>{note.label}</span> : <span className="os-ok">OK</span>}</td>
                           </tr>
                         );
@@ -113,6 +133,7 @@ export default function OwnerStatementsPage() {
                           <td className="num">{pounds.format(data.housekeeping + statements.reduce((sum, item) => sum + item.other, 0))}</td>
                           <td className="num">{pounds.format(data.landlordNet)}</td>
                           <td />
+                          <td />
                         </tr>
                       )}
                     </tbody>
@@ -120,6 +141,26 @@ export default function OwnerStatementsPage() {
                 </div>
               )}
       </section>
+
+      {notInXero.length > 0 && (
+        <section className="panel os-todo">
+          <div className="panel-head">
+            <div>
+              <div className="panel-title">Not in Xero yet · {notInXero.length}</div>
+              <div className="panel-caption">No Management bill or Lettings payment matches these payouts. If they've been paid, they're probably waiting in Xero's Reconcile screen.</div>
+            </div>
+            <a href="https://go.xero.com/" target="_blank" rel="noreferrer">Open Xero →</a>
+          </div>
+          <ul>
+            {notInXero.map((statement) => (
+              <li key={statement.id}>
+                <span><strong>{statement.landlord}</strong><small>Reference usually “{monthName(month).replace(/^(\w{3})\w*/, "$1")}”</small></span>
+                <b>{pounds.format(statement.landlordNet)}</b>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </>
   );
 }
@@ -139,7 +180,10 @@ export function OwnerStatementsStrip() {
                 <div><span>Statements</span><strong>{data.statements.length}</strong></div>
                 <div><span>Due to landlords</span><strong>{whole.format(data.landlordNet)}</strong></div>
                 <div><span>Hinkley fees</span><strong className="good">{whole.format(data.hinkleyFee)}</strong></div>
-                <div><span>To check</span><strong className={data.statements.some(flag) ? "warn" : "good"}>{data.statements.filter(flag).length}</strong></div>
+                {!data.xeroError && (() => {
+                  const missing = data.statements.filter((statement) => statement.payment?.status === "missing").length;
+                  return <div><span>Not in Xero yet</span><strong className={missing ? "warn" : "good"}>{missing}</strong></div>;
+                })()}
               </>
             )}
       </div>

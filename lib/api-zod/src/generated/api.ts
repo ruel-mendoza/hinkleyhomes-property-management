@@ -34,14 +34,25 @@ export const GetOwnerStatementsResponse = zod.object({
   "housekeeping": zod.number(),
   "other": zod.number().describe('Payouts to anyone else (e.g. other cleaners)'),
   "landlordNet": zod.number().describe('What the landlord receives; negative means the landlord owes it'),
-  "toReview": zod.boolean()
+  "toReview": zod.boolean(),
+  "payment": zod.union([zod.object({
+  "status": zod.enum(['paid', 'billed', 'waiting', 'missing']).describe('paid = a paid bill or a bank payment; billed = a bill not yet paid; waiting = not in Xero but still within 7 days of the period end; missing = not in Xero'),
+  "company": zod.string().nullable().describe('Xero company (short name), e.g. Management or Lettings'),
+  "kind": zod.union([zod.literal('bill'),zod.literal('payment'),zod.literal(null)]).nullable().describe('bill = a supplier bill to the landlord; payment = money spent from a bank account'),
+  "date": zod.string().nullable().describe('Paid date (bill) or payment date, YYYY-MM-DD'),
+  "amount": zod.number().nullable().describe('Total of the Xero records matched'),
+  "parts": zod.number().int().describe('How many Xero records make up the payout (more than 1 when it was paid in parts)'),
+  "sharedWith": zod.string().nullable().describe('Other statements paid by the same Xero record, by landlord name'),
+  "reference": zod.string().nullable()
+}),zod.null()]).describe('Where the landlord payout was found in Xero; null when there is nothing to pay or Xero couldn\'t be checked')
 })),
   "income": zod.number(),
   "landlordCosts": zod.number(),
   "hinkleyFee": zod.number(),
   "housekeeping": zod.number(),
   "landlordNet": zod.number(),
-  "toReview": zod.number().int()
+  "toReview": zod.number().int(),
+  "xeroError": zod.string().nullable().describe('Why landlord payouts couldn\'t be checked in Xero; null when the check ran')
 })
 
 

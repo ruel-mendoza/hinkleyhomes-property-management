@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { OwnerStatementPayment } from './ownerStatementPayment';
 
 export interface OwnerStatement {
   id: number;
@@ -34,4 +35,6 @@ export interface OwnerStatement {
   /** What the landlord receives; negative means the landlord owes it */
   landlordNet: number;
   toReview: boolean;
+  /** Where the landlord payout was found in Xero; null when there is nothing to pay or Xero couldn't be checked */
+  payment: OwnerStatementPayment | null;
 }
