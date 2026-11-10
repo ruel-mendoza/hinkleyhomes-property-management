@@ -34,7 +34,7 @@
    "notes": "Calls the PMS API, which saves today's let/vacant status for every COHO unit to Supabase (occupancy history for the Performance page). Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret (the same credential as the COHO actions sync).",
    "parameters": {
     "method": "POST",
-    "url": "https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/coho/unit-snapshot",
+    "url": "https://hinkleyhomes-property-management.replit.app/api/integrations/coho/unit-snapshot",
     "authentication": "genericCredentialType",
     "genericAuthType": "httpHeaderAuth",
     "options": {

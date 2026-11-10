@@ -132,7 +132,7 @@
       ],
       "notes": "Asks the PMS app which overdue invoices should get a reminder today. Returns nothing when automatic reminders are switched off, at weekends (if set) or when nothing is due. Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret (same as the COHO actions sync).",
       "parameters": {
-        "url": "https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/xero/reminders/plan",
+        "url": "https://hinkleyhomes-property-management.replit.app/api/integrations/xero/reminders/plan",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {
@@ -507,7 +507,7 @@
       "notes": "Logs each result against the invoice in the PMS (reminder log and follow-up history). Same Header Auth credential as \"Get reminder plan (PMS)\".",
       "parameters": {
         "method": "POST",
-        "url": "https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/xero/reminders/result",
+        "url": "https://hinkleyhomes-property-management.replit.app/api/integrations/xero/reminders/result",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,

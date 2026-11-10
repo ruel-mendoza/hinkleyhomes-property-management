@@ -25,7 +25,7 @@
       "notes": "Sends Smoobu's event ({ action, user, data }) to the PMS, which refreshes that booking from Smoobu (or the guest messages count). Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret.",
       "parameters": {
         "method": "POST",
-        "url": "https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/smoobu/event",
+        "url": "https://hinkleyhomes-property-management.replit.app/api/integrations/smoobu/event",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
@@ -65,7 +65,7 @@
       "notes": "Asks the PMS to read the Smoobu apartment list and every booking changed since its last good sync, in case a webhook was missed. Same Header Auth credential as above.",
       "parameters": {
         "method": "POST",
-        "url": "https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/smoobu/sync",
+        "url": "https://hinkleyhomes-property-management.replit.app/api/integrations/smoobu/sync",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {

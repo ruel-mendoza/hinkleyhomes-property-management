@@ -37,7 +37,7 @@
    "notes": "The PMS reads Xero (through the Xero gateway workflow), ranks overdue invoices and bills, checks supplier bill prices and bank details, checks monthly spend trends, and saves everything in Supabase. Results are on the app's Finance checks page; nothing is emailed. Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret (the same credential as the COHO actions sync). The first run reads 13 months of bills and can take a few minutes.",
    "parameters": {
     "method": "POST",
-    "url": "https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/xero/daily-checks",
+    "url": "https://hinkleyhomes-property-management.replit.app/api/integrations/xero/daily-checks",
     "authentication": "genericCredentialType",
     "genericAuthType": "httpHeaderAuth",
     "options": {

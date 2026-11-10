@@ -472,7 +472,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ 'https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/xero/bills/check' }}",
+        "url": "={{ 'https://hinkleyhomes-property-management.replit.app/api/integrations/xero/bills/check' }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,

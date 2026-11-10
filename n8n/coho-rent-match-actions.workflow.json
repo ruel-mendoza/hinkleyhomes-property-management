@@ -33,7 +33,7 @@
       "notes": "Calls the PMS API, which raises a COHO action for each bank payment that looks like overdue rent (Rent bank feed → Possible rent) and completes the ones COHO now shows as matched. Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret.",
       "parameters": {
         "method": "POST",
-        "url": "https://hinkley-homes-property-management--ruelrmendoza.replit.app/api/integrations/coho/rent-match-actions",
+        "url": "https://hinkleyhomes-property-management.replit.app/api/integrations/coho/rent-match-actions",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {
