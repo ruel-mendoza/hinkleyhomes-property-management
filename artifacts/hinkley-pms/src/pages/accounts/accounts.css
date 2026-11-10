@@ -25,6 +25,9 @@
 .ac-platform-figures b.bad { color: #f08f91 }
 .ac-platform-figures small { font-size: 12px; color: #95a2b5 }
 
+.ac-notices { margin: 0; padding: 11px 16px 13px; border-top: 1px solid #29364a; font-size: 12px; color: #c0cad8 }
+.ac-notices strong { display: block; margin-bottom: 5px; color: #edc16b; font-size: 12px }
+.ac-notices ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; line-height: 1.5 }
 .ac-note { display: flex; align-items: center; gap: 6px; margin: 0; padding: 10px 16px; font-size: 12px; color: #edc16b }
 .ac-banner { display: flex; align-items: center; gap: 8px; margin-bottom: 13px; padding: 10px 14px; border-radius: 10px; background: #403421; color: #edc16b; font-size: 13px }
 

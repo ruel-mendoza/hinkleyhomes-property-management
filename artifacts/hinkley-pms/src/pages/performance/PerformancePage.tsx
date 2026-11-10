@@ -375,7 +375,8 @@ export function PerformanceStrip({ propertyReference }: { propertyReference?: st
           : !data ? <div><span>COHO performance could not be loaded</span></div>
             : (
               <>
-                {stat("Rent roll", `${pounds.format(data.rentRollThisMonth.amount)}${data.rentRollThisMonth.percent === null ? "" : ` (${data.rentRollThisMonth.percent}%)`}`, HMO_TONES.rentRoll(data.rentRollThisMonth.percent))}
+                {/* The amount is already on the Overview as rent due this month; the strip adds how it compares with the target. */}
+                {stat("Rent roll vs target", data.rentRollThisMonth.percent === null ? pounds.format(data.rentRollThisMonth.amount) : `${data.rentRollThisMonth.percent}%`, HMO_TONES.rentRoll(data.rentRollThisMonth.percent))}
                 {stat("Paid on time", fixed(monthToDate?.paidOnTimePercent, 1, "%"), HMO_TONES.onTime(monthToDate?.paidOnTimePercent))}
                 {stat("Avg days late", fixed(monthToDate?.averageDaysLate, 1), HMO_TONES.daysLate(monthToDate?.averageDaysLate))}
               </>

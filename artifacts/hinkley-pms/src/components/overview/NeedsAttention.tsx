@@ -66,7 +66,7 @@ function moneyItems(money: MoneyOverview | undefined, propertyReference: string 
     const worst = [...old].sort((a, b) => daysSince(b.oldestUnreconciled) - daysSince(a.oldestUnreconciled))[0];
     items.push({
       key: "unreconciled", severity: "info", label: "Bank lines unreconciled 30+ days", count: old.reduce((sum, company) => sum + company.unreconciledCount, 0), amount: null,
-      detail: `oldest ${daysSince(worst.oldestUnreconciled)} days in ${worst.name.replace(/^Hinkley Homes /, "")}`, href: "#banking",
+      detail: `oldest ${daysSince(worst.oldestUnreconciled)} days in ${worst.name.replace(/^Hinkley Homes /, "")}`, href: "/accounts",
     });
   }
   return items;

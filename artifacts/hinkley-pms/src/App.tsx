@@ -43,7 +43,7 @@ import AccountsPage, { AccountsStrip } from '@/pages/accounts/AccountsPage';
 import OwnerStatementsPage, { OwnerStatementsStrip } from '@/pages/owner-statements/OwnerStatementsPage';
 import PropertyAliasesPage from '@/pages/properties/PropertyAliasesPage';
 import ListingsWidget from '@/pages/listings-widget';
-import { AccountsNotices, MoneyPanels, formatPounds } from '@/components/overview/MoneyPanels';
+import { MoneyPanels, formatPounds } from '@/components/overview/MoneyPanels';
 import { NeedsAttention } from '@/components/overview/NeedsAttention';
 import { PresenceIndicator, usePresenceHeartbeat } from '@/components/presence/PresenceIndicator';
 import {
@@ -186,7 +186,6 @@ function Overview({ profileName, configured, statusLoading, properties, properti
     <div className="dashboard-hero"><PageHeader title="Operations overview" subtitle={`${propertyName} · ${now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`} eyebrow={`${greeting(now)}, ${profileName.split(' ')[0]}`} /></div>
     <div className="hh-overview">
     {!statusLoading && !configured && <p className="hh-props-alert" role="alert"><PlugZap size={14} /> COHO is not connected: add the COHO API key to see tenants, rent and compliance.</p>}
-    <AccountsNotices data={moneyQuery.data} />
     <div className="metric-row2" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }}>
       <SmallMetric label="Rent collected" value={moneyValue(cohoMoney?.paidThisMonth)} foot={cohoMoney ? `of ${formatPounds(cohoMoney.dueThisMonth)} due this month${collectedShare === null ? '' : ` (${collectedShare}%)`}${propertyReference ? ' · all properties' : ''}` : 'This month, from COHO'} icon={<PoundSterling size={14} />} />
       <SmallMetric label="Overdue rent" value={propertyReference ? moneyValue(cohoMoney ? arrearsInScope.reduce((sum, item) => sum + item.outstanding, 0) : undefined) : moneyValue(cohoMoney?.overdue)} foot={cohoMoney ? (arrearsInScope.length ? `${arrearsInScope.length} ${arrearsInScope.length === 1 ? 'tenancy' : 'tenancies'} in arrears` : 'No arrears') : 'From COHO credit control'} icon={<AlertTriangle size={14} />} />

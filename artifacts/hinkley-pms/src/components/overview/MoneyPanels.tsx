@@ -21,23 +21,6 @@ const KIND_ORDER: MoneyBankAccount["kind"][] = ["bank", "payments", "card"];
 
 // Checks for the accounts team (e.g. a bank summary that mixes cards and
 // Stripe with real bank accounts), shown at the top of the overview.
-export function AccountsNotices({ data }: { data?: MoneyOverview }) {
-  const companies = (data?.xero.companies ?? []).filter((company) => company.notices.length);
-  if (!companies.length) return null;
-  return (
-    <section className="hh-accounts-notice" role="alert" aria-labelledby="accounts-notice-title" data-testid="accounts-notices">
-      <AlertTriangle size={18} />
-      <div>
-        <h2 id="accounts-notice-title">For the accounts team: please check Xero</h2>
-        <ul>
-          {companies.flatMap((company) => company.notices.map((notice) => <li key={`${company.tenantId}-${notice}`}>{notice}</li>))}
-        </ul>
-        <a href="#banking" className="hh-accounts-link">See bank accounts by company</a>
-      </div>
-    </section>
-  );
-}
-
 // Left column: what needs attention (passed in as lead), then tenant money; banking on the right.
 export function MoneyPanels({ data, loading, failed, propertyReference, lead }: { data?: MoneyOverview; loading: boolean; failed: boolean; propertyReference?: string; lead?: ReactNode }) {
   return (
@@ -145,7 +128,7 @@ function Banking({ data, loading, failed }: { data?: MoneyOverview; loading: boo
               <div className="hh-money-body">
                 <ul className="hh-bank-list">{xero.companies.map((company) => <CompanyRow key={company.tenantId} company={company} />)}</ul>
                 {balancesError && <p className="hh-money-text muted">{balancesError}</p>}
-                <p className="hh-money-text muted">Company-wide figures; the property selector doesn't apply. Unreconciled means entered in Xero but not yet matched to the bank feed.</p>
+                <p className="hh-money-text muted">Company-wide; the property selector doesn't apply. <Link href="/accounts">Month-end checks and Stripe balances →</Link></p>
               </div>
             )}
     </section>
@@ -164,8 +147,6 @@ function CompanyRow({ company }: { company: MoneyCompany }) {
         {company.error ? <span className="status overdue">Not loaded</span>
           : <span className={`status ${tone}`}>{company.unreconciledCount ? `${company.unreconciledCount} unreconciled` : "All reconciled"}</span>}
       </div>
-      {company.note && <p className="hh-bank-note">{company.note}</p>}
-      {company.notices.map((notice) => <p key={notice} className="hh-bank-notice"><AlertTriangle size={12} /> {notice}</p>)}
       {company.error ? <p className="hh-bank-meta">{company.error}</p> : (
         <>
           {company.unreconciledCount > 0 && (
@@ -174,7 +155,7 @@ function CompanyRow({ company }: { company: MoneyCompany }) {
             </p>
           )}
           {accounts.length > 0 && (
-            <details className="hh-bank-accounts" open={company.notices.length > 0}>
+            <details className="hh-bank-accounts">
               <summary>
                 {company.bankTotal !== null ? `${pence.format(company.bankTotal)} in the bank` : "Bank accounts"}
                 {others ? ` · plus ${others} card or payment platform ${others === 1 ? "account" : "accounts"}` : ""}

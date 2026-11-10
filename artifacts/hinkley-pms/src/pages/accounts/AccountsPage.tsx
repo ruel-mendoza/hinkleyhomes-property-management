@@ -92,6 +92,7 @@ function useMonthEnd() {
     beforeMonth: companies.reduce((sum, company) => sum + company.unreconciledBeforeMonth, 0),
     platformWaiting: companies.reduce((sum, company) => sum + company.bankAccounts.filter((account) => account.kind === "payments").reduce((total, account) => total + Math.abs(account.balance ?? 0), 0), 0),
     awaitingApproval: receivables.data?.bills.filter((bill) => bill.status === "SUBMITTED").length ?? 0,
+    notices: companies.reduce((sum, company) => sum + company.notices.length, 0),
   };
 }
 
@@ -230,6 +231,7 @@ function Scorecard({ rows, state, today }: { rows: CompanyChecks[]; state: React
 function Platforms({ companies, state, today }: { companies: MoneyCompany[]; state: React.ReactNode; today: string }) {
   const accounts = companies.flatMap((company) => company.bankAccounts.filter((account) => account.kind === "payments").map((account) => ({ company, account })));
   const unavailable = companies.filter((company) => company.balancesError);
+  const notices = companies.flatMap((company) => company.notices);
   return (
     <section className="panel ac-panel">
       <div className="panel-head">
@@ -259,6 +261,12 @@ function Platforms({ companies, state, today }: { companies: MoneyCompany[]; sta
         </ul>
       ))}
       {unavailable.length > 0 && accounts.length > 0 && <p className="ac-note"><AlertTriangle size={12} /> Not included: {unavailable.map((company) => company.name).join(", ")}</p>}
+      {notices.length > 0 && (
+        <div className="ac-notices">
+          <strong>Notes from Xero's bank summary</strong>
+          <ul>{notices.map((notice) => <li key={notice}>{notice}</li>)}</ul>
+        </div>
+      )}
     </section>
   );
 }
@@ -324,7 +332,7 @@ export function AccountsStrip() {
             : (
               <>
                 <div><span>Checks passing</span><strong className={view.passing === view.total ? "good" : "warn"}>{view.passing} of {view.total}</strong></div>
-                <div><span>Unreconciled before {view.monthStartLabel}</span><strong className={view.beforeMonth ? "bad" : "good"}>{view.beforeMonth}</strong></div>
+                <div><span>Notes from Xero</span><strong className={view.notices ? "warn" : "good"}>{view.notices}</strong></div>
                 <div><span>On payment platforms</span><strong className={view.platformWaiting >= PLATFORM_ALERT ? "bad" : view.platformWaiting ? "warn" : "good"}>{pounds.format(view.platformWaiting)}</strong></div>
               </>
             )}
