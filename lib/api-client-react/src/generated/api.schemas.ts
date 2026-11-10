@@ -163,6 +163,50 @@ export interface StayAvailability {
   apartments: StayApartmentAvailability[];
 }
 
+export interface OwnerStatement {
+  id: number;
+  /** Statement name in Rental Ninja */
+  name: string;
+  /** The landlord payee(s) on the statement, or the statement name when there are none */
+  landlord: string;
+  start: string;
+  end: string;
+  /**
+     * Booking income on the statement; null while Rental Ninja recalculates it
+     * @nullable
+     */
+  income: number | null;
+  /** Costs taken off the landlord's payout (positive pounds) */
+  landlordCosts: number;
+  /** Paid to Hinkley Homes Management or Lettings */
+  hinkleyFee: number;
+  /**
+     * Which Hinkley company receives the fee (short name), or null when there is no fee
+     * @nullable
+     */
+  feeCompany: string | null;
+  housekeeping: number;
+  /** Payouts to anyone else (e.g. other cleaners) */
+  other: number;
+  /** What the landlord receives; negative means the landlord owes it */
+  landlordNet: number;
+  toReview: boolean;
+}
+
+export interface OwnerStatements {
+  /** YYYY-MM */
+  month: string;
+  /** When Rental Ninja was read (ISO date-time) */
+  asOf: string;
+  statements: OwnerStatement[];
+  income: number;
+  landlordCosts: number;
+  hinkleyFee: number;
+  housekeeping: number;
+  landlordNet: number;
+  toReview: number;
+}
+
 /**
  * @nullable
  */
@@ -2892,6 +2936,14 @@ export interface CompanyAliasInput {
      */
   notes: string | null;
 }
+
+export type GetOwnerStatementsParams = {
+/**
+ * YYYY-MM; defaults to last month (UK time)
+ * @pattern ^\d{4}-\d{2}$
+ */
+month?: string;
+};
 
 export type ListCohoPropertiesParams = {
 /**

@@ -1,0 +1,17 @@
+/* Owner statements page, prefix os- */
+.os-month { height: 34px; padding: 0 10px; border: 1px solid #37475e; border-radius: 8px; background: #1c2a3e; color: #dbe3ee; font: inherit; font-size: 13px }
+.os-table { width: 100%; border-collapse: collapse; font-size: 13px }
+.os-table th, .os-table td { padding: 10px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid #29364a }
+.os-table th { font-size: 12px; font-weight: 700; white-space: nowrap }
+.os-table td strong { display: block; color: #e2e9f1 }
+.os-table td small { display: block; margin-top: 3px; font-size: 12px; color: #95a2b5 }
+.os-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums }
+.os-table .os-net { font-weight: 800; color: #e2e9f1 }
+.os-table .os-net.bad { color: #f08f91 }
+.os-table .os-total td { font-weight: 800; color: #e2e9f1; background: #172236; border-bottom: 0 }
+.os-ok { font-size: 12px; color: #79d0a9 }
+
+@media (max-width: 460px) {
+  .os-table th, .os-table td { padding: 9px 10px }
+  .os-month { width: 100% }
+}

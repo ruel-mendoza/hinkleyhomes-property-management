@@ -9,6 +9,43 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Owner statements for one month, split into landlord payout, Hinkley fee, housekeeping and costs (read-only from Rental Ninja)
+ */
+export const getOwnerStatementsQueryMonthRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const GetOwnerStatementsQueryParams = zod.object({
+  "month": zod.coerce.string().regex(getOwnerStatementsQueryMonthRegExp).optional().describe('YYYY-MM; defaults to last month (UK time)')
+})
+
+export const GetOwnerStatementsResponse = zod.object({
+  "month": zod.string().describe('YYYY-MM'),
+  "asOf": zod.string().describe('When Rental Ninja was read (ISO date-time)'),
+  "statements": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string().describe('Statement name in Rental Ninja'),
+  "landlord": zod.string().describe('The landlord payee(s) on the statement, or the statement name when there are none'),
+  "start": zod.string(),
+  "end": zod.string(),
+  "income": zod.number().nullable().describe('Booking income on the statement; null while Rental Ninja recalculates it'),
+  "landlordCosts": zod.number().describe('Costs taken off the landlord\'s payout (positive pounds)'),
+  "hinkleyFee": zod.number().describe('Paid to Hinkley Homes Management or Lettings'),
+  "feeCompany": zod.string().nullable().describe('Which Hinkley company receives the fee (short name), or null when there is no fee'),
+  "housekeeping": zod.number(),
+  "other": zod.number().describe('Payouts to anyone else (e.g. other cleaners)'),
+  "landlordNet": zod.number().describe('What the landlord receives; negative means the landlord owes it'),
+  "toReview": zod.boolean()
+})),
+  "income": zod.number(),
+  "landlordCosts": zod.number(),
+  "hinkleyFee": zod.number(),
+  "housekeeping": zod.number(),
+  "landlordNet": zod.number(),
+  "toReview": zod.number().int()
+})
+
+
+/**
  * Returns server health status
  * @summary Health check
  */

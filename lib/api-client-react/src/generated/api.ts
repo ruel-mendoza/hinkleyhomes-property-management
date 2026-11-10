@@ -64,6 +64,7 @@ import type {
   FinanceIncome,
   GetAttentionParams,
   GetComplianceParams,
+  GetOwnerStatementsParams,
   GetPerformanceParams,
   GetStayAvailabilityParams,
   GetStaysPerformanceParams,
@@ -89,6 +90,7 @@ import type {
   Occupancy,
   OkResult,
   OverdueReport,
+  OwnerStatements,
   Performance,
   PresenceHeartbeat,
   PresenceList,
@@ -146,6 +148,90 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetOwnerStatementsUrl = (params?: GetOwnerStatementsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/owner-statements?${stringifiedParams}` : `/api/owner-statements`
+}
+
+/**
+ * @summary Owner statements for one month, split into landlord payout, Hinkley fee, housekeeping and costs (read-only from Rental Ninja)
+ */
+export const getOwnerStatements = async (params?: GetOwnerStatementsParams, options?: Parameters<typeof customFetch>[1]): Promise<OwnerStatements> => {
+
+  return customFetch<OwnerStatements>(getGetOwnerStatementsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOwnerStatementsQueryKey = (params?: GetOwnerStatementsParams,) => {
+    return [
+    `/api/owner-statements`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOwnerStatementsQueryOptions = <TData = Awaited<ReturnType<typeof getOwnerStatements>>, TError = ErrorType<void>>(params?: GetOwnerStatementsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerStatements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnerStatementsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnerStatements>>> = ({ signal }) => getOwnerStatements(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOwnerStatements>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOwnerStatementsQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnerStatements>>>
+export type GetOwnerStatementsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Owner statements for one month, split into landlord payout, Hinkley fee, housekeeping and costs (read-only from Rental Ninja)
+ */
+
+export function useGetOwnerStatements<TData = Awaited<ReturnType<typeof getOwnerStatements>>, TError = ErrorType<void>>(
+ params?: GetOwnerStatementsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerStatements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOwnerStatementsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getHealthCheckUrl = () => {
 

@@ -19,6 +19,14 @@ export function smoobuCredentials(): { key: string; secret?: string } | undefine
   return key ? { key, secret: read("SMOOBU_API_SECRET") } : undefined;
 }
 
+// Rental Ninja (owner statements) API key from Settings > Billing > API access:
+// the client id and secret of a key with "Read accounting" only.
+export function rentalNinjaCredentials(): { clientId: string; secret: string } | undefined {
+  const clientId = read("RENTAL_NINJA_API_KEY");
+  const secret = read("RENTAL_NINJA_SECRET");
+  return clientId && secret ? { clientId, secret } : undefined;
+}
+
 // ChargeAutomation (guest payments, deposits and checks for Hinkley Homes
 // Stays) through the n8n gateway workflow (n8n/chargeautomation-gateway.workflow.json),
 // which holds the client id and secret as n8n Variables. Uses the Xero

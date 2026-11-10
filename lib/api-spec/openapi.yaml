@@ -16,7 +16,33 @@ tags:
     description: Xero data through the read-only n8n gateway, plus follow-up notes kept in Supabase
   - name: smoobu
     description: Hinkley Homes Stays short-stay bookings and guest messages, read-only from Smoobu
+  - name: rentalninja
+    description: Monthly owner statements for serviced-accommodation landlords, read-only from Rental Ninja's accounting API
 paths:
+  /owner-statements:
+    get:
+      operationId: getOwnerStatements
+      tags: [rentalninja]
+      summary: Owner statements for one month, split into landlord payout, Hinkley fee, housekeeping and costs (read-only from Rental Ninja)
+      parameters:
+        - name: month
+          in: query
+          required: false
+          description: YYYY-MM; defaults to last month (UK time)
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}$"
+      responses:
+        "200":
+          description: Statements whose period starts in the month
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerStatements"
+        "502":
+          description: Rental Ninja could not be read
+        "503":
+          description: Rental Ninja is not connected (credentials missing)
   /healthz:
     get:
       operationId: healthCheck
@@ -1793,6 +1819,70 @@ components:
           items:
             $ref: "#/components/schemas/StayApartmentAvailability"
       required: [from, to, dates, freeTonight, apartments]
+    OwnerStatement:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          description: Statement name in Rental Ninja
+          type: string
+        landlord:
+          description: The landlord payee(s) on the statement, or the statement name when there are none
+          type: string
+        start:
+          type: string
+        end:
+          type: string
+        income:
+          description: Booking income on the statement; null while Rental Ninja recalculates it
+          type: ["number", "null"]
+        landlordCosts:
+          description: Costs taken off the landlord's payout (positive pounds)
+          type: number
+        hinkleyFee:
+          description: Paid to Hinkley Homes Management or Lettings
+          type: number
+        feeCompany:
+          description: Which Hinkley company receives the fee (short name), or null when there is no fee
+          type: ["string", "null"]
+        housekeeping:
+          type: number
+        other:
+          description: Payouts to anyone else (e.g. other cleaners)
+          type: number
+        landlordNet:
+          description: What the landlord receives; negative means the landlord owes it
+          type: number
+        toReview:
+          type: boolean
+      required: [id, name, landlord, start, end, income, landlordCosts, hinkleyFee, feeCompany, housekeeping, other, landlordNet, toReview]
+    OwnerStatements:
+      type: object
+      properties:
+        month:
+          description: YYYY-MM
+          type: string
+        asOf:
+          description: When Rental Ninja was read (ISO date-time)
+          type: string
+        statements:
+          type: array
+          items:
+            $ref: "#/components/schemas/OwnerStatement"
+        income:
+          type: number
+        landlordCosts:
+          type: number
+        hinkleyFee:
+          type: number
+        housekeeping:
+          type: number
+        landlordNet:
+          type: number
+        toReview:
+          type: integer
+      required: [month, asOf, statements, income, landlordCosts, hinkleyFee, housekeeping, landlordNet, toReview]
     StaysOverview:
       type: object
       properties:
