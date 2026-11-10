@@ -54,7 +54,7 @@ Env names are documented in `.env.example`, and the values go in Replit Secrets.
 
 ## Architecture and rules
 
-- **Auth.** Clerk on both sides. Only `@hinkleyhomes.co.uk` emails get in (`isAllowedStaffEmail`, which is duplicated in the web app and the API). `requireStaffAccess` sets `res.locals.staff` (`{ userId, email }`) for audit logging.
+- **Auth.** Clerk on both sides, passwordless: staff sign in with an emailed code and get a 7-day session (Clerk dashboard settings, see `replit.md`). Only `@hinkleyhomes.co.uk` emails get in (`isAllowedStaffEmail`, which is duplicated in the web app and the API). `requireStaffAccess` sets `res.locals.staff` (`{ userId, email }`) for audit logging.
 - **Route order in `routes/index.ts` matters.** Health, auth, `integrationsRouter` (machine endpoints that check the `X-Hinkley-Sync-Key` header against `PMS_SYNC_KEY`) and `publicListingsRouter` (`/widget`) come *before* `requireStaffAccess`. Everything else comes after it.
 - **COHO.** Called server-side only (`lib/coho-api.ts`, `COHO_API_KEY`). Most reads are cached in memory for 5–60 min. COHO wants SCREAMING_SNAKE statuses on write but returns camelCase. Its dates are UK midnight, so read them in Europe/London time.
 - **Xero.** The app never holds Xero tokens. Every read goes through the n8n gateway webhook (`lib/xero-gateway.ts`, `N8N_XERO_GATEWAY_URL` / `N8N_XERO_GATEWAY_KEY`). Writes (draft bills, reminders, notes) are done by n8n, after the app plans them. Shadow and test modes are on by default. Keep it that way unless the user asks otherwise.

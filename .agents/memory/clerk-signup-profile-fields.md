@@ -7,4 +7,4 @@ The published Hinkley Homes app returned `first_name is not a valid parameter fo
 
 **Why:** Replit-managed development and production Clerk tenants have separate settings. Clerk only supports these optional name parameters when its first-and-last-name profile fields are enabled; the production error showed that this parameter was not accepted there.
 
-**How to apply:** Avoid sending `firstName` or `lastName` during password sign-up unless the profile fields are enabled in each target Clerk environment. Preserve the required full name in `unsafeMetadata` for display only, and continue basing access control on the verified email.
+**How to apply:** Avoid sending `firstName` or `lastName` during sign-up unless the profile fields are enabled in each target Clerk environment. Preserve the required full name in `unsafeMetadata` for display only, and continue basing access control (login is passwordless email code since Nov 2026) on the verified email.

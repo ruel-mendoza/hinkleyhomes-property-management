@@ -159,7 +159,7 @@ export function AuthLandingPage() {
       <AuthHeading
         eyebrow="WELCOME TO YOUR WORKSPACE"
         title="Hinkley Homes PMS"
-        description="Sign in to manage your property operations, or create a staff account using your company email."
+        description="Sign in with your company email. We'll send you a code, so there's no password to remember."
       />
       <div className="auth-welcome-actions">
         <Link
@@ -169,280 +169,72 @@ export function AuthLandingPage() {
         >
           Sign in <ArrowRight size={16} />
         </Link>
-        <Link
-          className="auth-secondary"
-          href="/sign-up"
-          data-testid="link-sign-up"
-        >
-          Create a staff account
-        </Link>
       </div>
       <div className="auth-restriction-note">
         <LockKeyhole size={14} />
-        Registration is limited to @hinkleyhomes.co.uk addresses.
+        Only @hinkleyhomes.co.uk addresses can sign in.
       </div>
     </AuthLayout>
   );
 }
 
-const signInSchema = z.object({
-  email: z.string().trim().email("Enter a valid email address."),
-  password: z.string().min(1, "Enter your password."),
+const emailSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email("Enter a valid email address.")
+    .refine(isAllowedStaffEmail, restrictedEmailMessage),
 });
-type SignInValues = z.infer<typeof signInSchema>;
+type EmailValues = z.infer<typeof emailSchema>;
 
-const signUpSchema = z
-  .object({
-    fullName: z.string().trim().min(2, "Enter your full name."),
-    email: z
-      .string()
-      .trim()
-      .email("Enter a valid email address.")
-      .refine(isAllowedStaffEmail, restrictedEmailMessage),
-    password: z.string().min(10, "Use at least 10 characters."),
-    confirmPassword: z.string().min(1, "Confirm your password."),
-  })
-  .refine((values) => values.password === values.confirmPassword, {
-    path: ["confirmPassword"],
-    message: "Passwords do not match.",
-  });
-type SignUpValues = z.infer<typeof signUpSchema>;
+const nameSchema = z.object({
+  fullName: z.string().trim().min(2, "Enter your full name."),
+});
+type NameValues = z.infer<typeof nameSchema>;
 
 const codeSchema = z.object({
-  code: z.string().trim().min(4, "Enter the verification code."),
+  code: z.string().trim().min(4, "Enter the code from your email."),
 });
 type CodeValues = z.infer<typeof codeSchema>;
 
-export function SignInPage() {
-  const { signIn, fetchStatus } = useSignIn();
-  const [, setLocation] = useLocation();
-  const [authError, setAuthError] = useState("");
-  const [isVerifying, setIsVerifying] = useState(false);
-  const form = useForm<SignInValues>({
-    resolver: zodResolver(signInSchema),
-    defaultValues: { email: "", password: "" },
-  });
-  const codeForm = useForm<CodeValues>({
-    resolver: zodResolver(codeSchema),
-    defaultValues: { code: "" },
-  });
-  const busy = fetchStatus === "fetching";
-
-  const navigateToDashboard = ({
-    decorateUrl,
-  }: {
-    decorateUrl: (url: string) => string;
-  }) => {
-    const target = decorateUrl(`${basePath}/dashboard`);
-    if (target.startsWith("http")) {
-      window.location.href = target;
-    } else {
-      setLocation(stripBase(target));
-    }
-  };
-
-  const finishSignIn = async () => {
-    const { error } = await signIn.finalize({ navigate: navigateToDashboard });
-    if (error) setAuthError(error.message || "Could not finish signing in.");
-  };
-
-  const submitCredentials = async (values: SignInValues) => {
-    setAuthError("");
-    const { error } = await signIn.password({
-      emailAddress: values.email.trim(),
-      password: values.password,
-    });
-    if (error) {
-      setAuthError(error.message || "Check your email and password and try again.");
-      return;
-    }
-
-    if (signIn.status === "complete") {
-      await finishSignIn();
-      return;
-    }
-
-    if (
-      signIn.status === "needs_second_factor" ||
-      signIn.status === "needs_client_trust"
-    ) {
-      const emailCodeAvailable = signIn.supportedSecondFactors?.some(
-        (factor) => factor.strategy === "email_code",
-      );
-      if (emailCodeAvailable) {
-        const result = await signIn.mfa.sendEmailCode();
-        if (result.error) {
-          setAuthError(result.error.message || "Could not send a verification code.");
-        } else {
-          setIsVerifying(true);
-        }
-        return;
-      }
-    }
-
-    setAuthError("This account needs an additional sign-in step. Contact your administrator.");
-  };
-
-  const submitCode = async (values: CodeValues) => {
-    setAuthError("");
-    const { error } = await signIn.mfa.verifyEmailCode({ code: values.code.trim() });
-    if (error) {
-      setAuthError(error.message || "That verification code could not be confirmed.");
-      return;
-    }
-    if (signIn.status === "complete") await finishSignIn();
-  };
-
-  return (
-    <AuthLayout page="login">
-      <Link className="auth-back-link" href="/" data-testid="link-auth-home">
-        <ChevronLeft size={15} /> Home
-      </Link>
-      <AuthHeading
-        eyebrow="STAFF ACCESS"
-        title={isVerifying ? "Verify your sign-in" : "Welcome back"}
-        description={
-          isVerifying
-            ? "Enter the code sent to your email to finish signing in."
-            : "Sign in with your Hinkley Homes staff account."
-        }
-      />
-      {authError && <AuthError>{authError}</AuthError>}
-
-      {isVerifying ? (
-        <Form {...codeForm}>
-          <form
-            className="auth-form"
-            onSubmit={codeForm.handleSubmit(submitCode)}
-            noValidate
-          >
-            <FormField
-              control={codeForm.control}
-              name="code"
-              render={({ field }) => (
-                <FormItem className="auth-field">
-                  <FormLabel className="auth-label">Verification code</FormLabel>
-                  <FormControl>
-                    <input
-                      {...field}
-                      className="auth-input"
-                      autoComplete="one-time-code"
-                      inputMode="numeric"
-                      placeholder="Enter your code"
-                      data-testid="input-signin-code"
-                    />
-                  </FormControl>
-                  <FormMessage className="auth-field-error" />
-                </FormItem>
-              )}
-            />
-            <AuthSubmit busy={busy} testId="button-verify-signin">
-              Verify and continue <ArrowRight size={16} />
-            </AuthSubmit>
-            <button
-              type="button"
-              className="auth-text-button"
-              onClick={() => {
-                setIsVerifying(false);
-                setAuthError("");
-              }}
-              data-testid="button-back-to-signin"
-            >
-              Use a different sign-in
-            </button>
-          </form>
-        </Form>
-      ) : (
-        <Form {...form}>
-          <form
-            className="auth-form"
-            onSubmit={form.handleSubmit(submitCredentials)}
-            noValidate
-          >
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem className="auth-field">
-                  <FormLabel className="auth-label">Email address</FormLabel>
-                  <FormControl>
-                    <input
-                      {...field}
-                      className="auth-input"
-                      type="email"
-                      autoComplete="username"
-                      autoCapitalize="none"
-                      placeholder="name@hinkleyhomes.co.uk"
-                      data-testid="input-signin-email"
-                    />
-                  </FormControl>
-                  <FormMessage className="auth-field-error" />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem className="auth-field">
-                  <FormLabel className="auth-label">Password</FormLabel>
-                  <FormControl>
-                    <input
-                      {...field}
-                      className="auth-input"
-                      type="password"
-                      autoComplete="current-password"
-                      placeholder="Enter your password"
-                      data-testid="input-signin-password"
-                    />
-                  </FormControl>
-                  <FormMessage className="auth-field-error" />
-                </FormItem>
-              )}
-            />
-            <AuthSubmit busy={busy} testId="button-signin">
-              Sign in <ArrowRight size={16} />
-            </AuthSubmit>
-          </form>
-        </Form>
-      )}
-
-      <div className="auth-switch">
-        New to the staff portal?{" "}
-        <Link href="/sign-up" data-testid="link-signup-from-signin">
-          Create an account
-        </Link>
-      </div>
-      <div className="auth-security-foot">
-        <LockKeyhole size={13} /> Secure staff access
-      </div>
-    </AuthLayout>
-  );
+// Clerk API errors carry a stable code on the first entry of `errors`.
+function clerkErrorCode(error: unknown): string {
+  if (!error || typeof error !== "object") return "";
+  const list = (error as { errors?: Array<{ code?: unknown }> }).errors;
+  const code = list?.[0]?.code ?? (error as { code?: unknown }).code;
+  return typeof code === "string" ? code : "";
 }
 
-export function SignUpPage() {
-  const { signUp, fetchStatus } = useSignUp();
+const emailCodesOffMessage =
+  "Email codes aren't switched on for this portal yet. Ask your administrator.";
+
+// One page for everyone: email, then name (first visit only), then the emailed code.
+export function SignInPage() {
+  const { signIn, fetchStatus: signInStatus } = useSignIn();
+  const { signUp, fetchStatus: signUpStatus } = useSignUp();
   const [, setLocation] = useLocation();
   const [authError, setAuthError] = useState("");
-  const [stage, setStage] = useState<"details" | "verify">("details");
-  const [signupEmail, setSignupEmail] = useState("");
+  const [stage, setStage] = useState<"email" | "name" | "code">("email");
+  const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
+  const [email, setEmail] = useState("");
+  const [notice, setNotice] = useState("");
   const validateEmail = useValidateSignupEmail();
-  const form = useForm<SignUpValues>({
-    resolver: zodResolver(signUpSchema),
-    mode: "onSubmit",
-    reValidateMode: "onChange",
-    defaultValues: {
-      fullName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-    },
+  const emailForm = useForm<EmailValues>({
+    resolver: zodResolver(emailSchema),
+    defaultValues: { email: "" },
+  });
+  const nameForm = useForm<NameValues>({
+    resolver: zodResolver(nameSchema),
+    defaultValues: { fullName: "" },
   });
   const codeForm = useForm<CodeValues>({
     resolver: zodResolver(codeSchema),
     defaultValues: { code: "" },
   });
-  const busy = fetchStatus === "fetching" || validateEmail.isPending;
+  const busy =
+    signInStatus === "fetching" ||
+    signUpStatus === "fetching" ||
+    validateEmail.isPending;
 
   const navigateToDashboard = ({
     decorateUrl,
@@ -457,169 +249,154 @@ export function SignUpPage() {
     }
   };
 
-  const submitDetails = async (values: SignUpValues) => {
-    setAuthError("");
-    const email = values.email.trim();
+  const showCodeStage = (nextMode: "signIn" | "signUp") => {
+    setMode(nextMode);
+    codeForm.reset({ code: "" });
+    setStage("code");
+  };
 
-    if (!isAllowedStaffEmail(email)) {
-      form.setError("email", {
-        type: "validate",
-        message: restrictedEmailMessage,
-      });
-      return;
-    }
+  const sendSignInCode = async (address: string): Promise<"sent" | "new" | "failed"> => {
+    const { error } = await signIn.emailCode.sendCode({ emailAddress: address });
+    if (!error) return "sent";
+    const code = clerkErrorCode(error);
+    if (code === "form_identifier_not_found") return "new";
+    setAuthError(
+      code === "strategy_for_user_invalid"
+        ? emailCodesOffMessage
+        : errorMessage(error, "Could not send a sign-in code."),
+    );
+    return "failed";
+  };
+
+  const submitEmail = async (values: EmailValues) => {
+    setAuthError("");
+    setNotice("");
+    const address = values.email.trim();
 
     try {
-      const domainCheck = await validateEmail.mutateAsync({
-        data: { email },
-      });
+      const domainCheck = await validateEmail.mutateAsync({ data: { email: address } });
       if (!domainCheck.allowed) {
-        form.setError("email", {
+        emailForm.setError("email", {
           type: "server",
           message: domainCheck.message || restrictedEmailMessage,
         });
         return;
       }
     } catch (error) {
-      setAuthError(
-        errorMessage(error, "We could not verify this email. Please try again."),
-      );
+      setAuthError(errorMessage(error, "We could not check this email. Please try again."));
       return;
     }
 
-    const { error } = await signUp.password({
+    setEmail(address);
+    const result = await sendSignInCode(address);
+    if (result === "sent") showCodeStage("signIn");
+    if (result === "new") setStage("name");
+  };
+
+  const submitName = async (values: NameValues) => {
+    setAuthError("");
+    const { error } = await signUp.create({
       emailAddress: email,
-      password: values.password,
       unsafeMetadata: { fullName: values.fullName.trim() },
     });
-
     if (error) {
-      setAuthError(error.message || "Could not create your account.");
+      // Someone finished signing up with this email meanwhile: sign them in instead.
+      if (clerkErrorCode(error) === "form_identifier_exists") {
+        if ((await sendSignInCode(email)) === "sent") showCodeStage("signIn");
+        return;
+      }
+      setAuthError(errorMessage(error, "Could not set up your access."));
       return;
     }
-
-    setSignupEmail(email);
-    setStage("verify");
-    const sendResult = await signUp.verifications.sendEmailCode();
-    if (sendResult.error) {
-      setAuthError(
-        sendResult.error.message || "Could not send the verification code.",
-      );
+    const sent = await signUp.verifications.sendEmailCode();
+    if (sent.error) {
+      setAuthError(errorMessage(sent.error, "Could not send a sign-in code."));
+      return;
     }
+    showCodeStage("signUp");
   };
 
   const submitCode = async (values: CodeValues) => {
     setAuthError("");
-    const { error } = await signUp.verifications.verifyEmailCode({
-      code: values.code.trim(),
-    });
+    const code = values.code.trim();
+
+    if (mode === "signIn") {
+      const { error } = await signIn.emailCode.verifyCode({ code });
+      if (error) {
+        setAuthError(errorMessage(error, "That code could not be confirmed."));
+        return;
+      }
+      if (signIn.status !== "complete") {
+        setAuthError("This account needs an extra sign-in step. Ask your administrator.");
+        return;
+      }
+      const { error: finalizeError } = await signIn.finalize({ navigate: navigateToDashboard });
+      if (finalizeError) setAuthError(errorMessage(finalizeError, "Could not finish signing in."));
+      return;
+    }
+
+    const { error } = await signUp.verifications.verifyEmailCode({ code });
     if (error) {
-      setAuthError(error.message || "That verification code could not be confirmed.");
+      setAuthError(errorMessage(error, "That code could not be confirmed."));
       return;
     }
     if (signUp.status !== "complete") {
-      setAuthError("Your account is not ready yet. Request a new code and try again.");
+      setAuthError(
+        signUp.missingFields.includes("password")
+          ? "Passwords are still required for this portal. Ask your administrator to switch them off."
+          : "Your access isn't ready yet. Send a new code and try again.",
+      );
       return;
     }
-    const { error: finalizeError } = await signUp.finalize({
-      navigate: navigateToDashboard,
-    });
-    if (finalizeError) {
-      setAuthError(finalizeError.message || "Could not finish creating your account.");
-    }
+    const { error: finalizeError } = await signUp.finalize({ navigate: navigateToDashboard });
+    if (finalizeError) setAuthError(errorMessage(finalizeError, "Could not finish signing in."));
   };
 
   const resendCode = async () => {
     setAuthError("");
-    const { error } = await signUp.verifications.sendEmailCode();
-    if (error) setAuthError(error.message || "Could not resend the code.");
+    setNotice("");
+    const { error } =
+      mode === "signIn"
+        ? await signIn.emailCode.sendCode()
+        : await signUp.verifications.sendEmailCode();
+    if (error) setAuthError(errorMessage(error, "Could not send a new code."));
+    else setNotice("A new code is on its way.");
   };
 
+  const startAgain = () => {
+    setAuthError("");
+    setNotice("");
+    void signIn.reset();
+    void signUp.reset();
+    nameForm.reset({ fullName: "" });
+    setStage("email");
+  };
+
+  const heading =
+    stage === "code"
+      ? { title: "Check your email", description: `Enter the code we sent to ${email}.` }
+      : stage === "name"
+        ? { title: "First time here?", description: `Tell us your name to set up access for ${email}.` }
+        : { title: "Sign in", description: "Enter your company email and we'll send you a code." };
+
   return (
-    <AuthLayout page="signup">
+    <AuthLayout page="login">
       <Link className="auth-back-link" href="/" data-testid="link-auth-home">
         <ChevronLeft size={15} /> Home
       </Link>
-      <AuthHeading
-        eyebrow="HINKLEY HOMES STAFF"
-        title={stage === "verify" ? "Check your email" : "Create your account"}
-        description={
-          stage === "verify"
-            ? `We sent a verification code to ${signupEmail}.`
-            : "Use your company email to set up secure access to the staff portal."
-        }
-      />
+      <AuthHeading eyebrow="STAFF ACCESS" {...heading} />
       {authError && <AuthError>{authError}</AuthError>}
+      {notice && !authError && (
+        <div className="auth-restriction-note" role="status" data-testid="auth-notice">
+          <Check size={14} /> {notice}
+        </div>
+      )}
 
-      {stage === "verify" ? (
-        <Form {...codeForm}>
-          <form
-            className="auth-form"
-            onSubmit={codeForm.handleSubmit(submitCode)}
-            noValidate
-          >
+      {stage === "email" && (
+        <Form {...emailForm}>
+          <form className="auth-form" onSubmit={emailForm.handleSubmit(submitEmail)} noValidate>
             <FormField
-              control={codeForm.control}
-              name="code"
-              render={({ field }) => (
-                <FormItem className="auth-field">
-                  <FormLabel className="auth-label">Verification code</FormLabel>
-                  <FormControl>
-                    <input
-                      {...field}
-                      className="auth-input auth-code-input"
-                      autoComplete="one-time-code"
-                      inputMode="numeric"
-                      placeholder="Enter the code from your email"
-                      data-testid="input-signup-code"
-                    />
-                  </FormControl>
-                  <FormMessage className="auth-field-error" />
-                </FormItem>
-              )}
-            />
-            <AuthSubmit busy={busy} testId="button-verify-signup">
-              Verify email <Check size={16} />
-            </AuthSubmit>
-            <button
-              type="button"
-              className="auth-text-button"
-              onClick={resendCode}
-              disabled={busy}
-              data-testid="button-resend-signup-code"
-            >
-              Send a new code
-            </button>
-          </form>
-        </Form>
-      ) : (
-        <Form {...form}>
-          <form
-            className="auth-form"
-            onSubmit={form.handleSubmit(submitDetails)}
-            noValidate
-          >
-            <FormField
-              control={form.control}
-              name="fullName"
-              render={({ field }) => (
-                <FormItem className="auth-field">
-                  <FormLabel className="auth-label">Full name</FormLabel>
-                  <FormControl>
-                    <input
-                      {...field}
-                      className="auth-input"
-                      autoComplete="name"
-                      placeholder="Your full name"
-                      data-testid="input-signup-full-name"
-                    />
-                  </FormControl>
-                  <FormMessage className="auth-field-error" />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
+              control={emailForm.control}
               name="email"
               render={({ field }) => (
                 <FormItem className="auth-field">
@@ -631,81 +408,95 @@ export function SignUpPage() {
                       type="email"
                       autoComplete="email"
                       autoCapitalize="none"
+                      autoFocus
                       placeholder="name@hinkleyhomes.co.uk"
-                      data-testid="input-signup-email"
-                      onChange={(event) => {
-                        field.onChange(event);
-                        if (form.formState.errors.email) form.clearErrors("email");
-                      }}
+                      data-testid="input-signin-email"
                     />
                   </FormControl>
                   <FormMessage className="auth-field-error" />
                 </FormItem>
               )}
             />
-            <div className="auth-field-pair">
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem className="auth-field">
-                    <FormLabel className="auth-label">Password</FormLabel>
-                    <FormControl>
-                      <input
-                        {...field}
-                        className="auth-input"
-                        type="password"
-                        autoComplete="new-password"
-                        minLength={10}
-                        placeholder="At least 10 characters"
-                        data-testid="input-signup-password"
-                      />
-                    </FormControl>
-                    <FormMessage className="auth-field-error" />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem className="auth-field">
-                    <FormLabel className="auth-label">Confirm password</FormLabel>
-                    <FormControl>
-                      <input
-                        {...field}
-                        className="auth-input"
-                        type="password"
-                        autoComplete="new-password"
-                        placeholder="Re-enter password"
-                        data-testid="input-signup-confirm-password"
-                      />
-                    </FormControl>
-                    <FormMessage className="auth-field-error" />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div id="clerk-captcha" data-testid="signup-captcha-slot" />
-            <AuthSubmit busy={busy} testId="button-signup">
-              Create account <ArrowRight size={16} />
+            <AuthSubmit busy={busy} testId="button-send-code">
+              Email me a code <ArrowRight size={16} />
             </AuthSubmit>
-            <p className="auth-password-note">
-              Passwords must be at least 10 characters. Your password is secured
-              by Clerk and is never stored by this app.
-            </p>
           </form>
         </Form>
       )}
 
-      <div className="auth-switch">
-        Already have an account?{" "}
-        <Link href="/sign-in" data-testid="link-signin-from-signup">
-          Sign in
-        </Link>
-      </div>
+      {stage === "name" && (
+        <Form {...nameForm}>
+          <form className="auth-form" onSubmit={nameForm.handleSubmit(submitName)} noValidate>
+            <FormField
+              control={nameForm.control}
+              name="fullName"
+              render={({ field }) => (
+                <FormItem className="auth-field">
+                  <FormLabel className="auth-label">Full name</FormLabel>
+                  <FormControl>
+                    <input
+                      {...field}
+                      className="auth-input"
+                      autoComplete="name"
+                      autoFocus
+                      placeholder="Your full name"
+                      data-testid="input-signin-full-name"
+                    />
+                  </FormControl>
+                  <FormMessage className="auth-field-error" />
+                </FormItem>
+              )}
+            />
+            <div id="clerk-captcha" data-testid="signup-captcha-slot" />
+            <AuthSubmit busy={busy} testId="button-send-code-new">
+              Email me a code <ArrowRight size={16} />
+            </AuthSubmit>
+            <button type="button" className="auth-text-button" onClick={startAgain} data-testid="button-change-email">
+              Use a different email
+            </button>
+          </form>
+        </Form>
+      )}
+
+      {stage === "code" && (
+        <Form {...codeForm}>
+          <form className="auth-form" onSubmit={codeForm.handleSubmit(submitCode)} noValidate>
+            <FormField
+              control={codeForm.control}
+              name="code"
+              render={({ field }) => (
+                <FormItem className="auth-field">
+                  <FormLabel className="auth-label">Code</FormLabel>
+                  <FormControl>
+                    <input
+                      {...field}
+                      className="auth-input auth-code-input"
+                      autoComplete="one-time-code"
+                      inputMode="numeric"
+                      autoFocus
+                      placeholder="6-digit code"
+                      data-testid="input-signin-code"
+                    />
+                  </FormControl>
+                  <FormMessage className="auth-field-error" />
+                </FormItem>
+              )}
+            />
+            <AuthSubmit busy={busy} testId="button-verify-code">
+              Sign in <ArrowRight size={16} />
+            </AuthSubmit>
+            <button type="button" className="auth-text-button" onClick={resendCode} disabled={busy} data-testid="button-resend-code">
+              Send a new code
+            </button>
+            <button type="button" className="auth-text-button" onClick={startAgain} data-testid="button-change-email">
+              Use a different email
+            </button>
+          </form>
+        </Form>
+      )}
+
       <div className="auth-security-foot">
-        <Mail size={13} /> Company email verification is required
+        <Mail size={13} /> No password needed · you stay signed in for 7 days
       </div>
     </AuthLayout>
   );
