@@ -1,0 +1,36 @@
+/* Accounts page (month end), prefix ac- */
+.ac-panel { margin-bottom: 13px }
+.ac-panel .table-wrap { margin: 0 }
+.ac-table { width: 100%; border-collapse: collapse; font-size: 13px }
+.ac-table th, .ac-table td { padding: 10px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid #29364a }
+.ac-table th { font-size: 12px; font-weight: 700; white-space: nowrap }
+.ac-table tr:last-child td { border-bottom: 0 }
+.ac-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums }
+.ac-table .ac-total td { font-weight: 800; color: #e2e9f1; background: #172236 }
+.ac-loss { color: #f08f91 !important }
+.ac-detail { display: block; margin-top: 4px; font-size: 12px; color: #95a2b5; white-space: normal }
+.ac-detail.bad { color: #f08f91 }
+
+.ac-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 13px; align-items: start }
+
+.ac-platforms { list-style: none; margin: 0; padding: 0 }
+.ac-platforms li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 16px; border-bottom: 1px solid #29364a }
+.ac-platforms li:last-child { border-bottom: 0 }
+.ac-platforms li > div:first-child { display: flex; flex-direction: column; gap: 5px; min-width: 0 }
+.ac-platforms strong { color: #e2e9f1; font-size: 13px }
+.ac-platform-figures { text-align: right }
+.ac-platform-figures b { display: block; font-size: 16px; font-weight: 800; color: #e2e9f1; font-variant-numeric: tabular-nums }
+.ac-platform-figures b.good { color: #5fcf9c }
+.ac-platform-figures b.warn { color: #edc16b }
+.ac-platform-figures b.bad { color: #f08f91 }
+.ac-platform-figures small { font-size: 12px; color: #95a2b5 }
+
+.ac-note { display: flex; align-items: center; gap: 6px; margin: 0; padding: 10px 16px; font-size: 12px; color: #edc16b }
+.ac-banner { display: flex; align-items: center; gap: 8px; margin-bottom: 13px; padding: 10px 14px; border-radius: 10px; background: #403421; color: #edc16b; font-size: 13px }
+
+@media (max-width: 1100px) { .ac-grid { grid-template-columns: minmax(0, 1fr) } }
+@media (max-width: 460px) {
+  .ac-table th, .ac-table td { padding: 9px 10px }
+  .ac-platforms li { flex-direction: column; align-items: flex-start }
+  .ac-platform-figures { text-align: left }
+}

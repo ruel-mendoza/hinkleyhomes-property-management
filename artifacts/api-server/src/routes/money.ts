@@ -35,20 +35,26 @@ const RENT_REVIEW_DAYS = 28;
 
 // The five Xero organisations. Notes mark companies that don't hold tenant
 // rent or deposits, so their banking isn't read as property money.
+// moneyHeld is Ed's description (email, 23 Oct 2026): Management and Lettings
+// are agencies holding landlords' money in a client account; Hinkley Homes Ltd
+// and Stays lease and run their properties, so the income is their own.
+// Holdings wasn't covered, so it stays unconfirmed.
 export const COMPANIES = [
-  { tenantId: "47f65b32-d0d7-4417-bb5c-89ff2d93651e", name: "Hinkley Homes Lettings", holdsPropertyMoney: true, note: null },
-  { tenantId: "3ae8a283-c7e0-4287-9bcd-4c2561295890", name: "Hinkley Homes Holdings", holdsPropertyMoney: true, note: null },
-  { tenantId: "9d1fee42-4203-47d8-87aa-6fa8e8ac0fef", name: "Hinkley Homes Ltd", holdsPropertyMoney: true, note: null },
+  { tenantId: "47f65b32-d0d7-4417-bb5c-89ff2d93651e", name: "Hinkley Homes Lettings", holdsPropertyMoney: true, moneyHeld: "client", note: null },
+  { tenantId: "3ae8a283-c7e0-4287-9bcd-4c2561295890", name: "Hinkley Homes Holdings", holdsPropertyMoney: true, moneyHeld: null, note: null },
+  { tenantId: "9d1fee42-4203-47d8-87aa-6fa8e8ac0fef", name: "Hinkley Homes Ltd", holdsPropertyMoney: true, moneyHeld: "own", note: null },
   {
     tenantId: "0a290129-b001-4bfb-903d-d27a8ac55738",
     name: "Hinkley Homes Management",
     holdsPropertyMoney: false,
+    moneyHeld: "client",
     note: "Does not hold property money: management fees and running costs only.",
   },
   {
     tenantId: "4c807578-e0a7-49ad-9644-8e705aec0c2a",
     name: "Hinkley Homes Stays",
     holdsPropertyMoney: false,
+    moneyHeld: "own",
     note: "Does not hold property money: short-stay bookings, not tenant rent or deposits.",
   },
 ] as const;
@@ -204,13 +210,18 @@ async function companyBanking(company: (typeof COMPANIES)[number]) {
     tenantId: company.tenantId,
     name: company.name,
     holdsPropertyMoney: company.holdsPropertyMoney,
+    moneyHeld: company.moneyHeld as "client" | "own" | null,
     note: company.note,
     error: null as string | null,
     unreconciledCount: 0,
+    unreconciledBeforeMonth: 0,
     unreconciledIn: 0,
     unreconciledOut: 0,
     oldestUnreconciled: null as string | null,
-    bankAccounts: [] as { name: string; kind: AccountKind; balance: number | null; moneyIn: number | null; moneyOut: number | null }[],
+    bankAccounts: [] as {
+      name: string; kind: AccountKind; balance: number | null; moneyIn: number | null; moneyOut: number | null;
+      unreconciledCount: number; oldestUnreconciled: string | null;
+    }[],
     balancesError: null as string | null,
     bankTotal: null as number | null,
     notices: [] as string[],
@@ -241,9 +252,12 @@ async function companyBanking(company: (typeof COMPANIES)[number]) {
       .catch(() => new Map<string | null, string | null>()),
   ]);
 
+  // Unreconciled lines per bank account (Xero AccountID), for the clearing-account view.
+  const perAccount = new Map<string, { count: number; oldest: string | null }>();
   if (transactions instanceof Error) {
     base.error = transactions.message;
   } else {
+    const monthStart = `${today.slice(0, 8)}01`;
     for (const transaction of transactions) {
       const total = num(transaction.Total) ?? 0;
       if (String(transaction.Type).startsWith("RECEIVE")) base.unreconciledIn += total;
@@ -251,6 +265,14 @@ async function companyBanking(company: (typeof COMPANIES)[number]) {
       const date = parseXeroDate(transaction.Date);
       const day = date ? date.toISOString().slice(0, 10) : null;
       if (day && (!base.oldestUnreconciled || day < base.oldestUnreconciled)) base.oldestUnreconciled = day;
+      if (day && day < monthStart) base.unreconciledBeforeMonth += 1;
+      const accountId = str(asRecord(transaction.BankAccount).AccountID);
+      if (accountId) {
+        const entry = perAccount.get(accountId) ?? { count: 0, oldest: null };
+        entry.count += 1;
+        if (day && (!entry.oldest || day < entry.oldest)) entry.oldest = day;
+        perAccount.set(accountId, entry);
+      }
     }
     base.unreconciledCount = transactions.length;
     base.unreconciledIn = Math.round(base.unreconciledIn * 100) / 100;
@@ -270,6 +292,8 @@ async function companyBanking(company: (typeof COMPANIES)[number]) {
     base.bankAccounts = parseBankSummary(summary.data).map(({ accountId, ...account }) => ({
       ...account,
       kind: accountKind(account.name, accounts.get(accountId) ?? null),
+      unreconciledCount: (accountId && perAccount.get(accountId)?.count) || 0,
+      oldestUnreconciled: (accountId && perAccount.get(accountId)?.oldest) || null,
     }));
     const bankBalances = base.bankAccounts.filter((account) => account.kind === "bank" && account.balance !== null);
     base.bankTotal = Math.round(bankBalances.reduce((sum, account) => sum + (account.balance ?? 0), 0) * 100) / 100;

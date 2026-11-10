@@ -6,16 +6,24 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { MoneyBankAccount } from './moneyBankAccount';
+import type { MoneyCompanyMoneyHeld } from './moneyCompanyMoneyHeld';
 
 export interface MoneyCompany {
   tenantId: string;
   name: string;
   holdsPropertyMoney: boolean;
+  /**
+     * client = holds landlords' money in a client account (agency); own = income belongs to the company (it leases and runs its properties); null = not confirmed
+     * @nullable
+     */
+  moneyHeld: MoneyCompanyMoneyHeld;
   /** @nullable */
   note: string | null;
   /** @nullable */
   error: string | null;
   unreconciledCount: number;
+  /** Unreconciled bank lines dated before the 1st of the current UK month (should be 0 once last month is closed) */
+  unreconciledBeforeMonth: number;
   unreconciledIn: number;
   unreconciledOut: number;
   /** @nullable */

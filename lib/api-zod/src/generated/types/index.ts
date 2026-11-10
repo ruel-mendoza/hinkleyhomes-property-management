@@ -154,6 +154,7 @@ export * from './moneyBankAccount';
 export * from './moneyBankAccountKind';
 export * from './moneyCoho';
 export * from './moneyCompany';
+export * from './moneyCompanyMoneyHeld';
 export * from './moneyOverview';
 export * from './moneyPropertyRef';
 export * from './moneyRentReview';

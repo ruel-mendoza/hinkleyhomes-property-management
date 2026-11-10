@@ -2093,7 +2093,13 @@ components:
         moneyOut:
           description: Spent this month
           type: ["number", "null"]
-      required: [name, kind, balance, moneyIn, moneyOut]
+        unreconciledCount:
+          description: Unreconciled bank lines in this account
+          type: integer
+        oldestUnreconciled:
+          description: Date (YYYY-MM-DD) of the oldest unreconciled line in this account
+          type: ["string", "null"]
+      required: [name, kind, balance, moneyIn, moneyOut, unreconciledCount, oldestUnreconciled]
     MoneyCompany:
       type: object
       properties:
@@ -2103,11 +2109,18 @@ components:
           type: string
         holdsPropertyMoney:
           type: boolean
+        moneyHeld:
+          description: client = holds landlords' money in a client account (agency); own = income belongs to the company (it leases and runs its properties); null = not confirmed
+          type: ["string", "null"]
+          enum: [client, own, null]
         note:
           type: ["string", "null"]
         error:
           type: ["string", "null"]
         unreconciledCount:
+          type: integer
+        unreconciledBeforeMonth:
+          description: Unreconciled bank lines dated before the 1st of the current UK month (should be 0 once last month is closed)
           type: integer
         unreconciledIn:
           type: number
@@ -2130,7 +2143,7 @@ components:
           type: array
           items:
             type: string
-      required: [tenantId, name, holdsPropertyMoney, note, error, unreconciledCount, unreconciledIn, unreconciledOut, oldestUnreconciled, bankAccounts, balancesError, bankTotal, notices]
+      required: [tenantId, name, holdsPropertyMoney, moneyHeld, note, error, unreconciledCount, unreconciledBeforeMonth, unreconciledIn, unreconciledOut, oldestUnreconciled, bankAccounts, balancesError, bankTotal, notices]
     MoneyXero:
       type: object
       properties:

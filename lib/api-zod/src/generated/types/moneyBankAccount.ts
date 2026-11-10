@@ -26,4 +26,11 @@ export interface MoneyBankAccount {
      * @nullable
      */
   moneyOut: number | null;
+  /** Unreconciled bank lines in this account */
+  unreconciledCount: number;
+  /**
+     * Date (YYYY-MM-DD) of the oldest unreconciled line in this account
+     * @nullable
+     */
+  oldestUnreconciled: string | null;
 }

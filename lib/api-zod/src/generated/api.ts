@@ -1276,9 +1276,11 @@ export const GetMoneyOverviewResponse = zod.object({
   "tenantId": zod.string(),
   "name": zod.string(),
   "holdsPropertyMoney": zod.boolean(),
+  "moneyHeld": zod.union([zod.literal('client'),zod.literal('own'),zod.literal(null)]).nullable().describe('client = holds landlords\' money in a client account (agency); own = income belongs to the company (it leases and runs its properties); null = not confirmed'),
   "note": zod.string().nullable(),
   "error": zod.string().nullable(),
   "unreconciledCount": zod.number().int(),
+  "unreconciledBeforeMonth": zod.number().int().describe('Unreconciled bank lines dated before the 1st of the current UK month (should be 0 once last month is closed)'),
   "unreconciledIn": zod.number(),
   "unreconciledOut": zod.number(),
   "oldestUnreconciled": zod.string().nullable(),
@@ -1287,7 +1289,9 @@ export const GetMoneyOverviewResponse = zod.object({
   "kind": zod.enum(['bank', 'card', 'payments']).describe('bank = real bank or cash account; card = credit/charge card; payments = payment platform clearing account (Stripe, PayPal, GoCardless, Telleroo)'),
   "balance": zod.number().nullable().describe('Closing balance today from Xero\'s Bank Summary; null when the report is unavailable'),
   "moneyIn": zod.number().nullable().describe('Received this month'),
-  "moneyOut": zod.number().nullable().describe('Spent this month')
+  "moneyOut": zod.number().nullable().describe('Spent this month'),
+  "unreconciledCount": zod.number().int().describe('Unreconciled bank lines in this account'),
+  "oldestUnreconciled": zod.string().nullable().describe('Date (YYYY-MM-DD) of the oldest unreconciled line in this account')
 })),
   "balancesError": zod.string().nullable().describe('Why balances are missing (e.g. the Xero reports permission is not granted in n8n)'),
   "bankTotal": zod.number().nullable().describe('Sum of closing balances of real bank accounts only (cards and payment platforms excluded); null when balances are unavailable'),

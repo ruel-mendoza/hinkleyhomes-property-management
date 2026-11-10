@@ -448,17 +448,43 @@ export interface MoneyBankAccount {
      * @nullable
      */
   moneyOut: number | null;
+  /** Unreconciled bank lines in this account */
+  unreconciledCount: number;
+  /**
+     * Date (YYYY-MM-DD) of the oldest unreconciled line in this account
+     * @nullable
+     */
+  oldestUnreconciled: string | null;
 }
+
+/**
+ * client = holds landlords' money in a client account (agency); own = income belongs to the company (it leases and runs its properties); null = not confirmed
+ * @nullable
+ */
+export type MoneyCompanyMoneyHeld = typeof MoneyCompanyMoneyHeld[keyof typeof MoneyCompanyMoneyHeld] | null;
+
+
+export const MoneyCompanyMoneyHeld = {
+  client: 'client',
+  own: 'own',
+} as const;
 
 export interface MoneyCompany {
   tenantId: string;
   name: string;
   holdsPropertyMoney: boolean;
+  /**
+     * client = holds landlords' money in a client account (agency); own = income belongs to the company (it leases and runs its properties); null = not confirmed
+     * @nullable
+     */
+  moneyHeld: MoneyCompanyMoneyHeld;
   /** @nullable */
   note: string | null;
   /** @nullable */
   error: string | null;
   unreconciledCount: number;
+  /** Unreconciled bank lines dated before the 1st of the current UK month (should be 0 once last month is closed) */
+  unreconciledBeforeMonth: number;
   unreconciledIn: number;
   unreconciledOut: number;
   /** @nullable */
