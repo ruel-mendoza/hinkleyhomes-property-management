@@ -22,13 +22,13 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 * * * *"
+              "expression": "0 7-19 * * 1-5"
             }
           ]
         }
       },
       "id": "3bbe4738-c9e3-451d-bb21-a8fec98944b5",
-      "name": "Every hour",
+      "name": "Hourly 7am-7pm weekdays",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
@@ -592,17 +592,6 @@
   ],
   "pinData": {},
   "connections": {
-    "Every hour": {
-      "main": [
-        [
-          {
-            "node": "Config",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Manual test": {
       "main": [
         [
@@ -773,6 +762,17 @@
           }
         ]
       ]
+    },
+    "Hourly 7am-7pm weekdays": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -782,7 +782,8 @@
     "availableInMCP": true,
     "timeSavedMode": "fixed",
     "errorWorkflow": "zOkM1BtJ6EWLl9FX",
-    "callerPolicy": "workflowsFromSameOwner"
+    "callerPolicy": "workflowsFromSameOwner",
+    "timezone": "Europe/London"
   },
   "versionId": "a9365001-009c-451f-8f35-f190e5252521",
   "meta": {

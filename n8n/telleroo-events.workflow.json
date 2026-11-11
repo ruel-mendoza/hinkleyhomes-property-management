@@ -132,14 +132,14 @@
         "rule": {
           "interval": [
             {
-              "field": "minutes",
-              "minutesInterval": 30
+              "field": "cronExpression",
+              "expression": "*/30 7-19 * * 1-5"
             }
           ]
         }
       },
       "id": "633079c7-55eb-46bb-9021-5d478bd7cfa0",
-      "name": "Every 30 minutes",
+      "name": "Every 30 min 7am-7pm weekdays",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
@@ -313,17 +313,6 @@
         []
       ]
     },
-    "Every 30 minutes": {
-      "main": [
-        [
-          {
-            "node": "Open pay runs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Open pay runs": {
       "main": [
         [
@@ -356,10 +345,22 @@
           }
         ]
       ]
+    },
+    "Every 30 min 7am-7pm weekdays": {
+      "main": [
+        [
+          {
+            "node": "Open pay runs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/London"
   }
 }

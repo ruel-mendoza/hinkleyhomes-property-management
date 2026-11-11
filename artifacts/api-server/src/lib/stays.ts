@@ -20,7 +20,7 @@ import { SmoobuApiError, smoobuGet } from "./smoobu-api";
 // Hinkley Homes Stays: short-stay bookings mirrored read-only from Smoobu.
 // Smoobu webhooks reach n8n, which forwards them to the app; the app re-reads
 // each booking from Smoobu rather than trusting the webhook (Smoobu doesn't sign
-// them). n8n also starts a catch-up sync every hour for anything missed.
+// them). n8n also starts a catch-up sync every 3 hours for anything missed.
 
 export const SYNC_TRIGGER = "bookings";
 // The first sync reads bookings departing from this many days back.
@@ -59,12 +59,23 @@ export const addDays = (date: string, days: number) => new Date(Date.parse(`${da
 
 // --- Apartments ---------------------------------------------------------------
 
-async function syncApartments(): Promise<number> {
+// Each Smoobu read through n8n counts towards n8n's monthly execution limit, so
+// an apartment's address and rooms (one read each) are read when it is new and
+// otherwise only on the first sync of the day or a sync started by staff.
+// Names come from the list and stay up to date on every sync.
+async function syncApartments(full: boolean): Promise<number> {
   const list = listIn(await smoobuGet("/api/apartments"), "apartments");
+  const known = full ? new Set<number>() : new Set((await getDb().select({ id: smoobuApartmentsTable.smoobuApartmentId }).from(smoobuApartmentsTable)).map((row) => row.id));
   let count = 0;
   for (const item of list) {
     const apartmentId = num(item.id);
     if (apartmentId === null) continue;
+    if (known.has(apartmentId)) {
+      const name = text(item.name);
+      if (name) await getDb().update(smoobuApartmentsTable).set({ name }).where(and(eq(smoobuApartmentsTable.smoobuApartmentId, apartmentId), ne(smoobuApartmentsTable.name, name)));
+      count += 1;
+      continue;
+    }
     let details: Raw = {};
     try {
       details = obj(await smoobuGet(`/api/apartments/${apartmentId}`));
@@ -418,7 +429,8 @@ async function runSync(trigger: "schedule" | "manual"): Promise<StaysSyncResult>
   let apartments = 0;
   let bookings = 0;
   try {
-    apartments = await syncApartments();
+    const ukDay = (date: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(date);
+    apartments = await syncApartments(trigger === "manual" || !lastGood || ukDay(lastGood.startedAt) !== ukToday());
     const auto = await autoLinkApartments();
     if (auto.error) logger.warn({ error: auto.error }, "Smoobu apartments could not be matched to properties");
     const properties = await linkedProperties();

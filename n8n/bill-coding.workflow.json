@@ -14,13 +14,14 @@
         "rule": {
           "interval": [
             {
-              "field": "hours"
+              "field": "cronExpression",
+              "expression": "5 7-19 * * 1-5"
             }
           ]
         }
       },
       "id": "35c42193-26da-4e69-b064-f5d9745a5976",
-      "name": "Every hour (check Xero)",
+      "name": "Hourly 7am-7pm weekdays (check Xero)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [0, 0]
@@ -840,7 +841,7 @@
   "pinData": {},
   "connections": {
     "Manual test": { "main": [[{ "node": "Config", "type": "main", "index": 0 }]] },
-    "Every hour (check Xero)": { "main": [[{ "node": "Config", "type": "main", "index": 0 }]] },
+    "Hourly 7am-7pm weekdays (check Xero)": { "main": [[{ "node": "Config", "type": "main", "index": 0 }]] },
     "Config": { "main": [[{ "node": "Get bills to check (PMS)", "type": "main", "index": 0 }]] },
     "Get bills to check (PMS)": { "main": [[{ "node": "Bills to check", "type": "main", "index": 0 }]] },
     "Bills to check": { "main": [[{ "node": "Bill has a file?", "type": "main", "index": 0 }]] },

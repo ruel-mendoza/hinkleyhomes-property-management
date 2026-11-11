@@ -60,8 +60,9 @@ export function lastMonth(): string {
   return new Date(Date.UTC(year, month - 2, 1)).toISOString().slice(0, 7);
 }
 
-// Statements change rarely once a month has closed; keep each month 10 minutes.
-const CACHE_MS = 10 * 60_000;
+// Statements change rarely once a month has closed, and the Xero payout check
+// costs 10+ n8n executions, so keep each month 30 minutes.
+const CACHE_MS = 30 * 60_000;
 const cache = new Map<string, { at: number; body: Awaited<ReturnType<typeof loadMonth>> }>();
 
 async function loadMonth(month: string) {

@@ -41,7 +41,7 @@
     },
     {
       "id": "b7c8d9e0-2f3a-4b5c-9d0e-1f2a3b4c5d6e",
-      "name": "Every hour",
+      "name": "Every 3 hours",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [0, 220],
@@ -49,8 +49,8 @@
         "rule": {
           "interval": [
             {
-              "field": "hours",
-              "hoursInterval": 1
+              "field": "cronExpression",
+              "expression": "30 */3 * * *"
             }
           ]
         }
@@ -86,7 +86,7 @@
         ]
       ]
     },
-    "Every hour": {
+    "Every 3 hours": {
       "main": [
         [
           {
@@ -100,7 +100,8 @@
   },
   "settings": {
     "executionOrder": "v1",
-    "saveDataSuccessExecution": "none"
+    "saveDataSuccessExecution": "none",
+    "timezone": "Europe/London"
   },
   "pinData": {}
 }

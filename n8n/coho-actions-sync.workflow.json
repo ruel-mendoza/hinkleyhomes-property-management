@@ -3,7 +3,7 @@
   "nodes": [
     {
       "id": "26c2b89f-f86a-42d8-909f-93c4998bd0e0",
-      "name": "Every 15 minutes",
+      "name": "Hourly 7am-7pm",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [0, 0],
@@ -11,8 +11,8 @@
         "rule": {
           "interval": [
             {
-              "field": "minutes",
-              "minutesInterval": 15
+              "field": "cronExpression",
+              "expression": "0 7-19 * * *"
             }
           ]
         }
@@ -37,7 +37,7 @@
     }
   ],
   "connections": {
-    "Every 15 minutes": {
+    "Hourly 7am-7pm": {
       "main": [
         [
           {
@@ -51,7 +51,8 @@
   },
   "settings": {
     "executionOrder": "v1",
-    "saveDataSuccessExecution": "none"
+    "saveDataSuccessExecution": "none",
+    "timezone": "Europe/London"
   },
   "pinData": {}
 }

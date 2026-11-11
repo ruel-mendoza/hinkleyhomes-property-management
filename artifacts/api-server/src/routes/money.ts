@@ -396,6 +396,20 @@ function gatewaySetupError(gateway: ReturnType<typeof readXeroGatewayEnv>): stri
 
 const CACHE_MS = 5 * 60_000;
 let cache: { at: number; body: unknown } | null = null;
+// Each Xero read through n8n counts towards n8n's monthly execution limit (about
+// 15 reads for the five companies), so the banking figures are kept 30 minutes
+// while COHO's rent figures are refreshed every 5. A failed read is retried
+// after 2 minutes rather than on every page load.
+const XERO_CACHE_MS = 30 * 60_000;
+const XERO_RETRY_MS = 2 * 60_000;
+let xeroCache: { at: number; ttl: number; body: { error: string | null; companies: Awaited<ReturnType<typeof companyBanking>>[] } } | null = null;
+async function xeroBanking(refresh: boolean) {
+  if (!refresh && xeroCache && Date.now() - xeroCache.at < xeroCache.ttl) return xeroCache.body;
+  const companies = await Promise.all(COMPANIES.map(companyBanking));
+  const body = { error: null, companies };
+  xeroCache = { at: Date.now(), ttl: companies.some((company) => company.error) ? XERO_RETRY_MS : XERO_CACHE_MS, body };
+  return body;
+}
 
 const moneyRouter: IRouter = Router();
 
@@ -418,7 +432,7 @@ moneyRouter.get("/overview/money", async (req, res): Promise<void> => {
         })
       : Promise.resolve({ ...emptyCoho, error: "COHO_API_KEY is not configured." }),
     gateway.status === "configured"
-      ? Promise.all(COMPANIES.map(companyBanking)).then((companies) => ({ error: null, companies }))
+      ? xeroBanking(req.query.refresh === "1")
       : Promise.resolve({ error: gatewaySetupError(gateway), companies: [] as Awaited<ReturnType<typeof companyBanking>>[] }),
   ]);
   const body = GetMoneyOverviewResponse.parse({ asOf: new Date().toISOString(), coho, xero });
