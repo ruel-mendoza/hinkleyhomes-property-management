@@ -52,11 +52,29 @@ function sameName(a: string, b: string): boolean {
   return left.some((word) => right.includes(word));
 }
 
+// The n8n gateway sometimes fails a single call (a plain HTTP 500, or Xero
+// rate limiting); these are reads, so wait and try again up to twice.
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+async function readPage(tenantId: string, resource: "bankTransactions" | "invoices", query: Record<string, string | number>) {
+  for (const wait of [2_000, 6_000, null]) {
+    let response: Awaited<ReturnType<typeof xeroGatewayRequest>> | null = null;
+    try {
+      response = await xeroGatewayRequest({ tenantId, resource, query });
+    } catch (error) {
+      if (wait === null) throw error;
+    }
+    if (response?.ok) return response;
+    if (response && response.status !== 429 && response.status < 500) throw new Error(`Xero returned HTTP ${response.status}.`);
+    if (wait === null) throw new Error(response?.status === 429 ? "Xero is rate limiting; try again shortly." : `Xero returned HTTP ${response?.status}.`);
+    await pause(response?.status === 429 ? Math.min(Number(response.retryAfter) * 1000 || wait, 30_000) : wait);
+  }
+  throw new Error("Xero couldn't be read.");
+}
+
 async function pages(tenantId: string, resource: "bankTransactions" | "invoices", where: string, key: string) {
   const items: Record<string, any>[] = [];
   for (let page = 1; page <= 10; page++) {
-    const response = await xeroGatewayRequest({ tenantId, resource, query: { where, page, pageSize: 100 } });
-    if (!response.ok) throw new Error(response.status === 429 ? "Xero is rate limiting; try again shortly." : `Xero returned HTTP ${response.status}.`);
+    const response = await readPage(tenantId, resource, { where, page, pageSize: 100 });
     const batch = ((response.data as Record<string, unknown>)?.[key] ?? []) as Record<string, any>[];
     items.push(...batch);
     if (batch.length < 100) break;
@@ -66,21 +84,21 @@ async function pages(tenantId: string, resource: "bankTransactions" | "invoices"
 
 async function xeroRecords(from: string, to: string): Promise<XeroRecord[]> {
   const range = `Date>=${xeroDate(from)}&&Date<=${xeroDate(to)}`;
-  const perCompany = await Promise.all(
-    COMPANIES.map(async (company) => {
-      const [spends, bills] = await Promise.all([
-        pages(company.tenantId, "bankTransactions", `Status=="AUTHORISED"&&Type=="SPEND"&&${range}`, "BankTransactions"),
-        pages(company.tenantId, "invoices", `Type=="ACCPAY"&&${range}`, "Invoices"),
-      ]);
-      const name = shortName(company.name);
-      return [
-        ...spends.map((item): XeroRecord => ({ company: name, kind: "payment", date: day(item.Date) ?? from, paidOn: day(item.Date), amount: Math.abs(Number(item.Total) || 0), contact: item.Contact?.Name ?? "", reference: item.Reference ?? null, paid: true })),
-        ...bills
-          .filter((item) => item.Status !== "VOIDED" && item.Status !== "DELETED")
-          .map((item): XeroRecord => ({ company: name, kind: "bill", date: day(item.Date) ?? from, paidOn: day(item.FullyPaidOnDate), amount: Number(item.Total) || 0, contact: item.Contact?.Name ?? "", reference: item.Reference || item.InvoiceNumber || null, paid: item.Status === "PAID" })),
-      ];
-    }),
-  );
+  // One company at a time: ten reads at once through n8n made the gateway fail.
+  const perCompany: XeroRecord[][] = [];
+  for (const company of COMPANIES) {
+    const [spends, bills] = await Promise.all([
+      pages(company.tenantId, "bankTransactions", `Status=="AUTHORISED"&&Type=="SPEND"&&${range}`, "BankTransactions"),
+      pages(company.tenantId, "invoices", `Type=="ACCPAY"&&${range}`, "Invoices"),
+    ]);
+    const name = shortName(company.name);
+    perCompany.push([
+      ...spends.map((item): XeroRecord => ({ company: name, kind: "payment", date: day(item.Date) ?? from, paidOn: day(item.Date), amount: Math.abs(Number(item.Total) || 0), contact: item.Contact?.Name ?? "", reference: item.Reference ?? null, paid: true })),
+      ...bills
+        .filter((item) => item.Status !== "VOIDED" && item.Status !== "DELETED")
+        .map((item): XeroRecord => ({ company: name, kind: "bill", date: day(item.Date) ?? from, paidOn: day(item.FullyPaidOnDate), amount: Number(item.Total) || 0, contact: item.Contact?.Name ?? "", reference: item.Reference || item.InvoiceNumber || null, paid: item.Status === "PAID" })),
+    ]);
+  }
   return perCompany.flat();
 }
 
