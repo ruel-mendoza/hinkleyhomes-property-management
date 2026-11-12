@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { readSmoobuGatewayEnv, smoobuCredentials } from "./integrations-env";
+import { logger } from "./logger";
 
 // Smoobu API client (Hinkley Homes Stays). Read-only on purpose: Smoobu is the
 // channel manager and PriceLabs writes prices and stay rules through it, so the
@@ -122,9 +123,26 @@ async function viaGateway(gateway: { url: string; key: string }, path: string, q
   return { status: reply.status, retryAt: Number(reply.retryAfter) * 1000 || null, payload };
 }
 
-function ask(path: string, query: SmoobuQuery, directOnly: boolean): Promise<Reply> {
+// When the gateway itself fails (unreachable, key rejected, n8n error such as
+// its execution limit), read Smoobu directly with the signed key instead, and
+// skip the gateway for a while so a broken n8n doesn't slow every read.
+// Smoobu's own answers (404, 429, ...) still come back through the gateway.
+const GATEWAY_COOLDOWN_MS = 10 * 60_000;
+let gatewayDownUntil = 0;
+
+async function ask(path: string, query: SmoobuQuery, directOnly: boolean): Promise<Reply> {
   const gateway = directOnly ? undefined : readSmoobuGatewayEnv();
-  return gateway ? viaGateway(gateway, path, query) : direct(path, query);
+  if (!gateway) return direct(path, query);
+  const canFallBack = smoobuDirectReady();
+  if (canFallBack && Date.now() < gatewayDownUntil) return direct(path, query);
+  try {
+    return await viaGateway(gateway, path, query);
+  } catch (error) {
+    if (!canFallBack) throw error;
+    if (Date.now() >= gatewayDownUntil) logger.warn({ path, err: error }, "n8n Smoobu gateway failed; reading Smoobu directly for the next 10 minutes");
+    gatewayDownUntil = Date.now() + GATEWAY_COOLDOWN_MS;
+    return direct(path, query);
+  }
 }
 
 // Smoobu can be called directly with the signed key (SMOOBU_API_KEY and

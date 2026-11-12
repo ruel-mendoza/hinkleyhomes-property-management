@@ -495,7 +495,7 @@ let threadsCache: { at: number; value: GuestMessages } | null = null;
 const plain = (value: string | null) => (value ? value.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim().slice(0, 160) || null : null);
 
 // The newest Airbnb, Booking.com and direct-booking conversations. Smoobu lists
-// threads newest first, 25 a page, and only gives an unread total for the whole
+// threads newest first (we ask for 25 a page) and only gives an unread total for the whole
 // account: no unread count or sender per thread (checked October 2026).
 export async function guestMessages(): Promise<GuestMessages> {
   if (threadsCache && Date.now() - threadsCache.at < THREADS_TTL_MS) return threadsCache.value;
