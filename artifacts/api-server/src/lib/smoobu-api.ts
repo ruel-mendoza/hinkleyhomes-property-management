@@ -6,9 +6,9 @@ import { logger } from "./logger";
 // channel manager and PriceLabs writes prices and stay rules through it, so the
 // app never changes bookings, rates or availability there.
 //
-// With N8N_SMOOBU_GATEWAY_URL set, every read goes through the n8n gateway
-// (n8n/smoobu-gateway.workflow.json), which holds the Smoobu key. Otherwise the
-// app calls Smoobu itself with SMOOBU_API_KEY, as below.
+// With the signed key (SMOOBU_API_KEY and SMOOBU_API_SECRET) the app calls Smoobu
+// itself, as below. Every read through the n8n gateway costs an n8n execution, so
+// the gateway (N8N_SMOOBU_GATEWAY_URL) is only used when the signed key isn't set.
 //
 // Requests are signed with HMAC-SHA256 once SMOOBU_API_SECRET is set; until then
 // the legacy Api-Key header is used (it stops working on 31 October 2026). Canonical string, one part per line: method,
@@ -123,26 +123,15 @@ async function viaGateway(gateway: { url: string; key: string }, path: string, q
   return { status: reply.status, retryAt: Number(reply.retryAfter) * 1000 || null, payload };
 }
 
-// When the gateway itself fails (unreachable, key rejected, n8n error such as
-// its execution limit), read Smoobu directly with the signed key instead, and
-// skip the gateway for a while so a broken n8n doesn't slow every read.
-// Smoobu's own answers (404, 429, ...) still come back through the gateway.
-const GATEWAY_COOLDOWN_MS = 10 * 60_000;
-let gatewayDownUntil = 0;
-
+// Direct with the signed key whenever it's set (no n8n execution); the n8n
+// gateway only when it isn't.
+let warnedGateway = false;
 async function ask(path: string, query: SmoobuQuery, directOnly: boolean): Promise<Reply> {
-  const gateway = directOnly ? undefined : readSmoobuGatewayEnv();
+  const gateway = directOnly || smoobuDirectReady() ? undefined : readSmoobuGatewayEnv();
   if (!gateway) return direct(path, query);
-  const canFallBack = smoobuDirectReady();
-  if (canFallBack && Date.now() < gatewayDownUntil) return direct(path, query);
-  try {
-    return await viaGateway(gateway, path, query);
-  } catch (error) {
-    if (!canFallBack) throw error;
-    if (Date.now() >= gatewayDownUntil) logger.warn({ path, err: error }, "n8n Smoobu gateway failed; reading Smoobu directly for the next 10 minutes");
-    gatewayDownUntil = Date.now() + GATEWAY_COOLDOWN_MS;
-    return direct(path, query);
-  }
+  if (!warnedGateway) logger.warn("Smoobu is read through the n8n gateway because SMOOBU_API_SECRET isn't set; each read costs an n8n execution");
+  warnedGateway = true;
+  return viaGateway(gateway, path, query);
 }
 
 // Smoobu can be called directly with the signed key (SMOOBU_API_KEY and

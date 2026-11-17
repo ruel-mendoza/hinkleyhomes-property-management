@@ -23,7 +23,7 @@ const router: IRouter = Router();
 
 function notConnected(res: Response): boolean {
   if (isDatabaseConfigured() && smoobuMode()) return false;
-  res.status(503).json({ error: "Smoobu isn't connected yet: add N8N_SMOOBU_GATEWAY_URL (or SMOOBU_API_KEY)." });
+  res.status(503).json({ error: "Smoobu isn't connected yet: add SMOOBU_API_KEY and SMOOBU_API_SECRET." });
   return true;
 }
 

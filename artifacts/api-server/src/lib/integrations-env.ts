@@ -52,11 +52,13 @@ export function readSmoobuGatewayEnv(): { url: string; key: string } | undefined
   return gatewayEnv("N8N_SMOOBU_GATEWAY_URL", "N8N_SMOOBU_GATEWAY_KEY");
 }
 
-// Smoobu can be read: through the n8n gateway, or directly with SMOOBU_API_KEY.
+// How Smoobu is read: directly with the signed key when it's set (no n8n
+// execution), otherwise through the n8n gateway, otherwise with the old key.
 export function smoobuMode(): "gateway" | "signed key" | "old key" | undefined {
-  if (readSmoobuGatewayEnv()) return "gateway";
   const credentials = smoobuCredentials();
-  return credentials ? (credentials.secret ? "signed key" : "old key") : undefined;
+  if (credentials?.secret) return "signed key";
+  if (readSmoobuGatewayEnv()) return "gateway";
+  return credentials ? "old key" : undefined;
 }
 
 // Shared secret for scheduled n8n calls into the API (e.g. the COHO actions
