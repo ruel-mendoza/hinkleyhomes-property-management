@@ -205,6 +205,49 @@ function bankingNotices(name: string, accounts: { name: string; kind: AccountKin
   return notices;
 }
 
+// Every page of a Xero list (100 a page, up to 1,000 records) through the n8n gateway.
+async function readAllPages(tenantId: string, resource: "bankTransactions" | "payments", where: string, key: string): Promise<RecordValue[]> {
+  const items: RecordValue[] = [];
+  for (let page = 1; page <= 10; page++) {
+    const response = await xeroGatewayRequest({ tenantId, resource, query: { where, page, pageSize: 100 } });
+    if (!response.ok) throw new Error(response.status === 429 ? "Xero is rate limiting; try again shortly." : `Xero returned HTTP ${response.status}.`);
+    const batch = list(asRecord(response.data)[key]);
+    items.push(...batch);
+    if (batch.length < 100) break;
+  }
+  return items;
+}
+
+// Payment types where money comes in: customer payments, and supplier refunds of credit notes, overpayments and prepayments.
+const PAYMENT_IN = new Set(["ACCRECPAYMENT", "APCREDITPAYMENT", "APOVERPAYMENTPAYMENT", "APPREPAYMENTPAYMENT"]);
+type UnmatchedEntry = { moneyIn: boolean; amount: number; day: string | null; accountId: string | null };
+const dayOf = (value: unknown) => parseXeroDate(value)?.toISOString().slice(0, 10) ?? null;
+
+// Xero entries not yet matched to a bank line. A batch payment is one bank line, so its
+// payments count once. Payments to accounts that aren't bank accounts can never be
+// reconciled, so they're skipped (unless the bank account list couldn't be read).
+function unmatchedEntries(transactions: RecordValue[], payments: RecordValue[], bankAccounts: Map<string | null, string | null>): UnmatchedEntry[] {
+  const entries: UnmatchedEntry[] = transactions.map((transaction) => ({
+    moneyIn: String(transaction.Type).startsWith("RECEIVE"),
+    amount: num(transaction.Total) ?? 0,
+    day: dayOf(transaction.Date),
+    accountId: str(asRecord(transaction.BankAccount).AccountID),
+  }));
+  const batches = new Map<string, UnmatchedEntry>();
+  for (const payment of payments) {
+    const accountId = str(asRecord(payment.Account).AccountID);
+    if (bankAccounts.size && !bankAccounts.has(accountId)) continue;
+    const moneyIn = PAYMENT_IN.has(String(payment.PaymentType));
+    const entry = { moneyIn, amount: Math.abs(num(payment.Amount) ?? 0), day: dayOf(payment.Date), accountId };
+    const batchId = str(payment.BatchPaymentID) ?? str(asRecord(payment.BatchPayment).BatchPaymentID);
+    if (!batchId) { entries.push(entry); continue; }
+    const batch = batches.get(batchId);
+    if (batch) batch.amount += entry.amount;
+    else batches.set(batchId, entry);
+  }
+  return [...entries, ...batches.values()];
+}
+
 async function companyBanking(company: (typeof COMPANIES)[number]) {
   const base = {
     tenantId: company.tenantId,
@@ -227,22 +270,14 @@ async function companyBanking(company: (typeof COMPANIES)[number]) {
     notices: [] as string[],
   };
   const today = ukDate.format(new Date());
-  const [transactions, summary, accounts] = await Promise.all([
-    (async () => {
-      const items: RecordValue[] = [];
-      for (let page = 1; page <= 10; page++) {
-        const response = await xeroGatewayRequest({
-          tenantId: company.tenantId,
-          resource: "bankTransactions",
-          query: { where: 'IsReconciled==false&&Status=="AUTHORISED"', page, pageSize: 100 },
-        });
-        if (!response.ok) throw new Error(response.status === 429 ? "Xero is rate limiting; try again shortly." : `Xero returned HTTP ${response.status}.`);
-        const batch = list(asRecord(response.data).BankTransactions);
-        items.push(...batch);
-        if (batch.length < 100) break;
-      }
-      return items;
-    })().catch((error: unknown) => error as Error),
+  const [entries, summary, accounts] = await Promise.all([
+    // Spend/receive money and transfers come from BankTransactions; invoice and
+    // bill payments are only on Payments, so both are read.
+    Promise.all([
+      readAllPages(company.tenantId, "bankTransactions", 'IsReconciled==false&&Status=="AUTHORISED"', "BankTransactions"),
+      // If Payments can't be read, the count falls back to BankTransactions alone, with a note.
+      readAllPages(company.tenantId, "payments", 'IsReconciled==false&&Status=="AUTHORISED"', "Payments").catch((error: unknown) => error as Error),
+    ]).catch((error: unknown) => error as Error),
     xeroGatewayRequest({ tenantId: company.tenantId, resource: "bankSummary", query: { fromDate: `${today.slice(0, 8)}01`, toDate: today } }).catch(
       (error: unknown) => error as Error,
     ),
@@ -252,29 +287,27 @@ async function companyBanking(company: (typeof COMPANIES)[number]) {
       .catch(() => new Map<string | null, string | null>()),
   ]);
 
-  // Unreconciled lines per bank account (Xero AccountID), for the clearing-account view.
+  // Unmatched entries per bank account (Xero AccountID), for the clearing-account view.
   const perAccount = new Map<string, { count: number; oldest: string | null }>();
-  if (transactions instanceof Error) {
-    base.error = transactions.message;
+  if (entries instanceof Error) {
+    base.error = entries.message;
   } else {
     const monthStart = `${today.slice(0, 8)}01`;
-    for (const transaction of transactions) {
-      const total = num(transaction.Total) ?? 0;
-      if (String(transaction.Type).startsWith("RECEIVE")) base.unreconciledIn += total;
-      else base.unreconciledOut += total;
-      const date = parseXeroDate(transaction.Date);
-      const day = date ? date.toISOString().slice(0, 10) : null;
+    const [transactions, payments] = entries;
+    for (const entry of unmatchedEntries(transactions, payments instanceof Error ? [] : payments, accounts)) {
+      if (entry.moneyIn) base.unreconciledIn += entry.amount;
+      else base.unreconciledOut += entry.amount;
+      const { day } = entry;
       if (day && (!base.oldestUnreconciled || day < base.oldestUnreconciled)) base.oldestUnreconciled = day;
       if (day && day < monthStart) base.unreconciledBeforeMonth += 1;
-      const accountId = str(asRecord(transaction.BankAccount).AccountID);
-      if (accountId) {
-        const entry = perAccount.get(accountId) ?? { count: 0, oldest: null };
-        entry.count += 1;
-        if (day && (!entry.oldest || day < entry.oldest)) entry.oldest = day;
-        perAccount.set(accountId, entry);
+      base.unreconciledCount += 1;
+      if (entry.accountId) {
+        const account = perAccount.get(entry.accountId) ?? { count: 0, oldest: null };
+        account.count += 1;
+        if (day && (!account.oldest || day < account.oldest)) account.oldest = day;
+        perAccount.set(entry.accountId, account);
       }
     }
-    base.unreconciledCount = transactions.length;
     base.unreconciledIn = Math.round(base.unreconciledIn * 100) / 100;
     base.unreconciledOut = Math.round(base.unreconciledOut * 100) / 100;
   }
@@ -298,6 +331,9 @@ async function companyBanking(company: (typeof COMPANIES)[number]) {
     const bankBalances = base.bankAccounts.filter((account) => account.kind === "bank" && account.balance !== null);
     base.bankTotal = Math.round(bankBalances.reduce((sum, account) => sum + (account.balance ?? 0), 0) * 100) / 100;
     base.notices = bankingNotices(company.name, base.bankAccounts, base.bankTotal);
+  }
+  if (!(entries instanceof Error) && entries[1] instanceof Error) {
+    base.notices.push(`Invoice and bill payments in ${company.name} couldn't be read from Xero (${entries[1].message}), so its unmatched count only includes spend and receive money.`);
   }
   return base;
 }
@@ -397,7 +433,7 @@ function gatewaySetupError(gateway: ReturnType<typeof readXeroGatewayEnv>): stri
 const CACHE_MS = 5 * 60_000;
 let cache: { at: number; body: unknown } | null = null;
 // Each Xero read through n8n counts towards n8n's monthly execution limit (about
-// 15 reads for the five companies), so the banking figures are kept 30 minutes
+// 20 reads for the five companies), so the banking figures are kept 30 minutes
 // while COHO's rent figures are refreshed every 5. A failed read is retried
 // after 2 minutes rather than on every page load.
 const XERO_CACHE_MS = 30 * 60_000;

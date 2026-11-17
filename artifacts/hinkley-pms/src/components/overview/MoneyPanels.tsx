@@ -118,7 +118,7 @@ function Banking({ data, loading, failed }: { data?: MoneyOverview; loading: boo
   return (
     <section className="panel" id="banking">
       <div className="panel-head">
-        <div><div className="panel-title">Banking · Xero</div><div className="panel-caption">Unreconciled transactions and bank balances for every company</div></div>
+        <div><div className="panel-title">Banking · Xero</div><div className="panel-caption">Balances in Xero and entries not yet matched to the bank, per company</div></div>
         <Landmark size={16} className="hh-money-icon" />
       </div>
       {loading ? <p className="hh-money-note">Loading from Xero…</p>
@@ -137,7 +137,8 @@ function Banking({ data, loading, failed }: { data?: MoneyOverview; loading: boo
 
 function CompanyRow({ company }: { company: MoneyCompany }) {
   const age = daysSince(company.oldestUnreconciled);
-  const tone = company.unreconciledCount === 0 ? "completed" : age > 30 ? "overdue" : "pending";
+  // No unmatched entries isn't proof of a reconciled bank (Xero hides bank-feed lines), so it stays neutral.
+  const tone = company.unreconciledCount === 0 ? "" : age > 30 ? "overdue" : "pending";
   const accounts = [...company.bankAccounts].sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || a.name.localeCompare(b.name));
   const others = accounts.filter((account) => account.kind !== "bank").length;
   return (
@@ -145,7 +146,7 @@ function CompanyRow({ company }: { company: MoneyCompany }) {
       <div className="hh-bank-head">
         <strong>{company.name}</strong>
         {company.error ? <span className="status overdue">Not loaded</span>
-          : <span className={`status ${tone}`}>{company.unreconciledCount ? `${company.unreconciledCount} unreconciled` : "All reconciled"}</span>}
+          : <span className={`status ${tone}`}>{company.unreconciledCount ? `${company.unreconciledCount} unmatched` : "No unmatched entries"}</span>}
       </div>
       {company.error ? <p className="hh-bank-meta">{company.error}</p> : (
         <>
@@ -157,7 +158,7 @@ function CompanyRow({ company }: { company: MoneyCompany }) {
           {accounts.length > 0 && (
             <details className="hh-bank-accounts">
               <summary>
-                {company.bankTotal !== null ? `${pence.format(company.bankTotal)} in the bank` : "Bank accounts"}
+                {company.bankTotal !== null ? `${pence.format(company.bankTotal)} balance in Xero` : "Bank accounts"}
                 {others ? ` · plus ${others} card or payment platform ${others === 1 ? "account" : "accounts"}` : ""}
               </summary>
               <table>

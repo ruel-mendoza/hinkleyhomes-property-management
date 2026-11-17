@@ -34,7 +34,8 @@ const trendQueryOptions = { query: { queryKey: getGetRevenueTrendQueryKey(), sta
 const trackingQueryOptions = { query: { queryKey: getGetTrackingOptionsQueryKey(), staleTime: 10 * 60_000 } };
 
 type CheckState = "ok" | "warn" | "bad" | "unknown";
-type Check = { state: CheckState; label: string; detail?: string };
+// uncounted: shown, but left out of "checks passing" because the app can't confirm it either way.
+type Check = { state: CheckState; label: string; detail?: string; uncounted?: boolean };
 type CompanyChecks = { company: MoneyCompany; reconciled: Check; platforms: Check; bills: Check; tracking: Check };
 const STATUS_CLASS: Record<CheckState, string> = { ok: "completed", warn: "pending", bad: "overdue", unknown: "" };
 const MONEY_HELD = { client: "Client money", own: "Own income" } as const;
@@ -51,8 +52,9 @@ function useMonthEnd() {
 
   const rows: CompanyChecks[] = companies.map((company) => {
     const reconciled: Check = company.error ? { state: "unknown", label: "Couldn't check", detail: company.error }
-      : company.unreconciledBeforeMonth === 0 ? { state: "ok", label: "Up to date" }
-        : { state: "bad", label: plural(company.unreconciledBeforeMonth, "line"), detail: `Unreconciled from before ${monthStartLabel}${company.oldestUnreconciled ? `, oldest ${formatDate(company.oldestUnreconciled)}` : ""}` };
+      // Xero's API can't see bank-feed lines waiting on the Reconcile screen, so a clear count can't prove the bank is reconciled.
+      : company.unreconciledBeforeMonth === 0 ? { state: "unknown", label: "Check in Xero", detail: "No unmatched entries in Xero; bank-feed lines can't be seen here", uncounted: true }
+        : { state: "bad", label: plural(company.unreconciledBeforeMonth, "entry").replace(/entrys$/, "entries"), detail: `Not matched to the bank, from before ${monthStartLabel}${company.oldestUnreconciled ? `, oldest ${formatDate(company.oldestUnreconciled)}` : ""}` };
 
     const platformAccounts = company.bankAccounts.filter((account) => account.kind === "payments");
     const waiting = platformAccounts.reduce((sum, account) => sum + Math.abs(account.balance ?? 0), 0);
@@ -79,7 +81,7 @@ function useMonthEnd() {
     return { company, reconciled, platforms, bills, tracking: trackingCheck };
   });
 
-  const checks = rows.flatMap((row) => [row.reconciled, row.platforms, row.bills, row.tracking]);
+  const checks = rows.flatMap((row) => [row.reconciled, row.platforms, row.bills, row.tracking]).filter((check) => !check.uncounted);
   return {
     money,
     receivables,
@@ -138,9 +140,9 @@ export default function AccountsPage() {
           <div className="metric-foot">Across all five companies</div>
         </div>
         <div className="panel metric">
-          <div className="metric-top">Unreconciled before {view.monthStartLabel}</div>
+          <div className="metric-top">Unmatched before {view.monthStartLabel}</div>
           <div className="metric-value">{money.data ? view.beforeMonth : "—"}</div>
-          <div className="metric-foot">Bank lines to reconcile in Xero</div>
+          <div className="metric-foot">Xero entries not yet matched to the bank</div>
         </div>
         <div className="panel metric">
           <div className="metric-top">Left on payment platforms</div>
@@ -174,6 +176,7 @@ export default function AccountsPage() {
                 ))}
               </tbody>
             </table>
+            <p className="ac-note"><AlertTriangle size={12} /> Xero doesn't share the bank-feed lines waiting on its Reconcile screen, so the app can show a bank is behind but can't confirm it's reconciled. Check each bank account in Xero.</p>
           </div>
         ))}
       </section>
@@ -193,13 +196,13 @@ function Scorecard({ rows, state, today }: { rows: CompanyChecks[]; state: React
   return (
     <section className="panel ac-panel">
       <div className="panel-head">
-        <div><div className="panel-title">Company scorecard</div><div className="panel-caption">Bank, unreconciled lines and what's owed, per company</div></div>
+        <div><div className="panel-title">Company scorecard</div><div className="panel-caption">Xero's figures per company; the balance lags the bank until it's reconciled</div></div>
         <Link href="/receivables">Owed to us →</Link>
       </div>
       {state ?? (
         <div className="table-wrap">
           <table className="ac-table">
-            <thead><tr><th>Company</th><th className="num">In the bank</th><th className="num">Unreconciled</th><th className="num">Owed to us, overdue</th><th className="num">Bills overdue</th></tr></thead>
+            <thead><tr><th>Company</th><th className="num">Balance in Xero</th><th className="num">Unmatched entries</th><th className="num">Owed to us, overdue</th><th className="num">Bills overdue</th></tr></thead>
             <tbody>
               {rows.map(({ company }) => {
                 const owed = receivables.data?.companies.find((item) => item.tenantId === company.tenantId);
@@ -253,7 +256,7 @@ function Platforms({ companies, state, today }: { companies: MoneyCompany[]; sta
                 </div>
                 <div className="ac-platform-figures">
                   <b className={tone}>{account.balance === null ? "—" : pence.format(balance)}</b>
-                  <small>{account.unreconciledCount ? `${plural(account.unreconciledCount, "line")} to match · oldest ${formatDate(account.oldestUnreconciled)}` : "Nothing to match"}</small>
+                  <small>{account.unreconciledCount ? `${plural(account.unreconciledCount, "entry").replace(/entrys$/, "entries")} to match · oldest ${formatDate(account.oldestUnreconciled)}` : "Nothing to match"}</small>
                 </div>
               </li>
             );
