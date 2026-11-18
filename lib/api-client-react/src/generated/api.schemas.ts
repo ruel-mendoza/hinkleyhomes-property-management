@@ -2504,10 +2504,39 @@ export const IntakeCheckFilter = {
   invoices: 'invoices',
   pass: 'pass',
   bounce: 'bounce',
+  fixed: 'fixed',
   review: 'review',
   not_invoice: 'not_invoice',
   all: 'all',
 } as const;
+
+/**
+ * company = Property aliases > Company names (who the invoice is addressed to); spelling = Property aliases > Spellings (a property on a line)
+ */
+export type IntakeAliasFixKind = typeof IntakeAliasFixKind[keyof typeof IntakeAliasFixKind];
+
+
+export const IntakeAliasFixKind = {
+  company: 'company',
+  spelling: 'spelling',
+} as const;
+
+/**
+ * A name on the invoice that an alias would let the intake check or bill coding recognise
+ */
+export interface IntakeAliasFix {
+  /** company = Property aliases > Company names (who the invoice is addressed to); spelling = Property aliases > Spellings (a property on a line) */
+  kind: IntakeAliasFixKind;
+  /** The name exactly as written on the invoice */
+  text: string;
+  /** True when an alias now covers this name */
+  added: boolean;
+  /**
+     * What the alias that covers it means (company, or property and company)
+     * @nullable
+     */
+  means: string | null;
+}
 
 export interface IntakeCheck {
   id: string;
@@ -2531,12 +2560,24 @@ export interface IntakeCheck {
   issueCodes: string | null;
   /** @nullable */
   action: string | null;
+  /**
+     * pms when the app's backup check checked the email; null when n8n did
+     * @nullable
+     */
+  checkedBy: string | null;
   files: IntakeFile[];
+  /** Names on a bounced or for-review invoice that an alias would fix, and whether one has been added */
+  aliasFixes: IntakeAliasFix[];
+  /** A bounce whose every problem is now covered by an alias */
+  fixedByAlias: boolean;
 }
 
 export type IntakeCheckListCounts = {
   pass: number;
+  /** Bounces still waiting for a corrected invoice (not fixed by an alias) */
   bounce: number;
+  /** Bounces whose every problem is now covered by an alias */
+  fixed: number;
   review: number;
   not_invoice: number;
 };
@@ -2590,6 +2631,41 @@ export interface IntakeReviewResolve {
      * @nullable
      */
   note?: string | null;
+}
+
+export type IntakeFallbackRunStatus = typeof IntakeFallbackRunStatus[keyof typeof IntakeFallbackRunStatus];
+
+
+export const IntakeFallbackRunStatus = {
+  succeeded: 'succeeded',
+  failed: 'failed',
+  skipped: 'skipped',
+} as const;
+
+export type IntakeFallbackRunVerdicts = {[key: string]: number};
+
+export interface IntakeFallbackRun {
+  status: IntakeFallbackRunStatus;
+  checkedAt: string;
+  /** Emails n8n had not dealt with */
+  waiting: number;
+  /** Emails the app checked in this run (at most 10 a run) */
+  checked: number;
+  verdicts: IntakeFallbackRunVerdicts;
+  warnings: string[];
+  /** @nullable */
+  error: string | null;
+}
+
+export interface IntakeFallbackStatus {
+  configured: boolean;
+  missing: string[];
+  mode: string;
+  running: boolean;
+  lastRun: IntakeFallbackRun | null;
+  /** @nullable */
+  lastN8nCheckAt: string | null;
+  checkedByAppLastWeek: number;
 }
 
 export interface IntakeChecksCleared {

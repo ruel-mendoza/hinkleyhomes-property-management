@@ -8,7 +8,10 @@
 
 export type IntakeCheckListCounts = {
   pass: number;
+  /** Bounces still waiting for a corrected invoice (not fixed by an alias) */
   bounce: number;
+  /** Bounces whose every problem is now covered by an alias */
+  fixed: number;
   review: number;
   not_invoice: number;
 };

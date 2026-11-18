@@ -1,0 +1,138 @@
+{
+  "name": "Hinkley PMS – Smoobu sync (webhook + hourly)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hinkley-smoobu-REPLACE-WITH-RANDOM-SECRET",
+        "options": {}
+      },
+      "id": "f0ee3179-d646-471c-a236-5b34d1a22548",
+      "name": "Smoobu webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        816
+      ],
+      "webhookId": "0c8a1f4e-7d3b-4e5a-9b6c-2d1e3f4a5b6c",
+      "notes": "Smoobu doesn't sign its webhooks, so the path carries a secret. Before activating, replace REPLACE-WITH-RANDOM-SECRET with 32+ random characters (node -e \"console.log(require('crypto').randomBytes(24).toString('hex'))\"), then paste the production URL into Smoobu: Settings > Advanced > API Keys > Webhook URL. Keep that URL private. Answers Smoobu straight away; the app re-reads each booking from Smoobu, so the payload itself is never trusted."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hinkleyhomes-property-management.replit.app/api/integrations/smoobu/event",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "9de9c354-b5a9-47a9-b078-b29259c57d44",
+      "name": "Forward event to PMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        816
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FIwP4Ffez0ckSdW4",
+          "name": "Header Auth account 2"
+        }
+      },
+      "notes": "Sends Smoobu's event ({ action, user, data }) to the PMS, which refreshes that booking from Smoobu (or the guest messages count). Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret."
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 */3 * * *"
+            }
+          ]
+        }
+      },
+      "id": "0f228bc6-0652-4ca9-aa3f-8d329d036e81",
+      "name": "Every 3 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        1104,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hinkleyhomes-property-management.replit.app/api/integrations/smoobu/sync",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "2c99629e-0cbe-4062-8456-c71c24764194",
+      "name": "Catch-up sync",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        1040
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FIwP4Ffez0ckSdW4",
+          "name": "Header Auth account 2"
+        }
+      },
+      "notes": "Asks the PMS to read the Smoobu apartment list and every booking changed since its last good sync, in case a webhook was missed. Same Header Auth credential as above."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Smoobu webhook": {
+      "main": [
+        [
+          {
+            "node": "Forward event to PMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 3 hours": {
+      "main": [
+        [
+          {
+            "node": "Catch-up sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "24ce6b26-a447-4f11-ab78-226ff8746ed3",
+  "meta": {
+    "instanceId": "91160feec6de89661e3d4b7dd60fed55faacbf586fcb319fc3311f46435572a0"
+  },
+  "nodeGroups": [],
+  "id": "QQCYe5oUs2CdaYlY",
+  "tags": []
+}

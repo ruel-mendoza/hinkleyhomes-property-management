@@ -11,26 +11,26 @@
           ]
         }
       },
-      "id": "a8d12803-b541-47d8-b037-9a249ac9fa87",
+      "id": "f4b8b66c-47e3-4333-930b-e042b07ddcaf",
       "name": "Daily 8 AM Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        17584,
-        6352
+        20336,
+        8544
       ]
     },
     {
       "parameters": {
         "jsCode": "// Writes a human-sounding reminder whose tone escalates with the stage.\n// Every item comes from the PMS app (daily plan or \"send now\"), which has already\n// decided the stage, the recipient (internal address in test mode) and any CC.\n// Several wordings per stage so customers don't receive identical robotic emails.\nconst NL = String.fromCharCode(10);\n\nfunction pick(list, seed) {\n  let h = 0;\n  for (const ch of String(seed)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;\n  return list[h % list.length];\n}\n\nconst out = [];\nfor (const item of $input.all()) {\n  const inv = item.json || {};\n  const hello = inv.firstName ? 'Hi ' + inv.firstName + ',' : 'Hello,';\n  const ref = 'invoice ' + inv.invoiceNumber + ' for ' + inv.amountDue;\n  const due = new Date(inv.dueDate + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });\n\n  const scripts = {\n    1: [\n      { subject: 'Quick reminder: invoice ' + inv.invoiceNumber, body: [hello, '', 'Just a gentle nudge - our records show ' + ref + ' was due on ' + due + ' and is still open.', '', \"It's very possible this has already been sorted or simply slipped through the net, in which case please ignore this note.\", '', 'Thanks so much,'] },\n      { subject: 'Invoice ' + inv.invoiceNumber + ' - friendly reminder', body: [hello, '', 'Hope all is well. I noticed ' + ref + ' passed its due date on ' + due + '.', '', \"If payment is already on its way, thank you! If not, could you pop it through when you get a moment?\", '', 'Kind regards,'] }\n    ],\n    2: [\n      { subject: 'Following up on invoice ' + inv.invoiceNumber, body: [hello, '', 'I wanted to follow up on ' + ref + ', which is now ' + inv.overdueDays + ' days overdue (due ' + due + ').', '', 'If there is anything holding it up - a query on the invoice, a missing PO, or anything else - just reply and let me know and I will happily help.', '', 'Many thanks,'] },\n      { subject: 'Invoice ' + inv.invoiceNumber + ' is still outstanding', body: [hello, '', 'Checking in on ' + ref + '. It was due on ' + due + ' and we have not yet received payment.', '', 'Could you let me know when we can expect it? If something is not right with the invoice, I would rather hear about it so we can fix it.', '', 'Thanks,'] }\n    ],\n    3: [\n      { subject: 'Action needed: invoice ' + inv.invoiceNumber + ' (' + inv.overdueDays + ' days overdue)', body: [hello, '', 'I am getting in touch again about ' + ref + ', now ' + inv.overdueDays + ' days past its due date of ' + due + '.', '', 'Could you please arrange payment this week, or reply with a date we can expect it? If it would help to talk it through or set up a payment plan, I am very happy to arrange a quick call.', '', 'Best regards,'] },\n      { subject: 'Invoice ' + inv.invoiceNumber + ' - please confirm a payment date', body: [hello, '', 'We still have ' + ref + ' showing as unpaid, two weeks past the due date (' + due + ').', '', 'I would really appreciate it if you could confirm when payment will be made. If there is a problem on your side, let me know and we will work something out together.', '', 'Kind regards,'] }\n    ],\n    4: [\n      { subject: 'Final reminder: invoice ' + inv.invoiceNumber + ' is ' + inv.overdueDays + ' days overdue', body: [hello, '', 'Despite our earlier reminders, ' + ref + ' (due ' + due + ') remains unpaid and is now ' + inv.overdueDays + ' days overdue.', '', 'Please arrange payment within the next 7 days. If we do not hear from you, we will need to escalate this internally and review next steps on the account.', '', 'If you are experiencing difficulties, please reply today - we would much rather agree a plan with you than take further action.', '', 'Regards,'] }\n    ]\n  };\n\n\n  const script = pick(scripts[inv.wordingStage] || scripts[1], inv.invoiceId);\n  const body = script.body.concat([inv.signOffName || 'The Accounts Team', inv.company]).join(NL);\n  let subject = script.subject;\n  if (inv.testMode) subject = '[TEST - would go to ' + (inv.customerEmail || 'NO EMAIL ON FILE') + '] ' + subject;\n  else if (!inv.customerEmail) subject = '[No customer email on file: ' + inv.customer + '] ' + subject;\n\n  out.push({ json: Object.assign({}, inv, { subject, body }) });\n}\nreturn out;"
       },
-      "id": "e2a3efb6-0b42-4f1e-86cf-7e2ff5e3baf7",
+      "id": "7c7c61b2-4f5c-4c66-a0e0-eac5c6e0b6f7",
       "name": "Write Reminder Email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        18640,
-        6080
+        21392,
+        8272
       ],
       "notes": "Wording is unchanged from v3. Stage 4 wording is the final notice; the PMS uses it for the last stage only."
     },
@@ -44,13 +44,13 @@
           "bodyContentType": "text"
         }
       },
-      "id": "1c58b3d9-6edf-406b-b0c2-f355edd424c0",
+      "id": "5e8e69f4-fbf3-44e3-87c7-b0689a8e7179",
       "name": "Send Reminder Email",
       "type": "n8n-nodes-base.microsoftOutlook",
       "typeVersion": 2,
       "position": [
-        19120,
-        5980
+        21872,
+        8176
       ],
       "webhookId": "a4910bb8-ccca-454d-97ec-441f98dd86c3",
       "credentials": {
@@ -70,13 +70,13 @@
           "bodyContentType": "text"
         }
       },
-      "id": "e6da8c63-82ab-43d7-9e3d-d70194301b73",
+      "id": "0a68bfd9-c1c4-4610-afc1-efe047c4e1d0",
       "name": "Send Reminder Email (no CC)",
       "type": "n8n-nodes-base.microsoftOutlook",
       "typeVersion": 2,
       "position": [
-        19120,
-        6180
+        21872,
+        8384
       ],
       "webhookId": "06478c4d-0f34-45f1-a935-5a0989f39805",
       "credentials": {
@@ -112,25 +112,16 @@
         },
         "options": {}
       },
-      "id": "73828768-4ece-4e84-a96b-2d68ce6134f3",
+      "id": "91d595ea-d8f9-4573-9d42-f4941bd3fa83",
       "name": "Has CC?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        18880,
-        6080
+        21632,
+        8272
       ]
     },
     {
-      "id": "ea91d4b5-6f71-46e0-9498-e4237cdd2c50",
-      "name": "Get reminder plan (PMS)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        17920,
-        6080
-      ],
-      "notes": "Asks the PMS app which overdue invoices should get a reminder today. Returns nothing when automatic reminders are switched off, at weekends (if set) or when nothing is due. Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret (same as the COHO actions sync).",
       "parameters": {
         "url": "https://hinkleyhomes-property-management.replit.app/api/integrations/xero/reminders/plan",
         "authentication": "genericCredentialType",
@@ -139,32 +130,36 @@
           "timeout": 180000
         }
       },
-      "credentials": {}
+      "id": "657c7338-b88d-4dc9-af5f-a7d1de90ee17",
+      "name": "Get reminder plan (PMS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        20672,
+        8272
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FIwP4Ffez0ckSdW4",
+          "name": "Header Auth account 2"
+        }
+      },
+      "notes": "Asks the PMS app which overdue invoices should get a reminder today. Returns nothing when automatic reminders are switched off, at weekends (if set) or when nothing is due. Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret (same as the COHO actions sync)."
     },
     {
-      "id": "5de02a2d-64e7-4f5e-bf5c-cc5aabc2c7ef",
+      "parameters": {
+        "jsCode": "// One item per reminder the PMS says is due today (none when switched off).\nconst plan = $input.first().json || {};\nreturn (Array.isArray(plan.items) ? plan.items : []).map(item => ({ json: item }));"
+      },
+      "id": "80958f75-53e0-4b4c-861b-a954adf37a79",
       "name": "Plan items",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        18160,
-        6080
-      ],
-      "parameters": {
-        "jsCode": "// One item per reminder the PMS says is due today (none when switched off).\nconst plan = $input.first().json || {};\nreturn (Array.isArray(plan.items) ? plan.items : []).map(item => ({ json: item }));"
-      }
+        20912,
+        8272
+      ]
     },
     {
-      "id": "1e47b694-c22c-4e09-a5d6-e8cf9e86567a",
-      "name": "PMS: run action",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        17920,
-        5880
-      ],
-      "webhookId": "10923011-284c-4759-9bbb-efad211f31c6",
-      "notes": "Called by the PMS app for \"Send reminder now\", \"Re-send Xero invoice\" and \"Add note in Xero\". Header Auth credential: the same one as the Xero gateway webhook (X-Hinkley-Gateway-Key). The production URL of this node goes in the PMS secret N8N_REMINDER_WEBHOOK_URL.",
       "parameters": {
         "httpMethod": "POST",
         "path": "hinkley-xero-reminders",
@@ -172,30 +167,38 @@
         "responseMode": "lastNode",
         "responseData": "allEntries",
         "options": {}
-      }
+      },
+      "id": "58e1d458-a8d0-4b1d-ad80-ca62372c8e72",
+      "name": "PMS: run action",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        20672,
+        8080
+      ],
+      "webhookId": "10923011-284c-4759-9bbb-efad211f31c6",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7HiiUrr55bZW7aib",
+          "name": "Telleroo webhook token"
+        }
+      },
+      "notes": "Called by the PMS app for \"Send reminder now\", \"Re-send Xero invoice\" and \"Add note in Xero\". Header Auth credential: the same one as the Xero gateway webhook (X-Hinkley-Gateway-Key). The production URL of this node goes in the PMS secret N8N_REMINDER_WEBHOOK_URL."
     },
     {
-      "id": "f58fbba7-d1aa-4774-9a8c-d5d3a60077bd",
+      "parameters": {
+        "jsCode": "// Items sent by the PMS app ({ items: [...] }).\nconst body = $input.first().json.body || {};\nreturn (Array.isArray(body.items) ? body.items : []).map(item => ({ json: item }));"
+      },
+      "id": "f4c4b1e4-ad15-4435-93e9-57f968a3c1a6",
       "name": "Request items",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        18160,
-        5880
-      ],
-      "parameters": {
-        "jsCode": "// Items sent by the PMS app ({ items: [...] }).\nconst body = $input.first().json.body || {};\nreturn (Array.isArray(body.items) ? body.items : []).map(item => ({ json: item }));"
-      }
+        20912,
+        8080
+      ]
     },
     {
-      "id": "83850b57-07f9-435f-9c34-3ab868de3a8d",
-      "name": "Is reminder?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        18400,
-        5980
-      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -218,17 +221,17 @@
           "combinator": "and"
         },
         "options": {}
-      }
-    },
-    {
-      "id": "1934a471-5fd9-4270-bca3-ebb4fc428ca6",
-      "name": "Is Xero re-send?",
+      },
+      "id": "a86151a6-2cee-46c2-b34d-7fa160fc6f2a",
+      "name": "Is reminder?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        18640,
-        5760
-      ],
+        21152,
+        8176
+      ]
+    },
+    {
       "parameters": {
         "conditions": {
           "options": {
@@ -251,19 +254,17 @@
           "combinator": "and"
         },
         "options": {}
-      }
+      },
+      "id": "58c0d8d9-451a-4366-a4e8-fe8a181c79db",
+      "name": "Is Xero re-send?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        21392,
+        7952
+      ]
     },
     {
-      "id": "3b6365fe-1b8c-4f36-bf36-c885fab03b27",
-      "name": "Xero: email invoice",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        18880,
-        5680
-      ],
-      "notes": "Re-sends the invoice to the customer using Xero's own email template. Live mode only (the PMS refuses it in test mode).",
-      "onError": "continueRegularOutput",
       "parameters": {
         "method": "POST",
         "url": "=https://api.xero.com/api.xro/2.0/Invoices/{{ $json.invoiceId }}/Email",
@@ -295,24 +296,24 @@
           "timeout": 30000
         }
       },
+      "id": "60705af2-07ae-4a8d-88ed-a3cdbb9bb3e3",
+      "name": "Xero: email invoice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        21632,
+        7872
+      ],
       "credentials": {
         "xeroOAuth2Api": {
           "id": "GmvU6JDduIJTlUjR",
           "name": "Xero account"
         }
-      }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Re-sends the invoice to the customer using Xero's own email template. Live mode only (the PMS refuses it in test mode)."
     },
     {
-      "id": "ed8c3328-6d56-4bc3-9eb5-2452bf5c5518",
-      "name": "Xero: add history note",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        18880,
-        5840
-      ],
-      "notes": "Adds a note to the invoice's History & notes in Xero. Live mode only.",
-      "onError": "continueRegularOutput",
       "parameters": {
         "method": "PUT",
         "url": "=https://api.xero.com/api.xro/2.0/Invoices/{{ $json.invoiceId }}/History",
@@ -344,61 +345,63 @@
           "timeout": 30000
         }
       },
+      "id": "fb9f32b4-c59a-459b-9b85-e757a3d4873c",
+      "name": "Xero: add history note",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        21632,
+        8032
+      ],
       "credentials": {
         "xeroOAuth2Api": {
           "id": "GmvU6JDduIJTlUjR",
           "name": "Xero account"
         }
-      }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Adds a note to the invoice's History & notes in Xero. Live mode only."
     },
     {
-      "id": "e342bc7f-05f2-45da-a13a-c6562d56b5e9",
+      "parameters": {
+        "jsCode": "// Result for the PMS (logged against the invoice).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const response = items[i].json || {};\n  const src = $('Request items').itemMatching(i).json;\n  const code = Number(response.statusCode || 0);\n  const ok = code >= 200 && code < 300;\n  out.push({ json: {\n    action: src.action, kind: 'xero_resend', tenantId: src.tenantId, invoiceId: src.invoiceId,\n    invoiceNumber: src.invoiceNumber, customer: src.customer, stage: null, testMode: false,\n    sentTo: null, subject: null, status: ok ? 'sent' : 'failed',\n    detail: ok ? null : ('Xero returned HTTP ' + (code || '?') + ': ' + JSON.stringify(response.body || response.error || '').slice(0, 300)), requestedBy: src.requestedBy || null\n  } });\n}\nreturn out;"
+      },
+      "id": "bb7d3c20-e30a-42a9-8ce2-3935f82fc0aa",
       "name": "Re-send result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        19120,
-        5680
-      ],
-      "parameters": {
-        "jsCode": "// Result for the PMS (logged against the invoice).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const response = items[i].json || {};\n  const src = $('Request items').itemMatching(i).json;\n  const code = Number(response.statusCode || 0);\n  const ok = code >= 200 && code < 300;\n  out.push({ json: {\n    action: src.action, kind: 'xero_resend', tenantId: src.tenantId, invoiceId: src.invoiceId,\n    invoiceNumber: src.invoiceNumber, customer: src.customer, stage: null, testMode: false,\n    sentTo: null, subject: null, status: ok ? 'sent' : 'failed',\n    detail: ok ? null : ('Xero returned HTTP ' + (code || '?') + ': ' + JSON.stringify(response.body || response.error || '').slice(0, 300)), requestedBy: src.requestedBy || null\n  } });\n}\nreturn out;"
-      }
+        21872,
+        7872
+      ]
     },
     {
-      "id": "ea4cef5e-2081-4a35-9d40-a1a7069b167e",
+      "parameters": {
+        "jsCode": "// Result for the PMS (logged against the invoice).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const response = items[i].json || {};\n  const src = $('Request items').itemMatching(i).json;\n  const code = Number(response.statusCode || 0);\n  const ok = code >= 200 && code < 300;\n  out.push({ json: {\n    action: src.action, kind: 'xero_note', tenantId: src.tenantId, invoiceId: src.invoiceId,\n    invoiceNumber: src.invoiceNumber, customer: src.customer, stage: null, testMode: false,\n    sentTo: null, subject: null, status: ok ? 'sent' : 'failed',\n    detail: ok ? null : ('Xero returned HTTP ' + (code || '?') + ': ' + JSON.stringify(response.body || response.error || '').slice(0, 300)), requestedBy: src.requestedBy || null\n  } });\n}\nreturn out;"
+      },
+      "id": "1d7c1ce0-9205-4a85-b635-85f02317a2a3",
       "name": "Note result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        19120,
-        5840
-      ],
-      "parameters": {
-        "jsCode": "// Result for the PMS (logged against the invoice).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const response = items[i].json || {};\n  const src = $('Request items').itemMatching(i).json;\n  const code = Number(response.statusCode || 0);\n  const ok = code >= 200 && code < 300;\n  out.push({ json: {\n    action: src.action, kind: 'xero_note', tenantId: src.tenantId, invoiceId: src.invoiceId,\n    invoiceNumber: src.invoiceNumber, customer: src.customer, stage: null, testMode: false,\n    sentTo: null, subject: null, status: ok ? 'sent' : 'failed',\n    detail: ok ? null : ('Xero returned HTTP ' + (code || '?') + ': ' + JSON.stringify(response.body || response.error || '').slice(0, 300)), requestedBy: src.requestedBy || null\n  } });\n}\nreturn out;"
-      }
+        21872,
+        8032
+      ]
     },
     {
-      "id": "2774243e-4bf1-4d26-9ebf-e8acde16b1d7",
+      "parameters": {
+        "jsCode": "// Result for the PMS after each reminder email (sent, or failed with the reason).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const sent = items[i].json || {};\n  const w = $('Write Reminder Email').itemMatching(i).json;\n  const failed = Boolean(sent.error);\n  out.push({ json: {\n    action: 'reminder', kind: w.kind, tenantId: w.tenantId, invoiceId: w.invoiceId,\n    invoiceNumber: w.invoiceNumber, customer: w.customer, stage: w.stage, testMode: w.testMode === true,\n    sentTo: w.sendTo, subject: w.subject, status: failed ? 'failed' : 'sent',\n    detail: failed ? String(sent.error && sent.error.message ? sent.error.message : sent.error).slice(0, 500) : null,\n    requestedBy: w.requestedBy || null,\n    xeroHistoryNotes: w.xeroHistoryNotes === true,\n    note: 'Payment reminder (stage ' + w.stage + ') emailed to ' + w.sendTo + ' by Hinkley Homes PMS' + (w.requestedBy ? ' (sent by ' + w.requestedBy + ').' : ' (automatic).')\n  } });\n}\nreturn out;"
+      },
+      "id": "e1fe12d8-5b96-4a56-911e-fc3200a42409",
       "name": "Reminder result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        21120,
-        6080
-      ],
-      "parameters": {
-        "jsCode": "// Result for the PMS after each reminder email (sent, or failed with the reason).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const sent = items[i].json || {};\n  const w = $('Write Reminder Email').itemMatching(i).json;\n  const failed = Boolean(sent.error);\n  out.push({ json: {\n    action: 'reminder', kind: w.kind, tenantId: w.tenantId, invoiceId: w.invoiceId,\n    invoiceNumber: w.invoiceNumber, customer: w.customer, stage: w.stage, testMode: w.testMode === true,\n    sentTo: w.sendTo, subject: w.subject, status: failed ? 'failed' : 'sent',\n    detail: failed ? String(sent.error && sent.error.message ? sent.error.message : sent.error).slice(0, 500) : null,\n    requestedBy: w.requestedBy || null,\n    xeroHistoryNotes: w.xeroHistoryNotes === true,\n    note: 'Payment reminder (stage ' + w.stage + ') emailed to ' + w.sendTo + ' by Hinkley Homes PMS' + (w.requestedBy ? ' (sent by ' + w.requestedBy + ').' : ' (automatic).')\n  } });\n}\nreturn out;"
-      }
+        23872,
+        8272
+      ]
     },
     {
-      "id": "0cc4ed70-d3f5-4ef2-a713-276e30afa600",
-      "name": "Add Xero note?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        21360,
-        6080
-      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -431,19 +434,17 @@
           "combinator": "and"
         },
         "options": {}
-      }
+      },
+      "id": "b0539d9a-457b-4ec0-b576-fa36307dde8c",
+      "name": "Add Xero note?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        24112,
+        8272
+      ]
     },
     {
-      "id": "f7301e6f-8cf9-4f8c-af87-04775bf23cbe",
-      "name": "Xero: note the reminder",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        21600,
-        6000
-      ],
-      "notes": "Live reminders only, when \"Note reminders in Xero\" is ticked in the PMS settings.",
-      "onError": "continueRegularOutput",
       "parameters": {
         "method": "PUT",
         "url": "=https://api.xero.com/api.xro/2.0/Invoices/{{ $json.invoiceId }}/History",
@@ -475,36 +476,37 @@
           "timeout": 30000
         }
       },
+      "id": "51635574-04b0-46c4-a09c-068ed1fd312b",
+      "name": "Xero: note the reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        24352,
+        8192
+      ],
       "credentials": {
         "xeroOAuth2Api": {
           "id": "GmvU6JDduIJTlUjR",
           "name": "Xero account"
         }
-      }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Live reminders only, when \"Note reminders in Xero\" is ticked in the PMS settings."
     },
     {
-      "id": "1599c2c0-896d-46e4-880d-753d43595b49",
+      "parameters": {
+        "jsCode": "// Pass the reminder result on (the Xero note's own response isn't needed).\nreturn $input.all().map((_, i) => ({ json: $('Reminder result').itemMatching(i).json }));"
+      },
+      "id": "82e53520-6ed8-4508-aeec-85bd26a4aa77",
       "name": "Keep reminder result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        21840,
-        6000
-      ],
-      "parameters": {
-        "jsCode": "// Pass the reminder result on (the Xero note's own response isn't needed).\nreturn $input.all().map((_, i) => ({ json: $('Reminder result').itemMatching(i).json }));"
-      }
+        24592,
+        8192
+      ]
     },
     {
-      "id": "a887af48-3fcd-43b0-b20d-9905b9d56116",
-      "name": "Report result to PMS",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        22080,
-        5900
-      ],
-      "notes": "Logs each result against the invoice in the PMS (reminder log and follow-up history). Same Header Auth credential as \"Get reminder plan (PMS)\".",
       "parameters": {
         "method": "POST",
         "url": "https://hinkleyhomes-property-management.replit.app/api/integrations/xero/reminders/result",
@@ -517,7 +519,21 @@
           "timeout": 30000
         }
       },
-      "credentials": {}
+      "id": "2a12f3c5-6f27-4b45-ba5f-4b55f549cd51",
+      "name": "Report result to PMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        24832,
+        8096
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FIwP4Ffez0ckSdW4",
+          "name": "Header Auth account 2"
+        }
+      },
+      "notes": "Logs each result against the invoice in the PMS (reminder log and follow-up history). Same Header Auth credential as \"Get reminder plan (PMS)\"."
     },
     {
       "parameters": {
@@ -529,10 +545,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        27900,
-        11100
+        27504,
+        12608
       ],
-      "id": "2d6c8e0a-4b1f-4c3e-8a5d-6f7e9b0c1d2e",
+      "id": "81e76db4-a2cb-4ac0-86df-088f9a1b5314",
       "name": "About this workflow"
     }
   ],
@@ -776,82 +792,17 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": true
   },
-  "nodeGroups": [
-    {
-      "id": "dab0c43b-b0cc-4a06-99c2-19435d76f681",
-      "name": "Group 1",
-      "nodeIds": [
-        "7837fffc-6629-457f-b3a7-a56ca4cd8a9c",
-        "150efe0b-a93b-4751-a284-2f8cbf06bc9d",
-        "04286ea5-1782-4723-bd2b-0914d97ea6b8",
-        "3ebf53f1-3a0c-45f0-a502-f5bc65c317de",
-        "e723a5ab-3c1f-47e2-821e-c26a8ede155f"
-      ]
-    },
-    {
-      "id": "66517fd9-8b4b-454c-b9b1-68c3d4a75d00",
-      "name": "Pull 12-month bill history",
-      "nodeIds": [
-        "c9e645de-e0f1-4fa1-8c36-ca118990f1f3",
-        "34dfceaf-9468-4d04-9b05-1190f4aafe7b",
-        "721b3db0-4a4a-4e5d-8696-36e6c9afa447",
-        "adcf85e5-99a9-4388-b96d-a587b3b54d10",
-        "6f89361a-7fca-4b96-92a3-1f388380e3c8"
-      ],
-      "description": "Paid and unpaid supplier bills from the last 12 months across all five organisations, used as the spending baseline"
-    },
-    {
-      "id": "433d6a57-de88-41b6-9b9d-b00b722be074",
-      "name": "Alert on unusual cost rises",
-      "nodeIds": [
-        "fc95305f-b2a3-4cd6-af5f-aa9666871396",
-        "4275cf99-fe87-40a4-a5b2-e34860553af2",
-        "2ee36f0d-4338-4fee-97be-bc87ef550c08",
-        "2f2ee057-db58-4c5e-bb18-7a3eaf0e35ce",
-        "b7f05b4a-7495-4590-8d8c-bdbc683aaa07",
-        "002a5d79-5998-45ab-b799-b21e9139aaef"
-      ],
-      "description": "Compares last month and new recurring bills with normal spend, emails you each new rise once and records it"
-    },
-    {
-      "id": "a8388138-881a-49d8-bf18-f97b4ae5ef0b",
-      "name": "Payment reminders (controlled by the PMS app)",
-      "nodeIds": [
-        "ea91d4b5-6f71-46e0-9498-e4237cdd2c50",
-        "5de02a2d-64e7-4f5e-bf5c-cc5aabc2c7ef",
-        "1e47b694-c22c-4e09-a5d6-e8cf9e86567a",
-        "f58fbba7-d1aa-4774-9a8c-d5d3a60077bd",
-        "83850b57-07f9-435f-9c34-3ab868de3a8d",
-        "e2a3efb6-0b42-4f1e-86cf-7e2ff5e3baf7",
-        "73828768-4ece-4e84-a96b-2d68ce6134f3",
-        "1c58b3d9-6edf-406b-b0c2-f355edd424c0",
-        "e6da8c63-82ab-43d7-9e3d-d70194301b73",
-        "2774243e-4bf1-4d26-9ebf-e8acde16b1d7",
-        "0cc4ed70-d3f5-4ef2-a713-276e30afa600",
-        "f7301e6f-8cf9-4f8c-af87-04775bf23cbe",
-        "1599c2c0-896d-46e4-880d-753d43595b49",
-        "a887af48-3fcd-43b0-b20d-9905b9d56116"
-      ],
-      "description": "The PMS app decides who gets a reminder (on/off, test or live, one stage at a time, skips paused, disputed, promised, recently chased and Xero-reminded invoices). This branch writes and sends the email and reports back."
-    },
-    {
-      "id": "e967bcbe-006e-480a-98f8-3fcc7d496fba",
-      "name": "Xero actions on request",
-      "nodeIds": [
-        "1934a471-5fd9-4270-bca3-ebb4fc428ca6",
-        "3b6365fe-1b8c-4f36-bf36-c885fab03b27",
-        "ed8c3328-6d56-4bc3-9eb5-2452bf5c5518",
-        "e342bc7f-05f2-45da-a13a-c6562d56b5e9",
-        "ea4cef5e-2081-4a35-9d40-a1a7069b167e"
-      ],
-      "description": "Re-send an invoice from Xero, or add a note to its History, when a person asks from the PMS Invoices page (live mode only)."
-    }
-  ],
+  "versionId": "b8431267-1544-4813-8081-40771bcd9629",
+  "meta": {
+    "instanceId": "91160feec6de89661e3d4b7dd60fed55faacbf586fcb319fc3311f46435572a0"
+  },
+  "nodeGroups": [],
+  "id": "vt8XkWLwLUWd2Rut",
   "tags": []
 }

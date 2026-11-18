@@ -429,6 +429,9 @@ export const invoiceIntakeChecksTable = pgTable(
     bounceKey: text("bounce_key"),
     // { issues: [...per document], review: [...] }, as the workflow builds it.
     issues: jsonb("issues").$type<Record<string, unknown>>().notNull().default({}),
+    // "pms" when the app's backup check (lib/intake-fallback.ts) checked the email
+    // because n8n had not; null when n8n did.
+    checkedBy: text("checked_by"),
   },
   (t) => [
     uniqueIndex("invoice_intake_checks_message_uq").on(t.internetMessageId),

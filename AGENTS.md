@@ -14,14 +14,20 @@
 - **Replit DB / PostgreSQL:** Operates as the operational source of truth for properties, room mapping, exception queues, and generated client management reports.
 - **Zero-API Email Ingestion:** Process unformatted supplier/utility e-receipts (Amazon, Argos, British Gas, Octopus) via n8n IMAP listeners + LLM parsing nodes directly into structured JSON.
 
-## 4. Short-Stay Integrations (Hinkley Homes Stays)
+## 4. HMO Lettings (COHO)
+- **COHO is the source of truth** for HMO tenancies, rent due, arrears and the rent bank feed. The app reads it server-side with `COHO_API_KEY` and only writes actions and maintenance updates.
+- **Rent is matched in COHO, not in the app.** COHO's API can't link a bank line to rent. Never record or assign rent payments through the API to stand in for a match: the bank line stays Unmatched, and reconciling it later in COHO counts the rent twice. Staff reconcile in COHO under Transactions → Reconcile transactions.
+- **The app suggests matches and tells staff in COHO.** A suggestion is an unmatched bank line for exactly an overdue tenancy's outstanding rent, received from a week before it was due. Each one is raised as a COHO action and completed once COHO shows it matched. That happens hourly, at most 20 at a time, and never twice for the same bank line and tenancy.
+- **Links for staff go to https://coho.life/.** The old `app.coho.life` address is unreachable.
+
+## 5. Short-Stay Integrations (Hinkley Homes Stays)
 - **Smoobu is the source of truth** for serviced accommodation. PriceLabs sets prices and availability through it, and ChargeAutomation, RentalNinja and the OTAs connect to it.
 - **Read-only towards Smoobu and ChargeAutomation.** The app never writes bookings, rates, availability or guest messages to Smoobu. It never charges, refunds, releases deposits or creates bookings in ChargeAutomation. Staff reply to guests and act on payments in those systems.
 - **Credentials live in n8n.** The app reaches both through n8n gateway webhooks that allow only listed read paths. Smoobu calls are signed with its HMAC API key, since the old key stopped on 31 Oct 2026. The one exception is Smoobu availability and prices, which the app reads directly with the same signed key, read-only.
 - **Webhooks are re-read, not trusted.** Events arrive through n8n. The app re-reads the booking from the source before changing anything.
 - **Privacy.** Keep only guest names. No guest emails, phone numbers or message history are stored.
 
-## 5. Tech Stack Standards (Replit)
+## 6. Tech Stack Standards (Replit)
 - **Database:** PostgreSQL via `@replit/database` or standard Node.js `pg`/Drizzle ORM.
 - **API & Workflows:** Expose clean Webhook endpoints for n8n execution triggers and WhatsApp purchase bot responses.
-- **Security:** Standardize environment variables (`process.env`) for Xero, WhatsApp, and n8n credentials. Enforce strict audit logging for supplier bank details and payment batch previews.
+- **Security:** Standardize environment variables (`process.env`) for Xero, WhatsApp, and n8n credentials. Enforce strict audit logging for supplier bank details and payment batch previews, and for every action the app raises or completes in COHO.

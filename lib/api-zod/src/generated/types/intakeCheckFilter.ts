@@ -13,6 +13,7 @@ export const IntakeCheckFilter = {
   invoices: 'invoices',
   pass: 'pass',
   bounce: 'bounce',
+  fixed: 'fixed',
   review: 'review',
   not_invoice: 'not_invoice',
   all: 'all',

@@ -5,16 +5,15 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "hinkley-chargeautomation-REPLACE-WITH-RANDOM-SECRET",
-        "responseMode": "onReceived",
         "options": {}
       },
-      "id": "6f7a8b9c-0d1e-4f2a-9b3c-5d6e7f8a9b0c",
+      "id": "df2eea96-1d06-44ec-8046-ae35bd12c92a",
       "name": "ChargeAutomation webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        0,
-        0
+        1216,
+        1232
       ],
       "webhookId": "7a8b9c0d-1e2f-4a3b-8c4d-6e7f8a9b0c1d",
       "notes": "ChargeAutomation doesn't sign its webhooks, so the path carries a secret. Replace REPLACE-WITH-RANDOM-SECRET with 32+ random characters, publish, then paste the production URL into ChargeAutomation: Integrations > Webhooks, for each event listed in the sticky note. Keep that URL private."
@@ -32,17 +31,23 @@
           "timeout": 60000
         }
       },
-      "id": "8b9c0d1e-2f3a-4b4c-9d5e-7f8a9b0c1d2e",
+      "id": "3bc4c999-df70-4115-b4b4-aafb2adb3bce",
       "name": "Forward event to PMS",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        240,
-        0
+        1456,
+        1232
       ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FIwP4Ffez0ckSdW4",
+          "name": "Header Auth account 2"
+        }
+      },
       "notes": "Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret (the same one the Smoobu sync uses)."
     },
     {
@@ -52,16 +57,17 @@
         "width": 440,
         "color": 5
       },
-      "id": "9c0d1e2f-3a4b-4c5d-8e6f-8a9b0c1d2e3f",
+      "id": "8f4cc55c-9c48-4022-b4ae-e3b8349e02eb",
       "name": "Setup notes",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        0,
-        200
+        1216,
+        1440
       ]
     }
   ],
+  "pinData": {},
   "connections": {
     "ChargeAutomation webhook": {
       "main": [
@@ -75,8 +81,17 @@
       ]
     }
   },
+  "active": true,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
   },
-  "pinData": {}
+  "versionId": "7078cc42-2a6c-470e-a819-e4b762c20ef4",
+  "meta": {
+    "instanceId": "91160feec6de89661e3d4b7dd60fed55faacbf586fcb319fc3311f46435572a0"
+  },
+  "nodeGroups": [],
+  "id": "insPcUTw7ncbCk00",
+  "tags": []
 }

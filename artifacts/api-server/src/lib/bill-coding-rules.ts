@@ -28,7 +28,7 @@ const stripDate = (s: unknown) => String(s ?? "").replace(/^\s*\d{1,2}\s*[/.-]{1
 const num = (v: unknown): number | null => (v === null || v === undefined || v === "" || Number.isNaN(Number(v)) ? null : Number(v));
 const r2 = (v: number) => Math.round(v * 100) / 100;
 const money = (n: number) => `£${Number(n).toFixed(2)}`;
-const containsSeq = (hay: string[], needle: string[]) => {
+export const containsSeq = (hay: string[], needle: string[]) => {
   if (!needle.length) return false;
   for (let i = 0; i + needle.length <= hay.length; i++) {
     let ok = true;

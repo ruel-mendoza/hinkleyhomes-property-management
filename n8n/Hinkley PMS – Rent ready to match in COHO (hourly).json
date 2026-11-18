@@ -1,0 +1,78 @@
+{
+  "name": "Hinkley PMS – Rent ready to match in COHO (hourly)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "15 7-19 * * 1-6"
+            }
+          ]
+        }
+      },
+      "id": "7063be50-2809-44bc-b49c-88484aafaa48",
+      "name": "Hourly 7am-7pm Mon-Sat",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        544,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hinkleyhomes-property-management.replit.app/api/integrations/coho/rent-match-actions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "090d1756-da68-4c54-b130-4ff6c2125be6",
+      "name": "Raise COHO actions for rent to match",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        784,
+        240
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FIwP4Ffez0ckSdW4",
+          "name": "Header Auth account 2"
+        }
+      },
+      "notes": "Calls the PMS API, which raises a COHO action for each bank payment that looks like overdue rent (Rent bank feed → Possible rent) and completes the ones COHO now shows as matched. Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Hourly 7am-7pm Mon-Sat": {
+      "main": [
+        [
+          {
+            "node": "Raise COHO actions for rent to match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "88e32adc-8153-4686-b42a-5eaaabcf5904",
+  "meta": {
+    "instanceId": "91160feec6de89661e3d4b7dd60fed55faacbf586fcb319fc3311f46435572a0"
+  },
+  "nodeGroups": [],
+  "id": "pAn20uQEfjNozwm2",
+  "tags": []
+}

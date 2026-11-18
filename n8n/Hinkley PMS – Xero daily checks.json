@@ -1,0 +1,96 @@
+{
+  "name": "Hinkley PMS – Xero daily checks",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "9a01bf28-e0bf-4be4-abd2-3958421310ac",
+      "name": "Every day at 8am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        752,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hinkleyhomes-property-management.replit.app/api/integrations/xero/daily-checks",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "1bb9c354-a022-49ff-8156-7da5e8075141",
+      "name": "Run Xero daily checks (PMS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        992,
+        768
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FIwP4Ffez0ckSdW4",
+          "name": "Header Auth account 2"
+        }
+      },
+      "notes": "The PMS reads Xero (through the Xero gateway workflow), ranks overdue invoices and bills, checks supplier bill prices and bank details, checks monthly spend trends, and saves everything in Supabase. Results are on the app's Finance checks page; nothing is emailed. Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret (the same credential as the COHO actions sync). The first run reads 13 months of bills and can take a few minutes."
+    },
+    {
+      "parameters": {
+        "content": "## Xero daily checks\nReplaces **Xero Payable - Receivable Overdue Detection**. Deactivate that workflow once this one is active.\n\nThis workflow only starts the checks. The PMS does the work and keeps the results:\n- overdue ranking (value, age, risk, priority) and what is new or more urgent\n- bill price and bank-detail alerts\n- supplier and expense-category spend trends\n\nNo Xero nodes, no OneDrive CSV files, no emails. See the app's **Finance checks** page.\nCustomer payment reminders stay in the **Xero overdue reminders** workflow, controlled from the Invoices page.",
+        "height": 240,
+        "width": 520,
+        "color": 5
+      },
+      "id": "6b6eaad5-e288-4e49-9bc5-1f6e41d6b5a4",
+      "name": "About this workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        704,
+        496
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every day at 8am": {
+      "main": [
+        [
+          {
+            "node": "Run Xero daily checks (PMS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "72a23bcf-fab5-47e4-8520-a460fd43c36d",
+  "meta": {
+    "instanceId": "91160feec6de89661e3d4b7dd60fed55faacbf586fcb319fc3311f46435572a0"
+  },
+  "nodeGroups": [],
+  "id": "Ex3AoXY4IT4LRwBb",
+  "tags": []
+}

@@ -3,13 +3,17 @@ import { desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { auditLogTable, getDb, invoiceIntakeChecksTable, invoiceIntakeReviewsTable, isDatabaseConfigured } from "@workspace/db";
 import {
   ClearNotInvoiceIntakeChecksResponse,
+  GetIntakeFallbackStatusResponse,
   ListIntakeChecksQueryParams,
   ListIntakeChecksResponse,
   ListIntakeReviewsResponse,
   ResolveIntakeReviewBody,
   ResolveIntakeReviewParams,
   ResolveIntakeReviewResponse,
+  RunIntakeFallbackResponse,
 } from "@workspace/api-zod";
+import { intakeFallbackStatus, runIntakeFallback } from "../lib/intake-fallback";
+import { aliasFixesFor, loadAliasLookup } from "../lib/intake-alias-fixes";
 import { clearResolvedIntakeReviews, intakeFilesFor, intakeReviewView, removeIntakeReview } from "../lib/intake-reviews";
 
 // Invoices page, "Inbox" and "For review" tabs: what the n8n intake check made
@@ -48,16 +52,25 @@ router.get("/invoices/intake-checks", async (req, res): Promise<void> => {
   const query = ListIntakeChecksQueryParams.safeParse(req.query);
   const verdict = query.success ? query.data.verdict ?? "invoices" : "invoices";
   const t = invoiceIntakeChecksTable;
-  const where = verdict === "all" ? undefined : verdict === "invoices" ? ne(t.verdict, "not_invoice") : eq(t.verdict, verdict);
+  // "fixed" is a bounce whose every problem is now covered by an alias
+  // (lib/intake-alias-fixes.ts); "bounce" lists only the ones still waiting.
+  const stored = verdict === "fixed" ? "bounce" : verdict;
+  const where = stored === "all" ? undefined : stored === "invoices" ? ne(t.verdict, "not_invoice") : eq(t.verdict, stored);
   try {
-    const [rows, counted] = await Promise.all([
+    const [found, counted, bounces, lookup] = await Promise.all([
       getDb().select().from(t).where(where).orderBy(desc(t.processedAt)).limit(500),
       getDb().select({ verdict: t.verdict, n: sql<number>`count(*)::int` }).from(t).where(inArray(t.verdict, [...VERDICTS])).groupBy(t.verdict),
+      getDb().select({ verdict: t.verdict, billTo: t.billTo, issues: t.issues }).from(t).where(eq(t.verdict, "bounce")),
+      loadAliasLookup(),
     ]);
-    const files = await intakeFilesFor(rows.map((row) => row.internetMessageId));
-    const counts = Object.fromEntries(VERDICTS.map((key) => [key, counted.find((row) => row.verdict === key)?.n ?? 0]));
+    const withFixes = found.map((row) => ({ row, ...aliasFixesFor(row, lookup) }));
+    const rows = verdict === "fixed" ? withFixes.filter((item) => item.fixedByAlias) : verdict === "bounce" ? withFixes.filter((item) => !item.fixedByAlias) : withFixes;
+    const files = await intakeFilesFor(rows.map(({ row }) => row.internetMessageId));
+    const fixed = bounces.filter((row) => aliasFixesFor(row, lookup).fixedByAlias).length;
+    const counts = { ...Object.fromEntries(VERDICTS.map((key) => [key, counted.find((row) => row.verdict === key)?.n ?? 0])), fixed } as Record<string, number>;
+    counts.bounce = Math.max(0, counts.bounce - fixed);
     res.json(ListIntakeChecksResponse.parse({
-      items: rows.map((row) => ({
+      items: rows.map(({ row, aliasFixes, fixedByAlias }) => ({
         id: row.id,
         processedAt: row.processedAt.toISOString(),
         senderEmail: row.senderEmail,
@@ -70,7 +83,10 @@ router.get("/invoices/intake-checks", async (req, res): Promise<void> => {
         verdict: row.verdict,
         issueCodes: row.issueCodes,
         action: row.action,
+        checkedBy: row.checkedBy,
         files: files.get(row.internetMessageId) ?? [],
+        aliasFixes,
+        fixedByAlias,
       })),
       counts,
     }));
@@ -143,6 +159,41 @@ router.post("/invoices/intake-reviews/:id/resolve", async (req, res): Promise<vo
     return;
   }
   res.json(ResolveIntakeReviewResponse.parse({ id: params.data.id }));
+});
+
+// Backup for the n8n intake check (lib/intake-fallback.ts): its status, and a
+// manual run for emails n8n has not dealt with. Runs are audit-logged.
+router.get("/invoices/intake-fallback", async (req, res): Promise<void> => {
+  if (!isDatabaseConfigured()) {
+    res.status(503).json({ error: "The database is not configured." });
+    return;
+  }
+  try {
+    res.json(GetIntakeFallbackStatusResponse.parse(await intakeFallbackStatus()));
+  } catch (error) {
+    req.log.error({ err: error }, "Backup intake check status could not be read");
+    res.status(503).json({ error: "The backup check isn't set up yet: run the database push." });
+  }
+});
+
+router.post("/invoices/intake-fallback/run", async (req, res): Promise<void> => {
+  if (!isDatabaseConfigured()) {
+    res.status(503).json({ error: "The database is not configured." });
+    return;
+  }
+  const result = await runIntakeFallback("manual");
+  const staff = res.locals.staff as { userId?: string; email?: string } | undefined;
+  await getDb().insert(auditLogTable).values({
+    actorEmail: staff?.email ?? null,
+    actorUserId: staff?.userId ?? null,
+    action: "intake_fallback.run",
+    tableName: "invoice_intake_checks",
+    recordId: "accounts_inbox",
+    after: { status: result.status, waiting: result.waiting, checked: result.checked, verdicts: result.verdicts, error: result.error },
+    requestId: req.id !== undefined && req.id !== null ? String(req.id) : null,
+    ipAddress: req.ip ?? null,
+  }).catch((error: unknown) => req.log.warn({ err: error }, "Backup intake run could not be audit-logged"));
+  res.json(RunIntakeFallbackResponse.parse(result));
 });
 
 export default router;

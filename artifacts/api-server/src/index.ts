@@ -2,6 +2,8 @@ import app from "./app";
 import { readChargeAutomationGatewayEnv, cohoApiKey, readXeroEnv, readXeroGatewayEnv, smoobuMode } from "./lib/integrations-env";
 import { smoobuDirectMissing } from "./lib/smoobu-api";
 import { logger } from "./lib/logger";
+import { startIntakeFallbackTimer } from "./lib/intake-fallback";
+import { readIntakeFallbackEnv } from "./lib/integrations-env";
 
 const rawPort = process.env["PORT"];
 
@@ -27,6 +29,7 @@ app.listen(port, (err) => {
 
   const xero = readXeroEnv();
   const xeroGateway = readXeroGatewayEnv();
+  const intakeBackup = readIntakeFallbackEnv();
   logger.info(
     {
       coho: cohoApiKey() ? "configured" : "unconfigured",
@@ -35,9 +38,11 @@ app.listen(port, (err) => {
       smoobuAvailability: smoobuDirectMissing().length ? `missing ${smoobuDirectMissing().join(", ")}` : "signed key",
       xeroGateway: xeroGateway.status,
       xeroDirect: xero.status,
+      intakeBackup: intakeBackup.missing.length ? `missing ${intakeBackup.missing.join(", ")}` : intakeBackup.mode,
     },
     "Integration credentials",
   );
+  startIntakeFallbackTimer();
   if (xeroGateway.status === "invalid") {
     logger.warn({ problems: xeroGateway.problems }, "n8n Xero gateway settings are incomplete; gateway stays disabled");
   }

@@ -32,13 +32,13 @@
           "downloadAttachments": true
         }
       },
-      "id": "e13e8266-7c6c-4cee-96eb-0885b305c981",
+      "id": "49ae58fb-0ea0-4b96-a8e2-552619407285",
       "name": "Outlook trigger (accounts inbox)",
       "type": "n8n-nodes-base.microsoftOutlookTrigger",
       "typeVersion": 1,
       "position": [
-        68960,
-        30576
+        137136,
+        60272
       ],
       "credentials": {
         "microsoftOutlookOAuth2Api": {
@@ -200,13 +200,13 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "c55701be-1b47-475b-8ba1-de2a0debe105",
+      "id": "8e3bfe02-fc31-48f6-8d4c-945b47692231",
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        69456,
-        30640
+        137632,
+        60336
       ]
     },
     {
@@ -244,26 +244,26 @@
           "ignoreCase": true
         }
       },
-      "id": "db83389a-ee0c-491a-8c8b-e522d8955bb3",
+      "id": "2ea2b5c7-3d7e-429a-b775-511d1b82421d",
       "name": "Ignore emails sent from accounts inbox",
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
       "position": [
-        69616,
-        30640
+        137792,
+        60336
       ]
     },
     {
       "parameters": {
         "jsCode": "// One output item per usable attachment (PDF or image), carrying email metadata.\n// If the email has no PDF attachment, the email body (HTML or plain text) is also sent for reading.\nconst OK = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];\nconst ODT = 'application/vnd.oasis.opendocument.text';\nconst DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';\nconst OFFICE = [ODT, DOCX];\n// Outlook often labels attachments as application/octet-stream: fall back to the file extension.\nconst EXT = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', odt: ODT, docx: DOCX };\nconst MIN_BODY_CHARS = 150;\nfunction bodyToText(body) {\n  if (!body) return '';\n  const raw = typeof body === 'string' ? body : (body.content || '');\n  const isHtml = typeof body === 'object' ? String(body.contentType || '').toLowerCase() === 'html' : /<[a-z][^>]*>/i.test(raw);\n  if (!isHtml) return raw.trim();\n  return raw\n    .replace(/<(script|style|head)[^>]*>[^]*?<\\/\\1>/gi, ' ')\n    .replace(/<br[^>]*>/gi, '\\n')\n    .replace(/<\\/(p|div|tr|li|h[1-6]|table)>/gi, '\\n')\n    .replace(/<\\/(td|th)>/gi, ' | ')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')\n    .replace(/&pound;/gi, '£').replace(/&euro;/gi, '€').replace(/&quot;/gi, '\"').replace(/&#39;|&apos;/gi, \"'\")\n    .replace(/&#(\\d+);/g, (m, n) => String.fromCharCode(Number(n)))\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/ *\\n[ \\n]*/g, '\\n')\n    .trim();\n}\nconst out = [];\nconst all = $input.all();\nfor (let idx = 0; idx < all.length; idx++) {\n  const item = all[idx];\n  const j = item.json || {};\n  const ea = (j.from && j.from.emailAddress) ? j.from.emailAddress : null;\n  const fromRaw = ea ? (ea.name ? ea.name + ' <' + (ea.address || '') + '>' : (ea.address || '')) : ((j.from && j.from.text) ? j.from.text : (j.from ?? ''));\n  const fromStr = typeof fromRaw === 'string' ? fromRaw : JSON.stringify(fromRaw);\n  const m = fromStr.match(/[\\w.+-]+@[\\w.-]+\\.\\w+/);\n  const meta = {\n    from: fromStr,\n    from_email: m ? m[0] : '',\n    subject: j.subject ?? '',\n    received_at: j.receivedDateTime ?? j.date ?? '',\n    message_id: j.internetMessageId ?? j.messageId ?? (j.headers ? j.headers['message-id'] : '') ?? '',\n    outlook_message_id: j.id ?? '',\n    outlook_categories: Array.isArray(j.categories) ? j.categories : []\n  };\n  // Forwarded by the accounts inbox: use the original sender from the forwarded header.\n  const accountsUpn = String(j.accounts_mailbox_upn || '').trim().toLowerCase();\n  if (accountsUpn && meta.from_email.toLowerCase() === accountsUpn) {\n    const fwdText = bodyToText(j.body);\n    const re = /From:\\s*([^\\n<]*?)\\s*<([\\w.+-]+@[\\w.-]+\\.\\w+)>/gi;\n    let mm;\n    while ((mm = re.exec(fwdText)) !== null) {\n      if (mm[2].toLowerCase() !== accountsUpn) {\n        meta.forwarded_by = meta.from;\n        meta.from = (mm[1] ? mm[1].trim() + ' ' : '') + '<' + mm[2] + '>';\n        meta.from_email = mm[2];\n        break;\n      }\n    }\n  }\n  let found = 0;\n  let hasPdf = false;\n  for (const [key, bin] of Object.entries(item.binary || {})) {\n    const ext = String(bin.fileName || '').split('.').pop().toLowerCase();\n    let mime = String(bin.mimeType || '').toLowerCase();\n    if (!OK.includes(mime) && !OFFICE.includes(mime) && EXT[ext]) mime = EXT[ext];\n    if (!OK.includes(mime) && !OFFICE.includes(mime)) continue;\n    // Skip signature and logo images: tiny pictures and typical decorative file names are never invoices.\n    if (mime.indexOf('image/') === 0) {\n      const sm = /([\\d.]+)\\s*(bytes|kb|mb)/i.exec(String(bin.fileSize || ''));\n      const kb = sm ? (/mb/i.test(sm[2]) ? parseFloat(sm[1]) * 1024 : /kb/i.test(sm[2]) ? parseFloat(sm[1]) : parseFloat(sm[1]) / 1024) : null;\n      if ((kb !== null && kb < 15) || /^(image\\d{3}|outlook-|logo|signature|banner|icon|facebook|linkedin|twitter|instagram)/i.test(String(bin.fileName || ''))) continue;\n    }\n    const isOffice = OFFICE.includes(mime);\n    // Word/ODT files are read as text; keep the original so the invoice file itself can be saved.\n    const original = isOffice ? (await this.helpers.getBinaryDataBuffer(idx, key)).toString('base64') : undefined;\n    found++;\n    if (mime === 'application/pdf' || isOffice) hasPdf = true;\n    out.push({\n      json: { ...meta, source_type: isOffice ? 'office_document' : 'attachment', filename: bin.fileName || key, mime_type: mime, has_attachment: true, has_document: true, ...(isOffice ? { original_base64: original } : {}) },\n      // Word/ODT files are zip archives; mark them as zip so they can be unpacked to text.\n      binary: { data: isOffice ? { ...bin, mimeType: mime, fileExtension: 'zip' } : { ...bin, mimeType: mime } },\n      pairedItem: { item: idx }\n    });\n  }\n  const bodyText = bodyToText(j.body).slice(0, 60000);\n  if (!hasPdf && bodyText.length >= MIN_BODY_CHARS) {\n    found++;\n    out.push({\n      json: { ...meta, source_type: 'email_body', filename: 'email-body.txt', mime_type: 'text/plain', body_text: bodyText, has_attachment: false, has_document: true },\n      pairedItem: { item: idx }\n    });\n  }\n  if (!found) out.push({ json: { ...meta, has_attachment: false, has_document: false }, pairedItem: { item: idx } });\n}\nreturn out;"
       },
-      "id": "904a24b2-14bd-4bdf-b202-81fe2fedf6a1",
+      "id": "6838f210-aaf8-4f7e-8c45-413d60765042",
       "name": "Split attachments",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        70192,
-        30640
+        138368,
+        60336
       ]
     },
     {
@@ -291,13 +291,13 @@
         },
         "options": {}
       },
-      "id": "359f3af9-5afe-4d1e-b626-cafbb448fb7f",
+      "id": "35ea8b6f-ccbf-4e03-b416-b4ff103e064e",
       "name": "Has attachment?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        70352,
-        30640
+        138528,
+        60336
       ]
     },
     {
@@ -323,50 +323,50 @@
         },
         "options": {}
       },
-      "id": "6b719a32-86af-4a0c-8a60-359dd6171738",
+      "id": "69542bf4-f6ce-4b89-b7a9-758128dca604",
       "name": "Word or ODT document?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        70608,
-        30624
+        138784,
+        60320
       ]
     },
     {
       "parameters": {},
-      "id": "a9a60f8c-beae-4f0a-85a1-80084e7c76bc",
+      "id": "f87cf6e6-c031-4447-95ce-3176bed8b4e0",
       "name": "Unpack Word/ODT file",
       "type": "n8n-nodes-base.compression",
       "typeVersion": 1.1,
       "position": [
-        70832,
-        30608
+        139008,
+        60304
       ]
     },
     {
       "parameters": {
         "jsCode": "// Pull the readable text out of an unpacked .odt (content.xml) or .docx (word/document.xml).\nconst NL = String.fromCharCode(10);\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const src = $('Word or ODT document?').itemMatching(i);\n  const bins = items[i].binary || {};\n  let xml = '';\n  for (const key of Object.keys(bins)) {\n    const name = String(bins[key].fileName || key).toLowerCase();\n    if (name.endsWith('content.xml') || name.endsWith('document.xml')) {\n      const buf = await this.helpers.getBinaryDataBuffer(i, key);\n      xml = buf.toString('utf8');\n      break;\n    }\n  }\n  const text = xml\n    .replace(new RegExp('<(text:tab|w:tab)[^>]*>', 'g'), ' ')\n    .replace(new RegExp('<(text:line-break|w:br)[^>]*>', 'g'), NL)\n    .replace(new RegExp('</(text:p|text:h|w:p)>', 'g'), NL)\n    .replace(new RegExp('</(table:table-cell|w:tc)>', 'g'), ' | ')\n    .replace(new RegExp('<[^>]+>', 'g'), '')\n    .replace(new RegExp('&lt;', 'g'), '<').replace(new RegExp('&gt;', 'g'), '>')\n    .replace(new RegExp('&quot;', 'g'), '\"').replace(new RegExp('&apos;', 'g'), \"'\")\n    .replace(new RegExp('&amp;', 'g'), '&')\n    .trim()\n    .slice(0, 60000);\n  out.push({\n    json: { ...src.json, source_type: 'document_text', body_text: text, document_text_found: text.length > 0 },\n    pairedItem: { item: i }\n  });\n}\nreturn out;"
       },
-      "id": "8a32932e-c5bd-45f7-b9cf-cfb8fda89d3a",
+      "id": "7c902884-eb38-4ebc-9eff-84d4b69058d6",
       "name": "Word/ODT to text",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        71008,
-        30608
+        139184,
+        60304
       ]
     },
     {
       "parameters": {
         "jsCode": "// Build the Anthropic Messages API request for each attachment.\nconst cfg = $('Config').first().json;\nconst SYSTEM = \"You extract data from supplier invoices for a UK property management business. Return ONLY one JSON object. No markdown fences, no commentary.\\n\\nRules:\\n- Copy values exactly as printed. Never guess or infer a missing value; use null instead.\\n- Do NOT decide whether an invoice should be paid or approved.\\n- Do NOT work out which property a line belongs to. Copy any property reference (address, house name, flat or unit) exactly as written next to the line, or at invoice level if it is given only once.\\n- Dates as YYYY-MM-DD. Amounts as plain numbers (no currency symbols). Currency as a 3-letter code.\\n- suggested_category must be one of: Cleaning, Maintenance and repairs, Compliance and safety, Pest control, Waste removal, Furniture and setup, Utilities and broadband, Build and refurbishment, Professional fees, Software and subscriptions, Other.\\n- suggested_job_type must be one of: Changeover, Midstay, Deep clean, Call-out, Other, or null if unclear.\\n- Invoice decision (be explicit): set is_invoice to true ONLY for a supplier invoice or a supplier credit note. Set document_type to \\\"invoice\\\" for an invoice (including a VAT invoice or pro-forma that requests payment) and \\\"credit_note\\\" for a credit note (a document titled credit note, credit memo or credit, or one that reduces or refunds an earlier invoice).\\n- For a credit note: put the credit note number in invoice_number and its date in invoice_date, copy amounts as positive numbers exactly as printed (do not add minus signs), and put the number of the invoice it credits in credited_invoice_reference (null if not shown).\\n- Everything else (a logo, signature image, quote, estimate, statement of account, payment receipt or remittance, order confirmation, reminder letter, or other) is NOT an invoice: set is_invoice to false, set document_type to quote, statement, receipt or other, and fill only document_type and legibility_confidence.\\n- If you cannot tell whether the document is an invoice or credit note, set is_invoice to false and explain why in extraction_notes.\\n\\nSchema:\\n{\\n  \\\"is_invoice\\\": true,\\n  \\\"document_type\\\": \\\"invoice | credit_note | quote | statement | receipt | other\\\",\\n  \\\"credited_invoice_reference\\\": null,\\n  \\\"legibility_confidence\\\": 0.0,\\n  \\\"supplier\\\": {\\n    \\\"name\\\": null, \\\"address\\\": null, \\\"email\\\": null, \\\"phone\\\": null,\\n    \\\"vat_number\\\": null, \\\"company_number\\\": null,\\n    \\\"bank\\\": {\\\"account_name\\\": null, \\\"sort_code\\\": null, \\\"account_number\\\": null, \\\"iban\\\": null}\\n  },\\n  \\\"invoice_number\\\": null,\\n  \\\"invoice_date\\\": null,\\n  \\\"due_date\\\": null,\\n  \\\"quote_or_po_reference\\\": null,\\n  \\\"addressed_to\\\": {\\\"name\\\": null, \\\"address\\\": null},\\n  \\\"currency\\\": \\\"GBP\\\",\\n  \\\"lines\\\": [\\n    {\\n      \\\"description\\\": null,\\n      \\\"property_reference_as_written\\\": null,\\n      \\\"service_date\\\": null,\\n      \\\"quantity\\\": null,\\n      \\\"net\\\": null, \\\"vat\\\": null, \\\"gross\\\": null,\\n      \\\"suggested_category\\\": null,\\n      \\\"suggested_job_type\\\": null\\n    }\\n  ],\\n  \\\"totals\\\": {\\\"net\\\": null, \\\"vat\\\": null, \\\"gross\\\": null},\\n  \\\"payment_terms\\\": null,\\n  \\\"extraction_notes\\\": []\\n}\\nlegibility_confidence is your own 0 to 1 estimate of how clearly the whole document could be read. Put anything unclear, cut off, handwritten or ambiguous into extraction_notes.\";\nconst hash53 = (str, seed = 0) => { let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed; for (let i = 0; i < str.length; i++) { const ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); } h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909); return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36); };\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const it = items[i];\n  let b64, block;\n  if (typeof it.json.body_text === 'string') {\n    const doc = 'From: ' + it.json.from + '\\nSubject: ' + it.json.subject + '\\nReceived: ' + it.json.received_at + '\\n\\n' + it.json.body_text;\n    b64 = Buffer.from(doc, 'utf8').toString('base64');\n    const intro = it.json.source_type === 'document_text'\n      ? 'The invoice (if any) is in the attached document ' + it.json.filename + ', converted to plain text below together with the email details:'\n      : 'The invoice (if any) is in the body of this email, not an attachment. Email content:';\n    block = { type: 'text', text: intro + String.fromCharCode(10, 10) + doc };\n  } else {\n    const buf = await this.helpers.getBinaryDataBuffer(i, 'data');\n    b64 = buf.toString('base64');\n    block = it.json.mime_type === 'application/pdf'\n      ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }\n      : { type: 'image', source: { type: 'base64', media_type: it.json.mime_type, data: b64 } };\n  }\n  out.push({\n    json: {\n      ...it.json,\n      document_base64: b64,\n      // The invoice file itself (PDF, image, or the original Word/ODT), to save to SharePoint.\n      file_base64: typeof it.json.body_text === 'string' ? (it.json.original_base64 || null) : b64,\n      doc_hash: hash53(b64) + '-' + b64.length,\n      requestBody: {\n        model: cfg.model,\n        max_tokens: 3000,\n        temperature: 0,\n        system: SYSTEM,\n        messages: [{ role: 'user', content: [block, { type: 'text', text: 'Extract the invoice fields as specified. Return JSON only.' }] }]\n      }\n    },\n    binary: it.binary\n  });\n}\nreturn out;"
       },
-      "id": "fd0061aa-5931-4ff6-a62e-cf557ce3f7c6",
+      "id": "25ea7416-27b3-46bb-8c9f-645ec664d872",
       "name": "Build AI request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        70992,
-        31072
+        139168,
+        60768
       ]
     },
     {
@@ -394,26 +394,26 @@
         },
         "options": {}
       },
-      "id": "240a9ecc-f527-4261-87a6-2c97984ca978",
+      "id": "f1ec20f1-bf4c-4fff-a4e2-4a662f12ed4b",
       "name": "PDF or image file?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        71552,
-        31072
+        139728,
+        60768
       ]
     },
     {
       "parameters": {
         "jsCode": "// Parse the model reply and build the payload for the Hinkley app.\nconst cfg = $('Config').first().json;\n// Reads the OpenAI reply (or a cached reading).\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const resp = items[i].json || {};\n  const src = $('Build AI request').itemMatching(i).json;\n  const isFallback = Array.isArray(resp.output);\n  let extraction = null, extraction_error = null;\n  try {\n    if (resp.cached_extraction) { extraction = resp.cached_extraction; } else {\n    if (resp.error) throw new Error(typeof resp.error === 'string' ? resp.error : JSON.stringify(resp.error));\n    if (isFallback) {\n      const parts = [];\n      for (const o of resp.output) for (const c of (o.content || [])) parts.push(c.text);\n      const first = parts.find(p => p !== undefined && p !== null);\n      extraction = (first && typeof first === 'object') ? first : JSON.parse(String(parts.join('')).replace(/```json|```/g, '').trim());\n    } else {\n      const text = (resp.content || []).filter(b => b.type === 'text').map(b => b.text).join('');\n      extraction = JSON.parse(text.replace(/```json|```/g, '').trim());\n    }\n    }\n  } catch (e) {\n    extraction_error = String(e.message || e).slice(0, 500);\n  }\n  // Normalise the document type: stored documents are either 'invoice' or 'credit_note'.\n  if (extraction && typeof extraction === 'object') {\n    const dt = String(extraction.document_type || '').toLowerCase().replace(/[^a-z]/g, '');\n    if (extraction.is_invoice === true) extraction.document_type = (dt === 'creditnote' || dt === 'credit' || dt === 'creditmemo') ? 'credit_note' : 'invoice';\n  }\n  const document_type = (extraction && extraction.is_invoice === true) ? extraction.document_type : ((extraction && extraction.document_type) || 'unknown');\n  const usedModel = resp.cached_extraction ? 'cache' : cfg.model;\n  const base = src.message_id || [src.from, src.subject, src.received_at].join('|');\n  // Fingerprint of the invoice itself, so the same invoice sent again (e.g. forwarded) is skipped.\n  const norm = v => String(v === null || v === undefined ? '' : v).toLowerCase().replace(/[^a-z0-9.]/g, '');\n  let invoice_fingerprint = 'doc::' + base + '::' + src.filename;\n  if (extraction && extraction.is_invoice === true) {\n    const sup = extraction.supplier || {};\n    const bank = sup.bank || {};\n    const supplierKey = norm(bank.account_number) || norm(sup.vat_number) || norm(sup.name);\n    const gross = extraction.totals && typeof extraction.totals.gross === 'number' ? extraction.totals.gross.toFixed(2) : '';\n    if (supplierKey && (norm(extraction.invoice_number) || gross)) {\n      // Without an invoice number or date, also use the file name so a repeat monthly charge of the same amount is not mistaken for a copy.\n      const weak = !norm(extraction.invoice_number) && !norm(extraction.invoice_date);\n      invoice_fingerprint = (document_type === 'credit_note' ? 'cn::' : 'inv::') + [supplierKey, norm(extraction.invoice_number), norm(extraction.invoice_date), gross].join('|') + (weak ? '|' + norm(src.filename) : '');\n    }\n  }\n  out.push({\n    json: {\n      payload: {\n        idempotency_key: base + '::' + src.filename,\n        document_type,\n        shadow_mode: cfg.shadow_mode,\n        model: usedModel,\n        extraction_provider: resp.cached_extraction ? 'cache' : 'openai',\n        from_cache: !!resp.cached_extraction,\n        doc_hash: src.doc_hash || '',\n        source: {\n          from: src.from, from_email: src.from_email, subject: src.subject,\n          received_at: src.received_at, message_id: src.message_id,\n          filename: src.filename, mime_type: src.mime_type, source_type: src.source_type\n        },\n        extraction,\n        extraction_error,\n        document_base64: src.document_base64,\n        file_base64: src.file_base64 || null\n      },\n      invoice_fingerprint,\n      document_type,\n      outlook_message_id: src.outlook_message_id || '',\n      outlook_categories: src.outlook_categories || []\n    },\n    pairedItem: { item: i }\n  });\n}\nreturn out;"
       },
-      "id": "39fe98bd-19be-484a-ba13-7ad3f78a2efc",
+      "id": "f5f1ddbf-30a7-414a-ade6-179345cb1617",
       "name": "Parse extraction",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        72752,
-        30976
+        140928,
+        60672
       ]
     },
     {
@@ -504,13 +504,13 @@
           "renameFallbackOutput": "other"
         }
       },
-      "id": "1960b527-6dae-4f36-b007-da6902cd6d35",
+      "id": "4b46af32-5e7b-4fae-a584-c5341e4c65cd",
       "name": "Route by document type",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        71744,
-        31040
+        139920,
+        60736
       ]
     },
     {
@@ -555,13 +555,13 @@
           }
         }
       },
-      "id": "ebb77984-227b-46db-8745-e54ba8a5bdcc",
+      "id": "786598f8-91c6-4a4c-8270-5e49bd1696c7",
       "name": "Extract PDF (OpenAI)",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 2.3,
       "position": [
-        72352,
-        30848
+        140528,
+        60544
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -616,13 +616,13 @@
           }
         }
       },
-      "id": "75ccef74-5773-4201-bae9-7481133d23e4",
+      "id": "5bb7491c-6ab6-443e-99b1-65e729a89351",
       "name": "Extract image (OpenAI)",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 2.3,
       "position": [
-        72352,
-        31072
+        140528,
+        60768
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -672,13 +672,13 @@
           }
         }
       },
-      "id": "bd6e203d-bc6a-4f7d-a66d-487474f24b7f",
+      "id": "c1ed3f90-a77f-442e-aa96-b6d9eca720e8",
       "name": "Extract email body / text (OpenAI)",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 2.3,
       "position": [
-        72336,
-        31264
+        140512,
+        60960
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -695,13 +695,13 @@
       "parameters": {
         "jsCode": "// Intake check for the accounts inbox. Rules decide; the AI only read the invoice.\n// One verdict per email: pass | bounce (ask the sender to reissue) | review (a person looks; the sender is never contacted) | not_invoice.\nconst cfg = $('Config').first().json;\nconst mode = ['shadow', 'draft', 'live'].includes(String(cfg.mode)) ? String(cfg.mode) : 'shadow';\nconst NL = String.fromCharCode(10);\nconst esc = v => String(v === null || v === undefined ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst num = v => (v === null || v === undefined || v === '' || isNaN(Number(v))) ? null : Number(v);\nconst r2 = v => Math.round(v * 100) / 100;\nconst money = (n, c) => (c && c !== 'GBP' ? c + ' ' : '£') + Number(n).toFixed(2);\nlet companies = [];\ntry { companies = JSON.parse(cfg.company_names || '[]'); } catch (e) { companies = []; }\nconst normName = s => String(s || '').toLowerCase().replace(/hinckley/g, 'hinkley').replace(/\\blimited\\b/g, 'ltd').replace(/[^a-z0-9]+/g, ' ').trim();\n// Other names an invoice may be addressed to, mapped to the Xero organisation they belong to.\n// Read from Supabase (company_aliases, edited in the Hinkley app > Company aliases).\n// \"Ltd\"/\"Limited\" on a name is optional. Add a name in the app - no workflow change needed.\nlet aliases = {}, aliasFileOk = false;\ntry {\n  const rows = ($('Get company aliases').first().json || {}).aliases;\n  if (Array.isArray(rows)) {\n    for (const r of rows) { const a = String((r || {}).name_on_invoice || '').trim(), o = String((r || {}).xero_organisation || '').trim(); if (a && o) aliases[a] = o; }\n    aliasFileOk = true;\n  }\n} catch (e) { aliasFileOk = false; }\nconst nameEntries = [];\nfor (const c of companies) { const n = normName(c); if (n) nameEntries.push({ pat: n, org: c }); }\nfor (const [alias, org] of Object.entries(aliases)) {\n  const n = normName(alias); if (!n) continue;\n  nameEntries.push({ pat: n, org: String(org) });\n  const short = n.replace(/ ltd$/, '');\n  if (short !== n && short.split(' ').length >= 2) nameEntries.push({ pat: short, org: String(org) });\n}\nnameEntries.sort((a, b) => b.pat.length - a.pat.length);   // longest (most specific) match wins\nconst matchCompany = raw => { const bt = ' ' + normName(raw) + ' '; const e = nameEntries.find(x => bt.includes(' ' + x.pat + ' ')); return e ? e.org : ''; };\n// Bounce emails list only the 5 Xero companies. Aliases are only used to match the name written on an invoice to its company, and are never shown to suppliers.\nconst acceptedNames = companies.slice();\nconst companyNorm = nameEntries.map(e => e.pat);\nconst blocked = String(cfg.blocked_sender_patterns || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);\nconst internalDomain = String(cfg.internal_domain || '').toLowerCase();\nconst legMin = Number(cfg.legibility_min || 0.8);\nconst maxPerInvoice = Number(cfg.max_bounces_per_invoice || 2);\nconst maxPerSenderDay = Number(cfg.max_bounces_per_sender_per_day || 5);\n// Internal emails (the [SHADOW] preview to the reviewer) are sent from the no-reply shared mailbox.\n// Set noreply_address in Config. Bounces to suppliers still go out from the accounts mailbox.\nconst noreplyAddress = String(cfg.noreply_address || '').trim();\n\n// ---- history (invoice_intake_checks in Supabase) ----\nconst hist = [];\ntry { for (const r of (($('Get intake log').first().json || {}).rows || [])) if (r && r.bounce_key !== undefined) hist.push(r); } catch (e) {}\nconst sentActions = ['bounce_sent', 'draft_created', 'shadow_proposed'];\nconst now = Date.now();\n\n// ---- group the documents of each email ----\nconst groups = {};\nconst order = [];\nfor (const it of $('Parse extraction').all()) {\n  const j = it.json || {};\n  const p = j.payload || {};\n  const s = p.source || {};\n  const key = s.message_id || j.outlook_message_id || [s.from, s.subject, s.received_at].join('|');\n  if (!groups[key]) { groups[key] = { key, source: s, outlook_message_id: j.outlook_message_id || '', categories: j.outlook_categories || [], docs: [] }; order.push(key); }\n  groups[key].docs.push(p);\n}\n\n// ---- property reference test: a word is needed, a bare number is not enough ----\nconst STREET = new Set(['road', 'rd', 'street', 'st', 'avenue', 'ave', 'lane', 'ln', 'drive', 'dr', 'close', 'place', 'court', 'ct', 'flat', 'house', 'property', 'unit', 'es', 'e', 's']);\nconst refStatus = ref => {\n  const t = String(ref || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);\n  if (!t.length) return 'missing';\n  const words = t.filter(x => /[a-z]/.test(x) && !/^\\d+[a-z]?$/.test(x) && !STREET.has(x));\n  return words.length ? 'ok' : 'incomplete';\n};\n\n// ---- company costs: no property needed ----\n// Software subscriptions, accountancy, payroll, insurance and the like are costs of the company, not of a property.\n// A line counts as one when the AI files it under \"Software and subscriptions\" or its text has a word from Config company_cost_words.\n// It must still be addressed to one of our companies and show its own amount.\nconst COMPANY_COST_WORDS = String(cfg.company_cost_words || 'subscription,licence,license,software,xero,accountancy,bookkeeping,payroll').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);\nconst isCompanyCost = l => {\n  if (String((l || {}).suggested_category || '') === 'Software and subscriptions') return true;\n  const t = ' ' + String((l || {}).description || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ') + ' ';\n  return COMPANY_COST_WORDS.some(wd => t.indexOf(' ' + wd.replace(/[^a-z0-9]+/g, ' ').trim() + ' ') >= 0);\n};\n\n// ---- invoice sent as a link (no PDF attached) ----\n// Apps like Invoice Simple, Xero and QuickBooks often email a \"View invoice\" button instead of attaching the PDF.\n// The AI then sees only a notification and says it is not an invoice. Those emails go to review, never bounce.\nconst LINK_PLATFORMS = String(cfg.invoice_link_platforms || 'invoicesimple,getinvoicesimple,xero,quickbooks,intuit,sumup,zoho,freeagent,sage,stripe,squareup,paypal,invoice2go,waveapps,freshbooks,tide,kashflow,clearbooks,pandle,crunch,invoiceninja,zervant,bill.com')\n  .toLowerCase().split(',').map(s => s.trim()).filter(Boolean);\nconst OWN_NAMES = String(cfg.own_trading_names || 'hinkley homes').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);\nconst NOT_A_BILL = /remittance|receipt|payment (received|confirmation|confirmed)|has been paid|statement|quot(e|ation)|estimate|credit note/i;\nconst linkInvoice = g => {\n  const s = g.source || {};\n  const subject = String(s.subject || '');\n  let body = '';\n  for (const p of g.docs) {\n    const src = p.source || {};\n    if (src.source_type === 'email_body' && p.document_base64) {\n      try { body += '\\n' + Buffer.from(String(p.document_base64), 'base64').toString('utf8'); } catch (e) {}\n    }\n  }\n  if (NOT_A_BILL.test(subject)) return null;\n  // Our own sales invoices (e.g. Xero \"Bill INV-123 from Hinkley Homes is due\" sent to a customer with accounts copied) are not bills to pay.\n  const issuerM = subject.match(/\\bfrom\\s+(.+?)(?:\\s+is\\s+(?:due|overdue)|\\s+for\\s|\\s*$)/i);\n  const issuer = (issuerM ? issuerM[1] : '').toLowerCase();\n  const senderName = String(s.from || '').replace(/<[^>]*>/, '').trim().toLowerCase();\n  if (OWN_NAMES.some(o => issuer.indexOf(o) >= 0 || senderName.indexOf(o) >= 0)) return null;\n  const invoiceWord = /\\binvoice\\b|\\binv[-\\s#]?\\d/i;\n  if (!invoiceWord.test(subject) && !invoiceWord.test(body)) return null;\n  const linkPhrase = /(view|download|open|see|access|pay)\\s+(your\\s+|the\\s+|this\\s+)?(pdf\\s+)?invoice|click (below|here|the (button|link))[^\\n]{0,60}invoice|invoice[^\\n]{0,40}\\b(link|online|portal)\\b/i;\n  const dom = String(s.from_email || '').toLowerCase().split('@')[1] || '';\n  const platform = LINK_PLATFORMS.find(pl => dom.indexOf(pl) >= 0 || body.toLowerCase().indexOf(pl + '.') >= 0);\n  if (!linkPhrase.test(body) && !linkPhrase.test(subject) && !platform) return null;\n  const x = (g.docs.find(p => p.extraction) || {}).extraction || {};\n  const numM = (subject + '\\n' + body).match(/\\binv(?:oice)?\\s*(?:no\\.?|number|#)?\\s*[:#]?\\s*([A-Z0-9][A-Z0-9\\-\\/]{2,})/i);\n  const totM = body.match(/total[^£$€\\d\\n]{0,20}([£$€]\\s?[\\d,]+(?:\\.\\d{2})?)/i) || body.match(/([£$€]\\s?[\\d,]+\\.\\d{2})/);\n  return {\n    invoice_number: x.invoice_number || (numM ? numM[1] : ''),\n    total: x.total_gross != null ? x.total_gross : (totM ? totM[1].replace(/\\s/g, '') : ''),\n    platform: platform || ''\n  };\n};\n\nconst out = [];\nfor (const key of order) {\n  const g = groups[key];\n  const s = g.source;\n  const invoices = g.docs.filter(p => p.extraction && p.extraction.is_invoice === true);\n  const senderEmail = String(s.from_email || '').toLowerCase();\n  const base = {\n    outlook_message_id: g.outlook_message_id, internet_message_id: s.message_id || '', sender_email: senderEmail,\n    sender_name: String(s.from || '').replace(/<[^>]*>/, '').trim(), subject: s.subject || '', mode, existing_categories: g.categories\n  };\n  let verdict, issues = [], reviewReasons = [];\n  let sup = '', invNo = '', invDate = '', total = null, billTo = '', billToCompany = '';\n  let bounceKey = '';\n  let linkOnly = false;\n  if (!invoices.length) {\n    const li = linkInvoice(g);\n    if (li) {\n      verdict = 'review'; linkOnly = true;\n      invNo = String(li.invoice_number || ''); sup = String(base.sender_name || '');\n      reviewReasons.push({ code: 'invoice_link_only', message: 'The invoice' + (invNo ? ' ' + invNo : '') + (li.total !== '' ? ' (total ' + li.total + ')' : '') + ' is a download link in the email, not an attachment' + (li.platform ? ' (sent via ' + li.platform + ')' : '') + '. Open the link in the email and download the PDF.' });\n    } else {\n      verdict = 'not_invoice';\n    }\n  } else {\n    const docIssues = [];\n    for (const p of invoices) {\n      const x = p.extraction;\n      const supplier = x.supplier || {};\n      const cur = String(x.currency || 'GBP').toUpperCase();\n      const name = (supplier.name || '') ;\n      const di = [];\n      if (!sup) { sup = name; invNo = x.invoice_number || ''; invDate = x.invoice_date || ''; total = num((x.totals || {}).gross); billTo = (x.addressed_to || {}).name || ''; billToCompany = matchCompany(billTo); }\n      // internal reasons (never sent to the supplier)\n      if (p.extraction_error) reviewReasons.push({ code: 'extraction_failed', message: 'The invoice could not be read by the AI.' });\n      if (num(x.legibility_confidence) !== null && num(x.legibility_confidence) < legMin) reviewReasons.push({ code: 'low_legibility', message: 'Hard to read (confidence ' + x.legibility_confidence + ').' });\n      // 1. formatted correctly\n      if (!name) di.push({ code: 'no_supplier', message: 'The supplier name is not shown on the invoice.' });\n      if (!x.invoice_number) di.push({ code: 'no_invoice_number', message: 'There is no invoice number.' });\n      if (!x.invoice_date) di.push({ code: 'no_invoice_date', message: 'There is no invoice date.' });\n      const totalGross = num((x.totals || {}).gross);\n      if (totalGross === null) di.push({ code: 'no_total', message: 'The invoice total is not shown.' });\n      const lines = Array.isArray(x.lines) ? x.lines : [];\n      if (!lines.length) di.push({ code: 'no_lines', message: 'The invoice has no itemised lines.' });\n      // 2. addressed to the right company\n      if (!companyNorm.length) reviewReasons.push({ code: 'no_company_list', message: 'No company names configured, so the bill-to was not checked.' });\n      else {\n        const bt = normName((x.addressed_to || {}).name);\n        if (!bt) di.push({ code: 'bill_to_missing', message: 'The invoice is not addressed to a company.' });\n        else if (!matchCompany(bt) && !aliasFileOk) reviewReasons.push({ code: 'alias_file_unreadable', message: 'Addressed to \"' + (x.addressed_to || {}).name + '\", which is not on the company list, and the company aliases could not be read, so it was not bounced.' });\n        else if (!matchCompany(bt)) di.push({ code: 'bill_to_wrong', message: 'The invoice is addressed to \"' + (x.addressed_to || {}).name + '\", which is not one of our companies.' });\n      }\n      // 3. each line states a property and its own cost (credit notes are only checked for format;\n      //    company costs such as software subscriptions need only the company name)\n      if (x.document_type !== 'credit_note' && lines.length) {\n        const amounts = lines.map(l => {\n          const gross = num(l.gross); if (gross !== null) return gross;\n          const n = num(l.net), v = num(l.vat); return n !== null ? r2(n + (v || 0)) : null;\n        });\n        if (lines.length === 1 && amounts[0] === null && totalGross !== null) amounts[0] = totalGross;\n        const noAmt = lines.filter((l, i) => amounts[i] === null);\n        if (noAmt.length) di.push({ code: 'no_line_amounts', message: 'The cost is not shown for each line (' + noAmt.length + ' of ' + lines.length + ' lines have no amount).', lines: noAmt.map(l => ({ text: l.description || '(no description)', amount: null })) });\n        const missing = [], incomplete = [];\n        lines.forEach((l, i) => {\n          if (isCompanyCost(l)) return;\n          const st = refStatus(l.property_reference_as_written);\n          const item = { text: l.description || '(no description)', amount: amounts[i], reference: l.property_reference_as_written || '' };\n          if (st === 'missing') missing.push(item); else if (st === 'incomplete') incomplete.push(item);\n        });\n        if (missing.length) di.push({ code: 'property_missing', message: 'These lines do not say which property they are for.', lines: missing });\n        if (incomplete.length) di.push({ code: 'property_incomplete', message: 'These lines give only part of a property address (for example a number with no street or name).', lines: incomplete });\n        // adds up? (our check, not the supplier's problem)\n        const sum = r2(amounts.reduce((a, b) => a + (b || 0), 0));\n        if (totalGross !== null && !amounts.some(a => a === null) && Math.abs(sum - totalGross) > 0.02) reviewReasons.push({ code: 'totals_mismatch', message: 'Lines add up to ' + money(sum, cur) + ' but the total is ' + money(totalGross, cur) + '.' });\n      }\n      if (di.length) docIssues.push({ filename: (p.source || {}).filename || '', invoice_number: x.invoice_number || '', supplier: name, currency: cur, issues: di });\n    }\n    issues = docIssues;\n    const flat = docIssues.reduce((a, d) => a.concat(d.issues), []);\n    if (!flat.length && !reviewReasons.length) verdict = 'pass';\n    else if (!flat.length) verdict = 'review';\n    else if (reviewReasons.length) verdict = 'review';   // when we are unsure we read it right, a person looks first\n    else verdict = 'bounce';\n    bounceKey = senderEmail + '|' + String(invNo || (invoices[0].source || {}).filename || '').toLowerCase().replace(/[^a-z0-9]/g, '');\n    // ---- safety rules: when in doubt, never contact the sender ----\n    if (verdict === 'bounce') {\n      const dom = senderEmail.split('@')[1] || '';\n      if (!senderEmail) { verdict = 'review'; reviewReasons.push({ code: 'no_sender', message: 'No sender address to reply to.' }); }\n      else if (internalDomain && dom === internalDomain) { verdict = 'review'; reviewReasons.push({ code: 'internal_sender', message: 'Sent from inside the company, so it was not bounced.' }); }\n      else if (blocked.some(b => senderEmail.indexOf(b) >= 0)) { verdict = 'review'; reviewReasons.push({ code: 'automated_sender', message: 'Sent from an automated address that cannot be replied to.' }); }\n      else {\n        const sentBefore = hist.filter(h => h.bounce_key === bounceKey && sentActions.includes(h.action)).length;\n        const sentToday = hist.filter(h => String(h.sender_email || '').toLowerCase() === senderEmail && sentActions.includes(h.action) && now - (Date.parse(h.processed_at || '') || 0) < 86400000).length;\n        if (sentBefore >= maxPerInvoice) { verdict = 'review'; reviewReasons.push({ code: 'already_asked', message: 'This sender has already been asked ' + sentBefore + ' time(s) about this invoice.' }); }\n        else if (sentToday >= maxPerSenderDay) { verdict = 'review'; reviewReasons.push({ code: 'daily_limit', message: 'Daily bounce limit reached for this sender.' }); }\n      }\n    }\n  }\n\n  // ---- the message to the supplier ----\n  let bounce = null;\n  if (verdict === 'bounce') {\n    const F = 'font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#101828;';\n    const TH = 'text-align:left;background:#f2f4f7;padding:6px 10px;border:1px solid #d0d5dd;';\n    const TD = 'padding:6px 10px;border:1px solid #d0d5dd;vertical-align:top;';\n    let h = '<div style=\"' + F + '\"><p>Hello,</p>';\n    h += '<p>Thank you for your invoice' + (invNo ? ' <b>' + esc(invNo) + '</b>' : '') + '. We have not been able to process it because the details below are missing or unclear. Please send a corrected invoice by replying to this email.</p>';\n    for (const d of issues) {\n      if (issues.length > 1) h += '<p><b>' + esc(d.filename || d.invoice_number || 'Invoice') + '</b></p>';\n      h += '<ul>';\n      for (const i of d.issues) {\n        h += '<li>' + esc(i.message);\n        if (i.lines && i.lines.length) {\n          h += '<table style=\"border-collapse:collapse;margin:6px 0;' + F + 'font-size:13px;\"><tr><th style=\"' + TH + '\">Line on your invoice</th><th style=\"' + TH + 'text-align:right;\">Amount</th></tr>' +\n            i.lines.slice(0, 40).map(l => '<tr><td style=\"' + TD + '\">' + esc(l.text) + '</td><td style=\"' + TD + 'text-align:right;\">' + (l.amount === null || l.amount === undefined ? '-' : esc(money(l.amount, d.currency))) + '</td></tr>').join('') + '</table>';\n        }\n        h += '</li>';\n      }\n      h += '</ul>';\n    }\n    h += '<p><b>What we need on the corrected invoice</b></p><ul>' +\n      '<li>It is addressed to the company the work was done for. Our companies are: ' + esc(acceptedNames.join(', ')) + '.</li>' +\n      '<li>Every line for work at a property shows the <b>property</b> (full address or property name) and its own <b>amount</b>, so each cost can be recorded against the correct property.</li>' +\n      '<li>Invoice number, invoice date and total are shown.</li></ul>';\n    h += '<p>If you believe this message is wrong, just reply and tell us. This request was produced by our automated invoice check, and a member of the accounts team reads the replies.</p>';\n    h += '<p>Kind regards,<br>' + esc(cfg.sender_name || 'Hinkley Homes Accounts') + '</p></div>';\n    bounce = { to: senderEmail, subject: 'Action needed: please reissue invoice ' + (invNo || '') + (sup ? ' from ' + sup : ''), html: h };\n  }\n\n  const catMap = { pass: cfg.cat_pass, not_invoice: cfg.cat_not_invoice, review: cfg.cat_review, bounce: mode === 'live' ? cfg.cat_bounced : mode === 'draft' ? cfg.cat_drafted : cfg.cat_shadow };\n  const newCat = catMap[verdict] || '';\n  const cats = (g.categories || []).filter(c => String(c).indexOf('n8n:') !== 0).concat(newCat ? [newCat] : []);\n  const action = verdict === 'bounce' ? (mode === 'live' ? 'bounce_sent' : mode === 'draft' ? 'draft_created' : 'shadow_proposed') : 'none';\n  const allIssues = issues.reduce((a, d) => a.concat(d.issues), []).concat(reviewReasons);\n  const ccs = String(cfg.bounce_cc || '').split(',').map(a => a.trim()).filter(Boolean).map(a => ({ emailAddress: { address: a } }));\n  out.push({\n    json: Object.assign(base, {\n      verdict, action, supplier_name: sup, invoice_number: invNo, invoice_date: invDate, total_gross: total, bill_to: billTo, bill_to_company: billToCompany,\n      issue_codes: allIssues.map(i => i.code).join(', '), issues_json: JSON.stringify({ issues, review: reviewReasons }), review_reasons: reviewReasons,\n      bounce_key: verdict === 'bounce' ? bounceKey : bounceKey || '', new_category: newCat, categories_body: (verdict === 'bounce' || linkOnly) ? { categories: cats, isRead: false } : verdict === 'not_invoice' ? { categories: cats, isRead: true } : { categories: cats },\n      is_bounce: verdict === 'bounce',\n      reply_body: bounce ? { message: Object.assign({ body: { contentType: 'HTML', content: bounce.html } }, ccs.length ? { ccRecipients: ccs } : {}) } : null,\n      shadow_mail: bounce ? { message: Object.assign(noreplyAddress ? { from: { emailAddress: { address: noreplyAddress } } } : {}, { subject: '[SHADOW] Would ask ' + senderEmail + ' to reissue: ' + (sup || 'invoice') + ' ' + invNo, body: { contentType: 'HTML', content: '<p style=\"font-family:Arial,sans-serif;font-size:13px;color:#b54708\"><b>Shadow mode: nothing was sent to the supplier.</b> Issues found: ' + esc(allIssues.map(i => i.code).join(', ')) + '. This is the message that would be sent to ' + esc(senderEmail) + ':</p><hr>' + bounce.html }, toRecipients: [{ emailAddress: { address: cfg.reviewer_email } }] }), saveToSentItems: false } : null,\n      processed_at: new Date().toISOString()\n    })\n  });\n}\nreturn out;"
       },
-      "id": "96416293-0564-428e-a6e4-f587e69cd048",
+      "id": "af1b021b-dc2c-49c0-b38a-536300e1b819",
       "name": "Check invoice",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        73040,
-        31200
+        141216,
+        60896
       ],
       "executeOnce": true
     },
@@ -718,13 +718,13 @@
           "timeout": 60000
         }
       },
-      "id": "84a43819-1652-4a61-a574-1393ddfba2fc",
+      "id": "eff816e1-b63b-4dd0-b605-ac65c3796224",
       "name": "Set Outlook category",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        73616,
-        30992
+        141792,
+        60688
       ],
       "credentials": {
         "microsoftOutlookOAuth2Api": {
@@ -759,13 +759,13 @@
         },
         "options": {}
       },
-      "id": "ef8fc3d0-2e00-4b81-a107-12c92f908553",
+      "id": "c22f6961-869d-4093-a6f1-e79994a6a34c",
       "name": "Needs bounce?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        73568,
-        31168
+        141744,
+        60864
       ]
     },
     {
@@ -848,13 +848,13 @@
         },
         "options": {}
       },
-      "id": "e99eb1e9-dfc6-40c6-bc31-661b40b6aabd",
+      "id": "161c107e-942b-4905-8ea9-77e409d5ceb6",
       "name": "Bounce mode",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        73808,
-        31136
+        141984,
+        60832
       ]
     },
     {
@@ -870,13 +870,13 @@
           "timeout": 60000
         }
       },
-      "id": "3c2b0200-de2e-49cf-8b3a-f3906f5f2320",
+      "id": "8d2023c5-4901-4903-949f-46d7e9c378c4",
       "name": "Shadow: email proposed bounce to Ruel",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        74080,
-        31024
+        142256,
+        60720
       ],
       "credentials": {
         "microsoftOutlookOAuth2Api": {
@@ -899,13 +899,13 @@
           "timeout": 60000
         }
       },
-      "id": "5f1e6f0a-1be1-4ddb-a7c4-03ace0d488e9",
+      "id": "4874f122-85cf-41e1-b24e-0edf260ec196",
       "name": "Draft: create reply in accounts inbox",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        74096,
-        31200
+        142272,
+        60896
       ],
       "credentials": {
         "microsoftOutlookOAuth2Api": {
@@ -928,13 +928,13 @@
           "timeout": 60000
         }
       },
-      "id": "9ceac121-19d8-4f06-b0e5-eaa22bc6e63e",
+      "id": "c0571699-d29b-4999-9d8f-bccc6f35e639",
       "name": "Live: send reply to supplier",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        74096,
-        31392
+        142272,
+        61088
       ],
       "credentials": {
         "microsoftOutlookOAuth2Api": {
@@ -950,26 +950,26 @@
         "height": 720,
         "width": 560
       },
-      "id": "568791f4-7c2a-4707-8490-b013b018ce40",
+      "id": "618181ce-0422-4ce8-a7b1-097714b57348",
       "name": "Setup notes",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        68528,
-        29728
+        136704,
+        59424
       ]
     },
     {
       "parameters": {
         "jsCode": "// Has this exact document been read before? Same file bytes (or same bill text) = same reading, no LLM call.\n// Saved readings come from Supabase (document_readings), looked up just before.\nconst items = $input.all();\nlet cache = {};\ntry { cache = $('Look up saved readings').first().json.readings || {}; } catch (e) { cache = {}; /* lookup failed: read everything */ }\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const it = items[i];\n  const hit = it.json.doc_hash ? cache[it.json.doc_hash] : null;\n  const ex = hit && typeof hit === 'object' ? hit : null;\n  out.push({ json: Object.assign({}, it.json, { cache_hit: !!ex, cached_extraction: ex }), binary: it.binary, pairedItem: { item: i } });\n}\nreturn out;\n"
       },
-      "id": "99ddea78-a1f6-4390-b3d1-ebfcd3b906b9",
+      "id": "c4eb4041-282c-4437-a01a-21dd3e6f77fe",
       "name": "Check reading cache",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        71168,
-        31072
+        139344,
+        60768
       ]
     },
     {
@@ -997,39 +997,39 @@
         },
         "options": {}
       },
-      "id": "2cdceed1-b166-4da3-8f0e-1d084dea5712",
+      "id": "f2943c87-e069-40f2-8713-6a718a6df75f",
       "name": "Already read?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        71344,
-        31072
+        139520,
+        60768
       ]
     },
     {
       "parameters": {
         "jsCode": "// Cache hit: hand the saved reading straight to the parser. No file, no LLM call.\nconst items = $input.all();\nreturn items.map((it, i) => ({ json: { cached_extraction: it.json.cached_extraction }, pairedItem: { item: i } }));\n"
       },
-      "id": "945a3cae-ee74-4b40-9f15-fd7c00ccd6fe",
+      "id": "f05ef520-397b-4951-b3c0-c630da3d2f94",
       "name": "Use cached reading",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        71712,
-        31440
+        139888,
+        61136
       ]
     },
     {
       "parameters": {
         "jsCode": "// Save every NEW reading once, so the same document is never paid for twice.\nconst out = [];\nconst seen = new Set();\nfor (const it of $input.all()) {\n  const p = (it.json || {}).payload || {};\n  if (p.from_cache || !p.extraction || p.extraction_error || !p.doc_hash || seen.has(p.doc_hash)) continue;\n  seen.add(p.doc_hash);\n  out.push({ json: { doc_hash: p.doc_hash, extraction_json: JSON.stringify(p.extraction), model: p.model || '', provider: p.extraction_provider || '', extracted_at: new Date().toISOString() } });\n}\nreturn out;\n"
       },
-      "id": "063968d9-1ce4-47c9-8466-86f0f3cf84e2",
+      "id": "4f7ed8f3-28b3-41bd-8863-29521fc5c0fe",
       "name": "Prepare cache rows",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        73024,
-        30720
+        141200,
+        60416
       ]
     },
     {
@@ -1039,10 +1039,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        70000,
-        30640
+        138176,
+        60336
       ],
-      "id": "2533e703-9499-4aaa-a214-546476a73dc8",
+      "id": "279f9c47-4683-4a6a-8570-f5d78dd604be",
       "name": "Skip emails already stored or saved in app"
     },
     {
@@ -1052,10 +1052,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        73808,
-        30912
+        141984,
+        60608
       ],
-      "id": "a74c84f7-b5cf-4264-a18d-fcff0ea0a3cd",
+      "id": "54784050-bd86-434c-b562-dd275c6f81f3",
       "name": "Store check record"
     },
     {
@@ -1065,10 +1065,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        73280,
-        30720
+        141456,
+        60416
       ],
-      "id": "b7e43daa-82e6-4181-b4bd-1485256bb732",
+      "id": "96435f86-0bc2-4e3d-bcff-e521d4b10236",
       "name": "Save reading to cache"
     },
     {
@@ -1081,10 +1081,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        68528,
-        29216
+        136704,
+        58912
       ],
-      "id": "8a4be3ab-d294-4e12-8aac-5535068ff890",
+      "id": "5a9fc336-df19-4896-bde9-975c9482d189",
       "name": "Storage notes"
     },
     {
@@ -1094,10 +1094,10 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
       "position": [
-        69776,
-        30640
+        137952,
+        60336
       ],
-      "id": "d8643de4-7dec-4e3e-885a-9ffc81686e73",
+      "id": "417edf0d-60ec-4047-8fc5-28ff39802e61",
       "name": "Wait for intake_checks duplicate check"
     },
     {
@@ -1124,26 +1124,26 @@
         },
         "options": {}
       },
-      "id": "a4e1c7b2-3d5f-4a9e-8b6c-0d2f4e6a8c13",
+      "id": "a30d594d-118e-4aa4-bf28-91da8153e1a3",
       "name": "Sent for review?",
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
       "position": [
-        73568,
-        31424
+        141744,
+        61120
       ]
     },
     {
       "parameters": {
         "jsCode": "// One row per email the check sent for review, for the app's invoice_intake_reviews table\n// (Invoices > For review). Saved straight to Supabase, so the values are tidied here.\n// The Outlook link and received time come from the trigger (matched by Internet message id).\nconst trig = {};\nfor (const t of $('Outlook trigger (accounts inbox)').all()) {\n  const j = t.json || {};\n  if (j.internetMessageId) trig[j.internetMessageId] = j;\n  if (j.id) trig[j.id] = j;\n}\nconst txt = (v, max) => (typeof v === 'string' && v.trim()) ? v.trim().slice(0, max) : (typeof v === 'number' ? String(v) : null);\nconst amt = v => { const n = typeof v === 'number' ? v : (typeof v === 'string' && v.trim() ? Number(v.replace(/[£$€,\\s]/g, '')) : NaN); return Number.isFinite(n) ? Math.round(n * 100) / 100 : null; };\nconst out = [];\n$input.all().forEach((it, i) => {\n  const c = it.json || {};\n  const id = txt(c.internet_message_id, 500) || txt(c.outlook_message_id, 500);\n  if (!id) return;\n  const t = trig[c.internet_message_id] || trig[c.outlook_message_id] || {};\n  let parsed = {};\n  try { parsed = JSON.parse(c.issues_json || '{}'); } catch (e) { parsed = {}; }\n  const docs = Array.isArray(parsed.issues) ? parsed.issues : [];\n  const issues = [];\n  for (const d of docs) for (const x of (d.issues || [])) {\n    const message = txt((docs.length > 1 && d.filename ? d.filename + ': ' : '') + (x.message || ''), 1000);\n    if (message) issues.push({ code: txt(x.code, 60) || 'other', message, lines: (x.lines || []).slice(0, 40).map(l => ({ text: txt(l.text, 500) || '(no description)', amount: amt(l.amount) })) });\n  }\n  const reasons = (Array.isArray(c.review_reasons) ? c.review_reasons : (parsed.review || [])).slice(0, 50)\n    .map(r => ({ code: txt((r || {}).code, 60) || 'other', message: txt((r || {}).message, 1000) })).filter(r => r.message);\n  const link = txt(t.webLink, 2000);\n  const date = txt(c.invoice_date, 10);\n  const received = txt(t.receivedDateTime, 40);\n  const cur = txt((docs[0] && docs[0].currency) || 'GBP', 3);\n  out.push({\n    json: {\n      internet_message_id: id,\n      outlook_message_id: txt(c.outlook_message_id, 500),\n      // Only Outlook links: the app opens it in a new tab.\n      web_link: link && /^https:\\/\\/outlook\\.(office365|office|live)\\.com\\//i.test(link) ? link : null,\n      received_at: received && !isNaN(Date.parse(received)) ? new Date(received).toISOString() : null,\n      sender_email: (txt(c.sender_email, 300) || '').toLowerCase() || null,\n      sender_name: txt(c.sender_name, 300),\n      subject: txt(c.subject, 500),\n      supplier_name: txt(c.supplier_name, 300),\n      invoice_number: txt(c.invoice_number, 100),\n      invoice_date: date && /^\\d{4}-\\d{2}-\\d{2}$/.test(date) && !isNaN(Date.parse(date)) ? date : null,\n      total: amt(c.total_gross),\n      currency: cur && /^[A-Za-z]{3}$/.test(cur) ? cur.toUpperCase() : 'GBP',\n      bill_to: txt(c.bill_to, 300),\n      bill_to_company: txt(c.bill_to_company, 200),\n      reasons,\n      issues\n    },\n    pairedItem: { item: i }\n  });\n});\nreturn out;\n"
       },
-      "id": "b5f2d8c3-4e6a-4b0f-9c7d-1e3a5f7b9d24",
+      "id": "9be82b4e-bd24-4dd9-90f4-2838a95dd7c1",
       "name": "Build review row",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        73808,
-        31424
+        141984,
+        61120
       ]
     },
     {
@@ -1154,25 +1154,25 @@
           "queryReplacement": "={{ [JSON.stringify($json)] }}"
         }
       },
-      "id": "c6a3e9d4-5f7b-4c1a-8d8e-2f4b6a8c0e35",
+      "id": "d15fed90-25c3-4d9f-84ac-393f2ad3523b",
       "name": "Save review in Supabase",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        74048,
-        31424
+        142224,
+        61120
       ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 3000,
-      "onError": "continueRegularOutput",
-      "notes": "Shows the email on the app's Invoices page, 'For review' tab, even while the app is asleep. Postgres credential: login n8n_intake_writer (see lib/db/sql/n8n-intake-writer.sql in the app repo), which can only add new rows to this table. An email already saved is skipped. A failure here does not stop the rest of the check.",
       "credentials": {
         "postgres": {
           "id": "QPuP1e7L0W14B3HS",
           "name": "Postgres account"
         }
-      }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Shows the email on the app's Invoices page, 'For review' tab, even while the app is asleep. Postgres credential: login n8n_intake_writer (see lib/db/sql/n8n-intake-writer.sql in the app repo), which can only add new rows to this table. An email already saved is skipped. A failure here does not stop the rest of the check."
     },
     {
       "parameters": {
@@ -1182,24 +1182,24 @@
           "queryReplacement": "={{ [JSON.stringify($input.all().map(i => i.json.internetMessageId).filter(Boolean))] }}"
         }
       },
-      "id": "7509cafd-db20-4bfa-ac14-40b5945585a1",
+      "id": "a13e8120-c4f8-4335-adce-b9960dc79eb7",
       "name": "Find emails already checked",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        69808,
-        30816
+        137984,
+        60512
       ],
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
       "credentials": {
         "postgres": {
           "id": "QPuP1e7L0W14B3HS",
           "name": "Postgres account"
         }
       },
-      "executeOnce": true,
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000,
       "notes": "Emails already in invoice_intake_checks are skipped, so nothing is read or bounced twice."
     },
     {
@@ -1210,24 +1210,24 @@
           "queryReplacement": "={{ [JSON.stringify($input.all().map(i => i.json.doc_hash).filter(Boolean))] }}"
         }
       },
-      "id": "9ab7bc3c-5b3a-4124-96b2-8337fd3a0db5",
+      "id": "ea48b973-c706-458c-8dc9-064dc0ad8270",
       "name": "Look up saved readings",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        71104,
-        30848
+        139280,
+        60544
       ],
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
       "credentials": {
         "postgres": {
           "id": "QPuP1e7L0W14B3HS",
           "name": "Postgres account"
         }
       },
-      "executeOnce": true,
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000,
       "onError": "continueRegularOutput",
       "notes": "Saved AI readings by file fingerprint (shared with bill coding). If this fails, the documents are simply read again."
     },
@@ -1235,13 +1235,13 @@
       "parameters": {
         "mode": "chooseBranch"
       },
-      "id": "6e8cf4e2-1ca6-4ef8-b119-2009b07717a6",
+      "id": "1a2518ba-24b6-45e9-bde0-f26d21335172",
       "name": "Wait for saved readings",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
       "position": [
-        71056,
-        30960
+        139232,
+        60656
       ]
     },
     {
@@ -1252,24 +1252,24 @@
           "queryReplacement": "={{ [] }}"
         }
       },
-      "id": "17b1c1b1-8ff5-4734-a7f2-da61f9b12a58",
+      "id": "6764fde0-0107-419c-9ae0-8a893dc931f5",
       "name": "Get intake log",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        73040,
-        30976
+        141216,
+        60672
       ],
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
       "credentials": {
         "postgres": {
           "id": "QPuP1e7L0W14B3HS",
           "name": "Postgres account"
         }
       },
-      "executeOnce": true,
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000,
       "notes": "Earlier bounce requests, for the per-invoice and per-sender-per-day limits."
     },
     {
@@ -1280,24 +1280,24 @@
           "queryReplacement": "={{ [] }}"
         }
       },
-      "id": "e31d8cea-3bee-44a9-a13e-3e8f4372153d",
+      "id": "833ef739-4b28-45d9-ac39-ef57e4d74f8c",
       "name": "Get company aliases",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        73360,
-        31264
+        141536,
+        60960
       ],
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
       "credentials": {
         "postgres": {
           "id": "QPuP1e7L0W14B3HS",
           "name": "Postgres account"
         }
       },
-      "executeOnce": true,
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000,
       "onError": "continueRegularOutput",
       "notes": "Other names invoices may be addressed to (edited in the Hinkley app). If this fails, wrong bill-tos go to review instead of bouncing."
     },
@@ -1309,23 +1309,23 @@
           "queryReplacement": "={{ [JSON.stringify($json.rows)] }}"
         }
       },
-      "id": "65345ad1-a1b6-42a9-b3dd-23030757a836",
+      "id": "ed689d47-f4a9-4b56-8c29-cd4d4caa9f5b",
       "name": "Save check records",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        74336,
-        30912
+        142512,
+        60608
       ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
       "credentials": {
         "postgres": {
           "id": "QPuP1e7L0W14B3HS",
           "name": "Postgres account"
         }
       },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
       "notes": "Adds this run's checks to invoice_intake_checks. An email already there is skipped."
     },
     {
@@ -1336,23 +1336,23 @@
           "queryReplacement": "={{ [JSON.stringify($json.rows)] }}"
         }
       },
-      "id": "e8783aa6-fcda-4ea2-9a49-d14554dffade",
+      "id": "52946825-20c7-4550-8adf-8b6ca7f210cf",
       "name": "Save readings",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        73504,
-        30720
+        141680,
+        60416
       ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
       "credentials": {
         "postgres": {
           "id": "QPuP1e7L0W14B3HS",
           "name": "Postgres account"
         }
       },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000,
       "onError": "continueRegularOutput",
       "notes": "Keeps each new AI reading so the same document is never paid for twice. A failure here only costs a re-read later."
     },
@@ -1360,13 +1360,13 @@
       "parameters": {
         "jsCode": "// One item per invoice document to keep (passed, bounced or for review): the file it came in,\n// named \"date supplier number\", for SharePoint > invoice_files_folder > year-month.\nconst cfg = $('Config').first().json;\nconst KEEP = ['pass', 'bounce', 'review'];\nconst EXT = { 'application/pdf': 'pdf', 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp',\n  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx', 'application/vnd.oasis.opendocument.text': 'odt' };\nconst clean = v => String(v || '').replace(/[\\\\/:*?\"<>|#%&{}~\\u0000-\\u001f]+/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 60);\nconst docs = {};\nfor (const it of $('Parse extraction').all()) {\n  const p = (it.json || {}).payload || {};\n  const id = (p.source || {}).message_id || '';\n  (docs[id] = docs[id] || []).push(p);\n}\nconst out = [];\nfor (const it of $input.all()) {\n  const c = it.json || {};\n  if (!KEEP.includes(c.verdict) || !c.internet_message_id) continue;\n  const month = String(c.processed_at || new Date().toISOString()).slice(0, 7);\n  const seen = new Set();\n  for (const p of docs[c.internet_message_id] || []) {\n    const s = p.source || {};\n    const x = p.extraction;\n    if (!p.file_base64 || (x && x.is_invoice !== true) || seen.has(p.doc_hash)) continue;\n    seen.add(p.doc_hash);\n    const mime = String(s.mime_type || 'application/octet-stream');\n    const orig = String(s.filename || '');\n    const ext = (orig.match(/\\.([a-z0-9]{2,5})$/i) || [])[1] || EXT[mime] || 'bin';\n    const label = [x && x.invoice_date, x && (x.supplier || {}).name, x && x.invoice_number].map(clean).filter(Boolean).join(' ');\n    const name = (label || clean(orig.replace(/\\.[a-z0-9]{2,5}$/i, '')) || 'invoice') + '.' + ext.toLowerCase();\n    const path = String(cfg.invoice_files_folder || 'Hinkley Data Tables/Invoices').split('/').filter(Boolean).concat([month, name]);\n    out.push({\n      json: {\n        internet_message_id: c.internet_message_id, file_name: name, mime_type: mime,\n        upload_url: 'https://graph.microsoft.com/v1.0/drives/' + cfg.invoice_files_drive_id + '/root:/' + path.map(encodeURIComponent).join('/') + ':/content?@microsoft.graph.conflictBehavior=rename'\n      },\n      binary: { data: await this.helpers.prepareBinaryData(Buffer.from(p.file_base64, 'base64'), name, mime) }\n    });\n  }\n}\nreturn out;\n"
       },
-      "id": "8ef2169c-fe76-4fb9-a33c-a848cdab0947",
+      "id": "4aca2fda-c4cc-4818-8ccd-9506b8b02289",
       "name": "Prepare invoice files",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        73568,
-        31648
+        141744,
+        61344
       ]
     },
     {
@@ -1382,23 +1382,23 @@
           "timeout": 120000
         }
       },
-      "id": "cecbf722-ace2-4538-8ea6-12bfd46b6952",
+      "id": "2eb56e71-261c-4434-b8c5-8fa6a8795a9c",
       "name": "Save invoice file to SharePoint",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        73808,
-        31648
+        141984,
+        61344
       ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
       "credentials": {
         "microsoftOneDriveOAuth2Api": {
           "id": "msLXAEonvBjNyNfl",
           "name": "Microsoft Drive account"
         }
       },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
       "onError": "continueRegularOutput",
       "notes": "Saves the invoice file in OneDrive/SharePoint (Config invoice_files_drive_id + invoice_files_folder, one folder per month). A name already taken gets a number added."
     },
@@ -1406,13 +1406,13 @@
       "parameters": {
         "jsCode": "// The SharePoint link of each saved invoice file, for the app (invoice_intake_files).\nconst rows = [];\n$input.all().forEach((it, i) => {\n  const r = it.json || {};\n  const p = $('Prepare invoice files').itemMatching(i).json || {};\n  if (!r.webUrl || !p.internet_message_id) return;\n  rows.push({ internet_message_id: p.internet_message_id, kind: 'file', name: r.name || p.file_name, url: r.webUrl, drive_item_id: r.id || null, mime_type: p.mime_type || null, size: Number.isFinite(r.size) ? r.size : null });\n});\nif (!rows.length) return [];\nreturn [{ json: { rows } }];\n"
       },
-      "id": "cae51c13-f6a2-46bf-ae4a-d25889c8460e",
+      "id": "2f02bd4a-d27f-4c52-8aa2-19cd220ba60a",
       "name": "Collect saved file links",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        74048,
-        31648
+        142224,
+        61344
       ]
     },
     {
@@ -1423,23 +1423,23 @@
           "queryReplacement": "={{ [JSON.stringify($json.rows)] }}"
         }
       },
-      "id": "15626bca-551f-4a09-9ebc-90bbd927a49a",
+      "id": "15166799-2f5f-4136-b6c7-01b18e05fdc6",
       "name": "Save file links in Supabase",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        74288,
-        31648
+        142464,
+        61344
       ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
       "credentials": {
         "postgres": {
           "id": "QPuP1e7L0W14B3HS",
           "name": "Postgres account"
         }
       },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000,
       "onError": "continueRegularOutput",
       "notes": "The app shows these on Invoices > Inbox and For review (invoice_intake_files)."
     },
@@ -1447,13 +1447,13 @@
       "parameters": {
         "jsCode": "// The invoice link in each checked invoice email (Xero, QuickBooks, Invoice Simple, Square...),\n// so the app can open it. The link with \"invoice\" in its text or address, on a known invoicing site, wins.\nconst KEEP = ['pass', 'bounce', 'review'];\nconst PLATFORMS = /(^|\\.)(xero\\.com|intuit\\.com|quickbooks\\.com|invoicesimple\\.com|getinvoicesimple\\.com|squareup\\.com|square\\.link|sumup\\.com|zoho\\.com|zoho\\.eu|freeagent\\.com|stripe\\.com|paypal\\.com|invoice2go\\.com|waveapps\\.com|freshbooks\\.com|invoicehome\\.com|kashflow\\.com|clearbooks\\.co\\.uk|sage\\.com|pandle\\.com|invoiceninja\\.com|zervant\\.com|bill\\.com)$/i;\nconst SKIP = /unsubscribe|preferences|privacy|terms|cookie|facebook|twitter|linkedin|instagram|youtube|apps\\.apple|play\\.google|mailto:/i;\nconst trig = {};\nfor (const t of $('Outlook trigger (accounts inbox)').all()) {\n  const j = t.json || {};\n  if (j.internetMessageId) trig[j.internetMessageId] = j;\n  if (j.id) trig[j.id] = j;\n}\nconst best = html => {\n  let top = null;\n  const re = /<a\\b[^>]*href\\s*=\\s*[\"']([^\"']+)[\"'][^>]*>([\\s\\S]*?)<\\/a>/gi;\n  let m;\n  while ((m = re.exec(html)) !== null) {\n    const url = m[1].trim().replace(/&amp;/g, '&');\n    const text = m[2].replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n    let u; try { u = new URL(url); } catch (e) { continue; }\n    if (u.protocol !== 'https:' || SKIP.test(url) || SKIP.test(text)) continue;\n    let score = 0;\n    if (PLATFORMS.test(u.hostname)) score += 2;\n    if (/\\b(view|download|open|see|pay|access)\\b.{0,25}\\b(invoice|bill)\\b|\\binvoice\\b/i.test(text)) score += 2;\n    if (/invoice/i.test(u.pathname + u.search)) score += 1;\n    if (score >= 2 && (!top || score > top.score)) top = { url, score };\n  }\n  if (!top) {   // plain-text emails: a bare invoice address on a known invoicing site\n    for (const url of (html.replace(/<[^>]+>/g, ' ').match(/https:\\/\\/[^\\s\"'<>)]+/g) || [])) {\n      let u; try { u = new URL(url); } catch (e) { continue; }\n      if (!SKIP.test(url) && PLATFORMS.test(u.hostname) && /inv|bill|pay/i.test(u.pathname + u.search)) { top = { url }; break; }\n    }\n  }\n  return top ? top.url : null;\n};\nconst rows = [];\nfor (const it of $input.all()) {\n  const c = it.json || {};\n  if (!KEEP.includes(c.verdict) || !c.internet_message_id) continue;\n  const t = trig[c.internet_message_id] || trig[c.outlook_message_id] || {};\n  const body = t.body;\n  const url = best(String(typeof body === 'string' ? body : (body && body.content) || ''));\n  if (url && url.length <= 2000) rows.push({ internet_message_id: c.internet_message_id, kind: 'link', name: null, url });\n}\nif (!rows.length) return [];\nreturn [{ json: { rows } }];\n"
       },
-      "id": "30947983-f6e3-4795-bcdf-149607c13515",
+      "id": "bfd03314-72f0-4323-9b42-fb94410dc692",
       "name": "Find invoice links",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        73568,
-        31840
+        141744,
+        61536
       ]
     },
     {
@@ -1464,23 +1464,23 @@
           "queryReplacement": "={{ [JSON.stringify($json.rows)] }}"
         }
       },
-      "id": "c112f9ed-770a-49d8-86b6-67733a242451",
+      "id": "7eb02e34-683f-4e8c-9009-dcd89c31b265",
       "name": "Save invoice links in Supabase",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        73808,
-        31840
+        141984,
+        61536
       ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
       "credentials": {
         "postgres": {
           "id": "QPuP1e7L0W14B3HS",
           "name": "Postgres account"
         }
       },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000,
       "onError": "continueRegularOutput",
       "notes": "Invoice links from Xero, QuickBooks and the like, shown in the app next to the email (invoice_intake_files)."
     }
@@ -2003,8 +2003,9 @@
     "binaryMode": "separate",
     "availableInMCP": true
   },
-  "versionId": "dcae2e51-b912-4d03-bde0-8435d6f97463",
+  "versionId": "91e4a0cc-3fef-4e46-a571-f7eaf290c786",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "91160feec6de89661e3d4b7dd60fed55faacbf586fcb319fc3311f46435572a0"
   },
   "nodeGroups": [],

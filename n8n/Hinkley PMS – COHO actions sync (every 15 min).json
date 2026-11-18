@@ -1,0 +1,78 @@
+{
+  "name": "Hinkley PMS – COHO actions sync (every 15 min)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7-19 * * *"
+            }
+          ]
+        }
+      },
+      "id": "ea7f4b06-6e97-452e-9667-0f3c98668690",
+      "name": "Hourly 7am-7pm",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        544,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hinkleyhomes-property-management.replit.app/api/integrations/coho/actions/sync",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "5d578bd3-3cb5-4963-9310-164e19e43d5d",
+      "name": "Sync COHO actions to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        784,
+        208
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FIwP4Ffez0ckSdW4",
+          "name": "Header Auth account 2"
+        }
+      },
+      "notes": "Calls the PMS API, which pulls every COHO action and saves new or changed ones to Supabase. Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Hourly 7am-7pm": {
+      "main": [
+        [
+          {
+            "node": "Sync COHO actions to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "6396c591-44e0-40d3-939c-3f5b8ea55264",
+  "meta": {
+    "instanceId": "91160feec6de89661e3d4b7dd60fed55faacbf586fcb319fc3311f46435572a0"
+  },
+  "nodeGroups": [],
+  "id": "Ad5HcKd29h0wEMqt",
+  "tags": []
+}

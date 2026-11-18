@@ -1270,6 +1270,34 @@ paths:
                 $ref: "#/components/schemas/IntakeChecksCleared"
         "503":
           description: Database is not configured
+  /invoices/intake-fallback:
+    get:
+      operationId: getIntakeFallbackStatus
+      tags: [xero]
+      summary: The backup intake check, which checks emails to accounts@ that n8n has not dealt with 15 minutes after they arrived
+      responses:
+        "200":
+          description: Whether the backup is set up, when n8n last checked an email and what the backup did lately
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntakeFallbackStatus"
+        "503":
+          description: Database is not configured
+  /invoices/intake-fallback/run:
+    post:
+      operationId: runIntakeFallback
+      tags: [xero]
+      summary: Check accounts@ now for emails n8n has missed and check them in the app (same rules, AI reading and outputs as n8n)
+      responses:
+        "200":
+          description: What the run did
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntakeFallbackRun"
+        "503":
+          description: Database or the backup is not configured
   /invoices/intake-reviews/{id}/resolve:
     post:
       operationId: resolveIntakeReview
@@ -4511,7 +4539,25 @@ components:
       required: [kind, name, url]
     IntakeCheckFilter:
       type: string
-      enum: [invoices, pass, bounce, review, not_invoice, all]
+      enum: [invoices, pass, bounce, fixed, review, not_invoice, all]
+    IntakeAliasFix:
+      type: object
+      description: A name on the invoice that an alias would let the intake check or bill coding recognise
+      properties:
+        kind:
+          type: string
+          enum: [company, spelling]
+          description: company = Property aliases > Company names (who the invoice is addressed to); spelling = Property aliases > Spellings (a property on a line)
+        text:
+          type: string
+          description: The name exactly as written on the invoice
+        added:
+          type: boolean
+          description: True when an alias now covers this name
+        means:
+          type: ["string", "null"]
+          description: What the alias that covers it means (company, or property and company)
+      required: [kind, text, added, means]
     IntakeCheck:
       type: object
       properties:
@@ -4539,11 +4585,22 @@ components:
           type: ["string", "null"]
         action:
           type: ["string", "null"]
+        checkedBy:
+          type: ["string", "null"]
+          description: "pms when the app's backup check checked the email; null when n8n did"
         files:
           type: array
           items:
             $ref: "#/components/schemas/IntakeFile"
-      required: [id, processedAt, senderEmail, subject, supplierName, invoiceNumber, invoiceDate, total, billTo, verdict, issueCodes, action, files]
+        aliasFixes:
+          type: array
+          description: Names on a bounced or for-review invoice that an alias would fix, and whether one has been added
+          items:
+            $ref: "#/components/schemas/IntakeAliasFix"
+        fixedByAlias:
+          type: boolean
+          description: A bounce whose every problem is now covered by an alias
+      required: [id, processedAt, senderEmail, subject, supplierName, invoiceNumber, invoiceDate, total, billTo, verdict, issueCodes, action, checkedBy, files, aliasFixes, fixedByAlias]
     IntakeCheckList:
       type: object
       properties:
@@ -4558,11 +4615,15 @@ components:
               type: integer
             bounce:
               type: integer
+              description: Bounces still waiting for a corrected invoice (not fixed by an alias)
+            fixed:
+              type: integer
+              description: Bounces whose every problem is now covered by an alias
             review:
               type: integer
             not_invoice:
               type: integer
-          required: [pass, bounce, review, not_invoice]
+          required: [pass, bounce, fixed, review, not_invoice]
       required: [items, counts]
     IntakeReview:
       type: object
@@ -4627,6 +4688,53 @@ components:
           type: ["string", "null"]
           maxLength: 1000
       required: [outcome]
+    IntakeFallbackRun:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [succeeded, failed, skipped]
+        checkedAt:
+          type: string
+        waiting:
+          type: integer
+          description: Emails n8n had not dealt with
+        checked:
+          type: integer
+          description: Emails the app checked in this run (at most 10 a run)
+        verdicts:
+          type: object
+          additionalProperties:
+            type: integer
+        warnings:
+          type: array
+          items:
+            type: string
+        error:
+          type: ["string", "null"]
+      required: [status, checkedAt, waiting, checked, verdicts, warnings, error]
+    IntakeFallbackStatus:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        missing:
+          type: array
+          items:
+            type: string
+        mode:
+          type: string
+        running:
+          type: boolean
+        lastRun:
+          oneOf:
+            - $ref: "#/components/schemas/IntakeFallbackRun"
+            - type: "null"
+        lastN8nCheckAt:
+          type: ["string", "null"]
+        checkedByAppLastWeek:
+          type: integer
+      required: [configured, missing, mode, running, lastRun, lastN8nCheckAt, checkedByAppLastWeek]
     IntakeChecksCleared:
       type: object
       properties:

@@ -2039,7 +2039,7 @@ export const ListIntakeReviewsResponse = zod.object({
  * @summary Emails to the accounts inbox the intake check looked at, with its verdict and where to open each invoice
  */
 export const ListIntakeChecksQueryParams = zod.object({
-  "verdict": zod.enum(['invoices', 'pass', 'bounce', 'review', 'not_invoice', 'all']).optional()
+  "verdict": zod.enum(['invoices', 'pass', 'bounce', 'fixed', 'review', 'not_invoice', 'all']).optional()
 })
 
 export const ListIntakeChecksResponse = zod.object({
@@ -2056,15 +2056,24 @@ export const ListIntakeChecksResponse = zod.object({
   "verdict": zod.string(),
   "issueCodes": zod.string().nullable(),
   "action": zod.string().nullable(),
+  "checkedBy": zod.string().nullable().describe('pms when the app\'s backup check checked the email; null when n8n did'),
   "files": zod.array(zod.object({
   "kind": zod.enum(['file', 'link']),
   "name": zod.string().nullable(),
   "url": zod.string()
-}))
+})),
+  "aliasFixes": zod.array(zod.object({
+  "kind": zod.enum(['company', 'spelling']).describe('company = Property aliases > Company names (who the invoice is addressed to); spelling = Property aliases > Spellings (a property on a line)'),
+  "text": zod.string().describe('The name exactly as written on the invoice'),
+  "added": zod.boolean().describe('True when an alias now covers this name'),
+  "means": zod.string().nullable().describe('What the alias that covers it means (company, or property and company)')
+}).describe('A name on the invoice that an alias would let the intake check or bill coding recognise')).describe('Names on a bounced or for-review invoice that an alias would fix, and whether one has been added'),
+  "fixedByAlias": zod.boolean().describe('A bounce whose every problem is now covered by an alias')
 })),
   "counts": zod.object({
   "pass": zod.number().int(),
-  "bounce": zod.number().int(),
+  "bounce": zod.number().int().describe('Bounces still waiting for a corrected invoice (not fixed by an alias)'),
+  "fixed": zod.number().int().describe('Bounces whose every problem is now covered by an alias'),
   "review": zod.number().int(),
   "not_invoice": zod.number().int()
 })
@@ -2076,6 +2085,42 @@ export const ListIntakeChecksResponse = zod.object({
  */
 export const ClearNotInvoiceIntakeChecksResponse = zod.object({
   "cleared": zod.number().int()
+})
+
+
+/**
+ * @summary The backup intake check, which checks emails to accounts@ that n8n has not dealt with 15 minutes after they arrived
+ */
+export const GetIntakeFallbackStatusResponse = zod.object({
+  "configured": zod.boolean(),
+  "missing": zod.array(zod.string()),
+  "mode": zod.string(),
+  "running": zod.boolean(),
+  "lastRun": zod.union([zod.object({
+  "status": zod.enum(['succeeded', 'failed', 'skipped']),
+  "checkedAt": zod.string(),
+  "waiting": zod.number().int().describe('Emails n8n had not dealt with'),
+  "checked": zod.number().int().describe('Emails the app checked in this run (at most 10 a run)'),
+  "verdicts": zod.record(zod.string(), zod.number().int()),
+  "warnings": zod.array(zod.string()),
+  "error": zod.string().nullable()
+}),zod.null()]),
+  "lastN8nCheckAt": zod.string().nullable(),
+  "checkedByAppLastWeek": zod.number().int()
+})
+
+
+/**
+ * @summary Check accounts@ now for emails n8n has missed and check them in the app (same rules, AI reading and outputs as n8n)
+ */
+export const RunIntakeFallbackResponse = zod.object({
+  "status": zod.enum(['succeeded', 'failed', 'skipped']),
+  "checkedAt": zod.string(),
+  "waiting": zod.number().int().describe('Emails n8n had not dealt with'),
+  "checked": zod.number().int().describe('Emails the app checked in this run (at most 10 a run)'),
+  "verdicts": zod.record(zod.string(), zod.number().int()),
+  "warnings": zod.array(zod.string()),
+  "error": zod.string().nullable()
 })
 
 

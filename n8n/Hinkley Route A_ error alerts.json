@@ -1,0 +1,69 @@
+{
+  "name": "Hinkley Route A: error alerts",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "848e3c88-dea5-4bda-a326-7856dbcc293c",
+      "name": "On workflow error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "toRecipients": "ruel@hinkleyhomes.co.uk",
+        "subject": "=[n8n error] {{ $json.workflow.name }} - failed at {{ $json.execution.lastNodeExecuted || \"unknown node\" }}",
+        "bodyContent": "=<h3>Workflow error</h3><table border=\"1\" cellpadding=\"6\" style=\"border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px\"><tr><td><b>Workflow</b></td><td>{{ $json.workflow.name }} ({{ $json.workflow.id }})</td></tr><tr><td><b>Failed node</b></td><td>{{ $json.execution.lastNodeExecuted || \"unknown\" }}</td></tr><tr><td><b>Error</b></td><td>{{ ($json.execution.error && $json.execution.error.message) || \"No message\" }}</td></tr><tr><td><b>Execution</b></td><td>{{ $json.execution.id || \"n/a\" }} ({{ $json.execution.mode || \"\" }})</td></tr><tr><td><b>Open execution</b></td><td><a href=\"{{ $json.execution.url }}\">{{ $json.execution.url }}</a></td></tr><tr><td><b>Time</b></td><td>{{ $now.setZone(\"Asia/Manila\").toFormat(\"yyyy-MM-dd HH:mm\") }} (Manila)</td></tr></table><h4>Stack trace</h4><pre style=\"font-size:11px;white-space:pre-wrap\">{{ ($json.execution.error && $json.execution.error.stack) || \"n/a\" }}</pre>",
+        "additionalFields": {
+          "from": "no-reply@hinkleyhomes.co.uk",
+          "bodyContentType": "html"
+        }
+      },
+      "id": "da103e03-16e4-4aba-bbfc-5b8a3449f585",
+      "name": "Email error to Ruel",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "webhookId": "176c86e1-a612-4772-97d2-9bd2c15a7cde",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "iY7fphL9U1MUvBoo",
+          "name": "Microsoft Outlook account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On workflow error": {
+      "main": [
+        [
+          {
+            "node": "Email error to Ruel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "bab4f404-4925-429f-bdae-cb75331ca94e",
+  "meta": {
+    "instanceId": "91160feec6de89661e3d4b7dd60fed55faacbf586fcb319fc3311f46435572a0"
+  },
+  "nodeGroups": [],
+  "id": "zOkM1BtJ6EWLl9FX",
+  "tags": []
+}

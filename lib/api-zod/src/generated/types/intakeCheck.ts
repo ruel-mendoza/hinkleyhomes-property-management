@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { IntakeAliasFix } from './intakeAliasFix';
 import type { IntakeFile } from './intakeFile';
 
 export interface IntakeCheck {
@@ -29,5 +30,14 @@ export interface IntakeCheck {
   issueCodes: string | null;
   /** @nullable */
   action: string | null;
+  /**
+     * pms when the app's backup check checked the email; null when n8n did
+     * @nullable
+     */
+  checkedBy: string | null;
   files: IntakeFile[];
+  /** Names on a bounced or for-review invoice that an alias would fix, and whether one has been added */
+  aliasFixes: IntakeAliasFix[];
+  /** A bounce whose every problem is now covered by an alias */
+  fixedByAlias: boolean;
 }

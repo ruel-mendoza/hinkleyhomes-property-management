@@ -150,10 +150,11 @@ export default function PropertyAliasesPage() {
   );
 }
 
-function AliasModal({ alias, onClose, onDone }: { alias: PropertyAlias | null; onClose: () => void; onDone: (message: string) => void }) {
+// Also opened from the Invoices page Inbox tab with the spelling from a bounced invoice.
+export function AliasModal({ alias, initialText, onClose, onDone }: { alias: PropertyAlias | null; initialText?: string; onClose: () => void; onDone: (message: string) => void }) {
   const queryClient = useQueryClient();
   const options = useGetTrackingOptions({ query: { queryKey: getGetTrackingOptionsQueryKey(), staleTime: 10 * 60_000 } });
-  const [text, setText] = useState(alias?.alias ?? "");
+  const [text, setText] = useState(alias?.alias ?? initialText ?? "");
   const [target, setTarget] = useState(alias?.tenantId ? `${alias.tenantId}|${alias.overhead ? "__overhead__" : alias.option ?? ""}` : "");
   const done = (message: string) => {
     void queryClient.invalidateQueries({ queryKey: getListPropertyAliasesQueryKey() });
@@ -285,9 +286,10 @@ function CompanyAliases({ query, companies, term, company, flash }: { query: { d
   );
 }
 
-function CompanyAliasModal({ alias, companies, onClose, onDone }: { alias: CompanyAlias | null; companies: CompanyChoice[]; onClose: () => void; onDone: (message: string) => void }) {
+// Also opened from the Invoices page Inbox tab with the name a bounced invoice was addressed to.
+export function CompanyAliasModal({ alias, initialText, companies = FALLBACK_COMPANIES, onClose, onDone }: { alias: CompanyAlias | null; initialText?: string; companies?: CompanyChoice[]; onClose: () => void; onDone: (message: string) => void }) {
   const queryClient = useQueryClient();
-  const [text, setText] = useState(alias?.alias ?? "");
+  const [text, setText] = useState(alias?.alias ?? initialText ?? "");
   const [tenantId, setTenantId] = useState(alias?.tenantId ?? "");
   const [notes, setNotes] = useState(alias?.notes ?? "");
   const done = (message: string) => {

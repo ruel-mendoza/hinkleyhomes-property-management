@@ -106,19 +106,35 @@ export function LedgerView({ ledger, get, setParams, flash }: { ledger: Ledger }
 
   const rows: (ReceivableInvoice | PayableBill)[] = (isInvoices ? data?.invoices : data?.bills) ?? [];
   const inCompany = rows.filter((row) => !company || row.tenantId === company);
-  const visible = useMemo(() => {
+  // Rows that pass every filter except the priority dropdown, so the empty
+  // state can say when "Act now only" or "New or more urgent" hides them all.
+  const { visible, hiddenByOrder } = useMemo(() => {
     const needle = term.trim().toLowerCase();
     const range = BUCKETS.find((item) => item.key === bucket);
-    const list = inCompany.filter((row) => {
+    const filtered = inCompany.filter((row) =>
+      (!range || range.test(row.daysOverdue)) &&
+      (!dueOnly || ((row as ReceivableInvoice).followUp?.nextChaseDate && (row as ReceivableInvoice).followUp!.nextChaseDate! <= (data?.asOf ?? ""))) &&
+      (!needle || [row.number, row.contactName, row.description, row.property, "reference" in row ? row.reference : null].some((value) => value?.toLowerCase().includes(needle))));
+    const list = filtered.filter((row) => {
       const rank = rankOf(row);
-      return (!range || range.test(row.daysOverdue)) &&
-        (!dueOnly || ((row as ReceivableInvoice).followUp?.nextChaseDate && (row as ReceivableInvoice).followUp!.nextChaseDate! <= (data?.asOf ?? ""))) &&
-        (order !== "act" || rank?.priority === 1) &&
-        (order !== "changed" || (rank && rank.change !== "ongoing")) &&
-        (!needle || [row.number, row.contactName, row.description, row.property, "reference" in row ? row.reference : null].some((value) => value?.toLowerCase().includes(needle)));
+      return (order !== "act" || rank?.priority === 1) && (order !== "changed" || (rank && rank.change !== "ongoing"));
     });
-    return order === "due" ? list : [...list].sort((a, b) => (rankOf(a)?.priority ?? 9) - (rankOf(b)?.priority ?? 9) || b.amountDue - a.amountDue);
+    return { visible: order === "due" ? list : [...list].sort((a, b) => (rankOf(a)?.priority ?? 9) - (rankOf(b)?.priority ?? 9) || b.amountDue - a.amountDue), hiddenByOrder: filtered.length - list.length };
   }, [inCompany, bucket, term, dueOnly, order, data, ranked]);
+  const orderLabel = ORDERS.find(([key]) => key === order)?.[1] ?? "";
+  // Name the filter that empties the list (e.g. an age box left on from another
+  // company), with one click to clear it.
+  const filterNames = [
+    bucket !== "all" ? `“${BUCKETS.find((item) => item.key === bucket)?.label}”` : null,
+    dueOnly ? "“Chase today”" : null,
+    term.trim() ? "your search" : null,
+  ].filter(Boolean);
+  const count = (total: number, noun: string) => `${total} ${noun}${total === 1 ? "" : "s"}`;
+  const emptyNote = (noun: string) => hiddenByOrder
+    ? <p>{count(hiddenByOrder, noun)} hidden by “{orderLabel}”. <button type="button" className="hh-link-btn" onClick={() => setParams({ order: "" })}>Show all</button></p>
+    : inCompany.length && filterNames.length
+      ? <p>{count(inCompany.length, noun)} hidden by {filterNames.join(" and ")}. <button type="button" className="hh-link-btn" onClick={() => setParams({ age: "", chase: "", q: "" })}>Show all</button></p>
+      : <p>No open {noun}s match these filters.</p>;
   const bucketTotal = (key: Bucket) => inCompany.filter((row) => BUCKETS.find((item) => item.key === key)!.test(row.daysOverdue)).reduce((sum, row) => sum + row.amountDue, 0);
   const chaseDue = (data?.invoices ?? []).filter((invoice) => invoice.followUp?.nextChaseDate && invoice.followUp.nextChaseDate <= data!.asOf).length;
   const actNow = inCompany.filter((row) => rankOf(row)?.priority === 1).length;
@@ -263,7 +279,7 @@ export function LedgerView({ ledger, get, setParams, flash }: { ledger: Ledger }
                         </tr>
                       );
                     })}
-                    {!visible.length && <tr><td colSpan={6}><div className="empty-state"><h3>Nothing owed here</h3><p>No open invoices match these filters.</p></div></td></tr>}
+                    {!visible.length && <tr><td colSpan={6}><div className="empty-state"><h3>Nothing owed here</h3>{emptyNote("invoice")}</div></td></tr>}
                   </tbody>
                 </table>
               ) : (
@@ -283,7 +299,7 @@ export function LedgerView({ ledger, get, setParams, flash }: { ledger: Ledger }
                         <td><span className={`status ${row.status === "SUBMITTED" ? "pending" : row.daysOverdue > 0 ? "overdue" : "upcoming"}`}>{row.status === "SUBMITTED" ? "Awaiting approval" : row.daysOverdue > 0 ? "Overdue" : "To pay"}</span></td>
                       </tr>
                     ))}
-                    {!visible.length && <tr><td colSpan={5}><div className="empty-state"><h3>No bills</h3><p>No open bills match these filters.</p></div></td></tr>}
+                    {!visible.length && <tr><td colSpan={5}><div className="empty-state"><h3>No bills</h3>{emptyNote("bill")}</div></td></tr>}
                   </tbody>
                 </table>
               )}

@@ -9,22 +9,22 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "d1e2f3a4-5b6c-4d7e-8f9a-0b1c2d3e4f5a",
+      "id": "f121ef1d-2ad9-4c45-878d-6276d5b1be30",
       "name": "PMS request",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        0,
-        0
+        3232,
+        2144
       ],
       "webhookId": "a7b8c9d0-1e2f-4a3b-9c4d-5e6f7a8b9c0d",
-      "notes": "Header Auth credential: \"Header Auth account\", the same one as the Xero gateway (Name = X-Hinkley-Gateway-Key). Not \"Header Auth account 2\", which belongs to the payment reminders. The app sends { path, query }.",
       "credentials": {
         "httpHeaderAuth": {
           "id": "uDbyYQyAvs2lagnq",
           "name": "Header Auth account"
         }
-      }
+      },
+      "notes": "Header Auth credential: \"Header Auth account\", the same one as the Xero gateway (Name = X-Hinkley-Gateway-Key). Not \"Header Auth account 2\", which belongs to the payment reminders. The app sends { path, query }."
     },
     {
       "parameters": {
@@ -33,7 +33,7 @@
             {
               "id": "e2f3a4b5-6c7d-4e8f-9a0b-1c2d3e4f5a6b",
               "name": "useSignedKey",
-              "value": false,
+              "value": true,
               "type": "boolean"
             }
           ]
@@ -41,13 +41,13 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "f3a4b5c6-7d8e-4f9a-8b0c-2d3e4f5a6b7c",
+      "id": "3a4384ee-3854-483f-a9fe-2d6e3e07bb2a",
       "name": "Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        220,
-        0
+        3456,
+        2144
       ],
       "notes": "useSignedKey = false: the old Api-Key credential (works until 31 Oct 2026). Set to true once SMOOBU_API_KEY and SMOOBU_API_SECRET are in n8n Variables."
     },
@@ -55,13 +55,13 @@
       "parameters": {
         "jsCode": "// Validates a PMS request and turns it into one read-only Smoobu call.\n// Anything not on these allowlists is rejected before Smoobu is contacted.\n// Smoobu is the channel manager and PriceLabs writes prices through it, so the\n// gateway only ever reads (GET).\nconst body = $json.body || {};\nconst RESERVATION_QUERY = ['from', 'to', 'created_from', 'created_to', 'modifiedFrom', 'modifiedTo', 'arrivalFrom', 'arrivalTo', 'departureFrom', 'departureTo', 'showCancellation', 'excludeBlocked', 'apartmentId', 'includeRelated', 'includePriceElements', 'page', 'pageSize'];\nconst PATHS = [\n  { pattern: /^\\/api\\/apartments$/, query: [] },\n  { pattern: /^\\/api\\/apartments\\/\\d{1,12}$/, query: [] },\n  { pattern: /^\\/api\\/reservations$/, query: RESERVATION_QUERY },\n  { pattern: /^\\/api\\/reservations\\/\\d{1,12}$/, query: [] },\n  { pattern: /^\\/api\\/reservations\\/\\d{1,12}\\/price-elements$/, query: [] },\n  { pattern: /^\\/api\\/threads$/, query: ['page_number', 'page_size'] },\n];\nconst reject = (error) => [{ json: { ok: false, status: 400, error } }];\n\nconst path = typeof body.path === 'string' ? body.path : '';\nconst rule = PATHS.find((item) => item.pattern.test(path));\nif (!rule) return reject('Path not allowed: ' + (path || '(none)'));\n\nconst query = {};\nfor (const [name, value] of Object.entries(body.query || {})) {\n  if (!rule.query.includes(name)) return reject('Query parameter not allowed for ' + path + ': ' + name);\n  if (!['string', 'number', 'boolean'].includes(typeof value) || String(value).length > 100) return reject('Bad value for ' + name);\n  query[name] = String(value);\n}\nreturn [{ json: { ok: true, path, query, useSignedKey: $json.useSignedKey === true } }];\n"
       },
-      "id": "a4b5c6d7-8e9f-4a0b-9c1d-3e4f5a6b7c8d",
+      "id": "7f0b4d15-95fb-4e06-bf96-d72333a49e3a",
       "name": "Validate request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        440,
-        0
+        3680,
+        2144
       ]
     },
     {
@@ -70,7 +70,8 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 1
           },
           "conditions": [
             {
@@ -88,13 +89,13 @@
         },
         "options": {}
       },
-      "id": "c6d7e8f9-0a1b-4c2d-9e3f-5a6b7c8d9e0f",
+      "id": "05cf56e8-4619-4caa-a12b-4dd0c9ff7a6b",
       "name": "Allowed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        660,
-        0
+        3904,
+        2144
       ]
     },
     {
@@ -103,7 +104,8 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 1
           },
           "conditions": [
             {
@@ -121,31 +123,30 @@
         },
         "options": {}
       },
-      "id": "e8f9a0b1-2c3d-4e4f-9a5b-7c8d9e0f1a2b",
+      "id": "f12525c5-9672-4310-87b2-f5ac82213e3b",
       "name": "Use signed key?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        880,
-        -100
+        4112,
+        2048
       ]
     },
     {
       "parameters": {
         "jsCode": "// Calls Smoobu with the signed HMAC key (needed from 31 October 2026, when the\n// old Api-Key header stops). n8n credentials can't sign requests, so the key and\n// secret come from n8n Variables: SMOOBU_API_KEY and SMOOBU_API_SECRET.\n// Answers in the same shape as the old-key HTTP node: { statusCode, headers, body }.\nconst crypto = require('crypto');\n\nconst key = $vars.SMOOBU_API_KEY;\nconst secret = $vars.SMOOBU_API_SECRET;\nif (!key || !secret) throw new Error('Add the n8n Variables SMOOBU_API_KEY and SMOOBU_API_SECRET (Overview > Variables).');\n\nconst { path, query } = $json;\n// RFC 3986: spaces as %20, and ! ' ( ) * escaped too.\nconst encode = (value) => encodeURIComponent(value).replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());\nconst qs = Object.entries(query || {})\n  .map(([name, value]) => [encode(name), encode(String(value))])\n  .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0))\n  .map(([name, value]) => name + '=' + value)\n  .join('&');\n\n// Canonical string, one part per line: method, path, query sorted by key,\n// timestamp, nonce, SHA-256 of the body (hex), API key. Signed with the secret.\nconst timestamp = new Date().toISOString().replace(/\\.\\d{3}Z$/, 'Z');\nconst nonce = crypto.randomUUID();\nconst bodyHash = crypto.createHash('sha256').update('').digest('hex');\nconst canonical = ['GET', path, qs, timestamp, nonce, bodyHash, key].join('\\n');\nconst signature = crypto.createHmac('sha256', secret).update(canonical).digest('base64');\n\nconst response = await this.helpers.httpRequest({\n  method: 'GET',\n  url: 'https://login.smoobu.com' + path + (qs ? '?' + qs : ''),\n  headers: { Accept: 'application/json', 'X-API-Key': key, 'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Signature': signature },\n  json: true,\n  returnFullResponse: true,\n  ignoreHttpStatusErrors: true,\n  timeout: 30000,\n});\nreturn [{ json: { statusCode: response.statusCode, headers: response.headers || {}, body: response.body ?? null } }];\n"
       },
-      "id": "f9a0b1c2-3d4e-4f5a-8b6c-8d9e0f1a2b3c",
+      "id": "0137d553-66b4-4b26-9688-c7a5d6317ef1",
       "name": "Call Smoobu (signed key)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1100,
-        -200
+        4336,
+        1936
       ]
     },
     {
       "parameters": {
-        "method": "GET",
         "url": "=https://login.smoobu.com{{ $json.path }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpTemplatedCustomAuth",
@@ -171,13 +172,13 @@
           "timeout": 30000
         }
       },
-      "id": "a0b1c2d3-4e5f-4a6b-9c7d-9e0f1a2b3c4d",
+      "id": "144b2054-c6e0-4b32-ac9c-0b1391bc410d",
       "name": "Call Smoobu (old key)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1100,
-        0
+        4336,
+        2144
       ],
       "credentials": {
         "httpTemplatedCustomAuth": {
@@ -195,13 +196,13 @@
           "responseCode": 200
         }
       },
-      "id": "b1c2d3e4-5f6a-4b7c-8d8e-0f1a2b3c4d5e",
+      "id": "c09a1691-e7ff-4d22-82e9-a6e936d2d983",
       "name": "Return Smoobu result",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1320,
-        -100
+        4560,
+        2048
       ],
       "notes": "Always HTTP 200: the real status is in the body. (n8n cloud sits behind Cloudflare, which replaces 5xx answers with its own error page.)"
     },
@@ -213,13 +214,13 @@
           "responseCode": "={{ $json.status }}"
         }
       },
-      "id": "c2d3e4f5-6a7b-4c8d-9e9f-1a2b3c4d5e6f",
+      "id": "fd518a67-e016-4220-ad95-061616404d5b",
       "name": "Reject request",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        880,
-        140
+        4112,
+        2288
       ]
     },
     {
@@ -229,16 +230,17 @@
         "width": 480,
         "color": 5
       },
-      "id": "d3e4f5a6-7b8c-4d9e-8f0a-2b3c4d5e6f7a",
+      "id": "2d904e87-c78a-4a21-b358-ecb0e5dac989",
       "name": "Setup notes",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        0,
-        220
+        3232,
+        2368
       ]
     }
   ],
+  "pinData": {},
   "connections": {
     "PMS request": {
       "main": [
@@ -332,9 +334,19 @@
       ]
     }
   },
+  "active": true,
   "settings": {
     "executionOrder": "v1",
-    "saveDataSuccessExecution": "none"
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
   },
-  "pinData": {}
+  "versionId": "0401e311-d57d-474d-b715-77309373961c",
+  "meta": {
+    "instanceId": "91160feec6de89661e3d4b7dd60fed55faacbf586fcb319fc3311f46435572a0"
+  },
+  "nodeGroups": [],
+  "id": "eyRTSuB05CDW1A2B",
+  "tags": []
 }

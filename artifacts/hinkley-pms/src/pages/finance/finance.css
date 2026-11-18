@@ -235,3 +235,14 @@ td.hh-chk-summary{min-width:260px;width:60ch}
 /* Rent: tabs under the header */
 .hh-rent-tabs{margin-bottom:14px}
 .hh-inv-tabs{max-width:100%;overflow-x:auto}
+
+/* Inline text button, e.g. "Show all" in an empty table. */
+.hh-link-btn { background: none; border: 0; padding: 0; font: inherit; color: #79cdb0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px }
+.hh-link-btn:hover { color: #b1e5ce }
+
+/* Inbox tab: alias suggestions on bounced and for-review invoices */
+.hh-intake-fixes{display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin-top:6px}
+.hh-intake-fix{display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:12px;line-height:1.3;color:#79cdb0;background:none;border:1px solid #2a6553;border-radius:6px;padding:3px 8px;cursor:pointer;text-align:left;max-width:100%}
+.hh-intake-fix:hover{background:#1d4a3c}
+.hh-intake-fix.done{border:0;padding:0;color:#8f9db0;cursor:default}
+.hh-intake-fix.done svg{color:#79cdb0;flex:none}

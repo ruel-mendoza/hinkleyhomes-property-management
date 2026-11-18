@@ -61,6 +61,35 @@ export function smoobuMode(): "gateway" | "signed key" | "old key" | undefined {
   return credentials ? "old key" : undefined;
 }
 
+// Microsoft 365 (Graph) app registration with application permissions, used by
+// the backup intake check to read accounts@, tag emails, reply and save
+// invoices to SharePoint when n8n is down. Limit it to the accounts and
+// no-reply mailboxes with an Exchange application access policy.
+export function readMicrosoftGraphEnv(): { tenantId: string; clientId: string; clientSecret: string } | undefined {
+  const tenantId = read("MS_GRAPH_TENANT_ID");
+  const clientId = read("MS_GRAPH_CLIENT_ID");
+  const clientSecret = read("MS_GRAPH_CLIENT_SECRET");
+  return tenantId && clientId && clientSecret ? { tenantId, clientId, clientSecret } : undefined;
+}
+
+// Backup intake check (lib/intake-fallback.ts). Mode as in the n8n workflow:
+// shadow (default: the reviewer gets the would-be bounce), draft, live, or off.
+export type IntakeFallbackMode = "shadow" | "draft" | "live" | "off";
+export function readIntakeFallbackEnv(): {
+  mode: IntakeFallbackMode;
+  openAiKey: string | undefined;
+  model: string;
+  graph: ReturnType<typeof readMicrosoftGraphEnv>;
+  missing: string[];
+} {
+  const raw = read("INTAKE_FALLBACK_MODE")?.toLowerCase();
+  const mode: IntakeFallbackMode = raw === "draft" || raw === "live" || raw === "off" ? raw : "shadow";
+  const graph = readMicrosoftGraphEnv();
+  const openAiKey = read("OPENAI_API_KEY");
+  const missing = [...(graph ? [] : ["MS_GRAPH_TENANT_ID", "MS_GRAPH_CLIENT_ID", "MS_GRAPH_CLIENT_SECRET"]), ...(openAiKey ? [] : ["OPENAI_API_KEY"])];
+  return { mode, openAiKey, model: read("INTAKE_AI_MODEL") ?? "gpt-5.4", graph, missing };
+}
+
 // Shared secret for scheduled n8n calls into the API (e.g. the COHO actions
 // sync). Too-short values are ignored so a weak key can't be used.
 export function pmsSyncKey(): string | undefined {

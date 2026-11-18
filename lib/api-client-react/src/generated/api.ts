@@ -71,6 +71,8 @@ import type {
   HealthStatus,
   IntakeCheckList,
   IntakeChecksCleared,
+  IntakeFallbackRun,
+  IntakeFallbackStatus,
   IntakeReviewList,
   IntakeReviewResolve,
   IntakeReviewResolved,
@@ -4839,6 +4841,157 @@ export const useClearNotInvoiceIntakeChecks = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getClearNotInvoiceIntakeChecksMutationOptions(options));
+    }
+
+export const getGetIntakeFallbackStatusUrl = () => {
+
+
+
+
+  return `/api/invoices/intake-fallback`
+}
+
+/**
+ * @summary The backup intake check, which checks emails to accounts@ that n8n has not dealt with 15 minutes after they arrived
+ */
+export const getIntakeFallbackStatus = async ( options?: Parameters<typeof customFetch>[1]): Promise<IntakeFallbackStatus> => {
+
+  return customFetch<IntakeFallbackStatus>(getGetIntakeFallbackStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetIntakeFallbackStatusQueryKey = () => {
+    return [
+    `/api/invoices/intake-fallback`
+    ] as const;
+    }
+
+
+export const getGetIntakeFallbackStatusQueryOptions = <TData = Awaited<ReturnType<typeof getIntakeFallbackStatus>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getIntakeFallbackStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetIntakeFallbackStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getIntakeFallbackStatus>>> = ({ signal }) => getIntakeFallbackStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getIntakeFallbackStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetIntakeFallbackStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getIntakeFallbackStatus>>>
+export type GetIntakeFallbackStatusQueryError = ErrorType<void>
+
+
+/**
+ * @summary The backup intake check, which checks emails to accounts@ that n8n has not dealt with 15 minutes after they arrived
+ */
+
+export function useGetIntakeFallbackStatus<TData = Awaited<ReturnType<typeof getIntakeFallbackStatus>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getIntakeFallbackStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetIntakeFallbackStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRunIntakeFallbackUrl = () => {
+
+
+
+
+  return `/api/invoices/intake-fallback/run`
+}
+
+/**
+ * @summary Check accounts@ now for emails n8n has missed and check them in the app (same rules, AI reading and outputs as n8n)
+ */
+export const runIntakeFallback = async ( options?: Parameters<typeof customFetch>[1]): Promise<IntakeFallbackRun> => {
+
+  return customFetch<IntakeFallbackRun>(getRunIntakeFallbackUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRunIntakeFallbackMutationKey = () => ['runIntakeFallback'] as const;
+
+export const getRunIntakeFallbackMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runIntakeFallback>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runIntakeFallback>>, TError,void, TContext> => {
+
+const mutationKey = getRunIntakeFallbackMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runIntakeFallback>>, void> = () => {
+
+
+          return  runIntakeFallback(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunIntakeFallbackMutationResult = NonNullable<Awaited<ReturnType<typeof runIntakeFallback>>>
+
+    export type RunIntakeFallbackMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Check accounts@ now for emails n8n has missed and check them in the app (same rules, AI reading and outputs as n8n)
+ */
+export const useRunIntakeFallback = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runIntakeFallback>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runIntakeFallback>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRunIntakeFallbackMutationOptions(options));
     }
 
 export const getResolveIntakeReviewUrl = (id: string,) => {

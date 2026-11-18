@@ -67,6 +67,7 @@ export const integrationEnum = pgEnum("integration", [
   "xero",
   "n8n",
   "whatsapp",
+  "accounts_inbox",
 ]);
 
 export const syncStatusEnum = pgEnum("sync_status", ["running", "succeeded", "failed"]);

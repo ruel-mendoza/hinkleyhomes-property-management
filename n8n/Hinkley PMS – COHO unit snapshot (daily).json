@@ -1,0 +1,78 @@
+{
+  "name": "Hinkley PMS – COHO unit snapshot (daily)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 23,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "id": "17b9005a-1196-4d21-bf6e-3a5e84e7728d",
+      "name": "Every day at 23:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hinkleyhomes-property-management.replit.app/api/integrations/coho/unit-snapshot",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "6c868c40-1d41-4158-a758-e623691712f1",
+      "name": "Record unit snapshot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FIwP4Ffez0ckSdW4",
+          "name": "Header Auth account 2"
+        }
+      },
+      "notes": "Calls the PMS API, which saves today's let/vacant status for every COHO unit to Supabase (occupancy history for the Performance page). Header Auth credential: Name = X-Hinkley-Sync-Key, Value = the PMS_SYNC_KEY secret (the same credential as the COHO actions sync)."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every day at 23:30": {
+      "main": [
+        [
+          {
+            "node": "Record unit snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "88b71999-387c-4afb-a6dc-8a26e88329da",
+  "meta": {
+    "instanceId": "91160feec6de89661e3d4b7dd60fed55faacbf586fcb319fc3311f46435572a0"
+  },
+  "nodeGroups": [],
+  "id": "vQhO4nYVxdi3hkvm",
+  "tags": []
+}
