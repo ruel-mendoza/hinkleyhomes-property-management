@@ -547,6 +547,22 @@ export type StayAvailability = {
 };
 const availabilityCache = new Map<string, { at: number; value: StayAvailability }>();
 
+// Apartment ids Smoobu lists right now (direct read, kept for an hour). Null if
+// the list can't be read, in which case every saved apartment is asked about.
+let liveApartmentsCache: { at: number; ids: Set<number> } | null = null;
+async function liveApartmentIds(): Promise<Set<number> | null> {
+  if (liveApartmentsCache && Date.now() - liveApartmentsCache.at < 60 * 60_000) return liveApartmentsCache.ids;
+  try {
+    const ids = new Set(listIn(await smoobuGet("/api/apartments", {}, { direct: true }), "apartments").flatMap((item) => (num(item.id) === null ? [] : [num(item.id)!])));
+    if (!ids.size) return null;
+    liveApartmentsCache = { at: Date.now(), ids };
+    return ids;
+  } catch (error) {
+    logger.warn({ err: error }, "Smoobu apartment list could not be read for availability");
+    return null;
+  }
+}
+
 // From the given day (never before today: past nights aren't for sale) for the
 // given number of nights. The Stays panel asks for 14 from today; the calendar
 // asks for the month on screen.
@@ -569,16 +585,37 @@ export async function stayAvailability(requestedFrom?: string, nights = AVAILABI
     .leftJoin(p, eq(p.id, a.propertyId))
     .orderBy(a.name);
 
+  // Only ask about apartments Smoobu still has: one that was removed in Smoobu
+  // stays in smoobu_apartments, and Smoobu refuses a whole rates batch (HTTP 422,
+  // "Apartment not found for this user") if it contains one.
+  const live = await liveApartmentIds();
+  const current = live ? apartments.filter((apartment) => live.has(apartment.id)) : apartments;
   const rates = new Map<string, Raw>();
+  const readRates = async (ids: number[]) => {
+    const payload = obj(await smoobuGet("/api/rates", { apartments: ids, start_date: from, end_date: to }, { direct: true }));
+    for (const [id, days] of Object.entries(obj(payload.data))) rates.set(id, obj(days));
+  };
   if (dates.length) {
-    for (let start = 0; start < apartments.length; start += RATES_BATCH) {
-      const ids = apartments.slice(start, start + RATES_BATCH).map((apartment) => apartment.id);
-      const payload = obj(await smoobuGet("/api/rates", { apartments: ids, start_date: from, end_date: to }, { direct: true }));
-      for (const [id, days] of Object.entries(obj(payload.data))) rates.set(id, obj(days));
+    for (let start = 0; start < current.length; start += RATES_BATCH) {
+      const ids = current.slice(start, start + RATES_BATCH).map((apartment) => apartment.id);
+      try {
+        await readRates(ids);
+      } catch (error) {
+        if (!(error instanceof SmoobuApiError) || error.status !== 422) throw error;
+        // Still refused: read this batch one apartment at a time and skip the ones Smoobu doesn't know.
+        for (const id of ids) {
+          try {
+            await readRates([id]);
+          } catch (single) {
+            if (!(single instanceof SmoobuApiError) || single.status !== 422) throw single;
+            logger.warn({ smoobuApartmentId: id }, "Smoobu doesn't know this apartment; left out of availability");
+          }
+        }
+      }
     }
   }
 
-  const rows = apartments.map((apartment) => {
+  const rows = current.map((apartment) => {
     const days = rates.get(String(apartment.id)) ?? {};
     const nightsOut = dates.map((date): StayNight => {
       const day = obj(days[date]);

@@ -226,7 +226,11 @@ export default function CalendarPage({ selectedPropertyReference }: CalendarProp
 
       <div className="hh-cal-summary">
         <div className="hh-cal-summary-main"><span className="hh-cal-summary-label">Showing</span><strong>{monthLabel}</strong><span className="hh-cal-summary-divider" /><span className="hh-cal-summary-live"><i /> {monthEvents.length} COHO {monthEvents.length === 1 ? "event" : "events"}</span></div>
-        <div className="hh-cal-legend"><span><i className="hh-dot-live" /> Live COHO</span><button type="button" className={`hh-cal-stays-toggle ${showStays ? "on" : ""}`} aria-pressed={showStays} onClick={() => setShowStays((value) => !value)} data-testid="button-toggle-stays"><i className="hh-dot-stays" /> Stays availability {showStays ? "on" : "off"}</button>{showStays && <span className="hh-cal-stays-key"><BedDouble size={12} /> Stays apartments free each night · hover or click a day for names</span>}</div>
+        <div className="hh-cal-legend"><span><i className="hh-dot-live" /> Live COHO</span><button type="button" className={`hh-cal-stays-toggle ${showStays ? "on" : ""}`} aria-pressed={showStays} onClick={() => setShowStays((value) => !value)} data-testid="button-toggle-stays"><i className="hh-dot-stays" /> Stays availability {showStays ? "on" : "off"}</button>{showStays && (staysQuery.isLoading ? <span className="hh-cal-stays-key"><BedDouble size={12} /> Loading Stays availability from Smoobu…</span>
+          : staysQuery.isError ? <span className="hh-cal-stays-key error" role="alert" data-testid="calendar-stays-error"><AlertCircle size={12} /> Stays availability couldn't load: {apiErrorText(staysQuery.error)} <button type="button" onClick={() => { void staysQuery.refetch(); }}><RefreshCw size={12} /> Retry</button></span>
+            : selectedPropertyReference && stayApartments.length === 0 ? <span className="hh-cal-stays-key"><BedDouble size={12} /> No Smoobu apartments are linked to this property · <Link href="/properties?tab=smoobu">Link apartments</Link></span>
+              : (staysQuery.data?.dates.length ?? 0) === 0 ? <span className="hh-cal-stays-key"><BedDouble size={12} /> Stays availability starts from today</span>
+                : <span className="hh-cal-stays-key"><BedDouble size={12} /> Stays apartments free each night · hover or click a day for names</span>)}</div>
       </div>
 
       <section className="hh-cal-toolbar" aria-label="Calendar controls">
