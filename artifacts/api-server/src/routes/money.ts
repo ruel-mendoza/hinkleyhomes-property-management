@@ -172,8 +172,11 @@ export function parseBankSummary(data: unknown) {
 
 // Xero marks payment platforms (Stripe, PayPal…) as ordinary BANK accounts, so
 // they are told apart by name; cards come from Xero's BankAccountType.
+// Telleroo is not one of them: "Telleroo - HINKLEY HOMES LTD" is a real account
+// that Hinkley Homes Ltd tops up and pays suppliers from, so it holds a balance
+// and counts as a bank account.
 type AccountKind = "bank" | "card" | "payments";
-const PAYMENT_PLATFORM = /stripe|paypal|gocardless|telleroo|square|sumup|worldpay/i;
+const PAYMENT_PLATFORM = /stripe|paypal|gocardless|square|sumup|worldpay/i;
 const accountKind = (name: string, bankAccountType: string | null): AccountKind =>
   bankAccountType === "CREDITCARD" ? "card" : PAYMENT_PLATFORM.test(name) ? "payments" : "bank";
 // A payment platform should pay out to the bank regularly; above this it is worth a look.
