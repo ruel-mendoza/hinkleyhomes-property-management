@@ -1483,6 +1483,158 @@
       },
       "onError": "continueRegularOutput",
       "notes": "Invoice links from Xero, QuickBooks and the like, shown in the app next to the email (invoice_intake_files)."
+    },
+    {
+      "parameters": {},
+      "id": "e6c4de0e-6fab-4ab0-8693-4fa1a0012387",
+      "name": "Catch up (run by hand)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        135836,
+        60692
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://graph.microsoft.com/v1.0/users/accounts@hinkleyhomes.co.uk/mailFolders/inbox/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOutlookOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "$filter",
+              "value": "={{ 'receivedDateTime ge ' + new Date(Date.now() - 3 * 86400000).toISOString().replace(/\\.\\d+Z$/, 'Z') }}"
+            },
+            {
+              "name": "$orderby",
+              "value": "receivedDateTime desc"
+            },
+            {
+              "name": "$top",
+              "value": "100"
+            },
+            {
+              "name": "$select",
+              "value": "id,subject,from,receivedDateTime,internetMessageId,hasAttachments,bodyPreview,body,categories,toRecipients,ccRecipients,sentDateTime,webLink,importance"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "7144413a-c6b2-41f3-9034-32ea2b87b54d",
+      "name": "Get untagged inbox emails",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        136096,
+        60692
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "xVu5DTOSVHg6Rm77",
+          "name": "Microsoft Outlook account 2"
+        }
+      },
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Inbox emails from the last 3 days with no \"n8n:\" category yet, at most 40 a run.\n// Emails already logged in Supabase are still skipped further on, so nothing is checked twice.\nconst MAX = 40;\nconst list = ($input.first().json || {}).value || [];\nconst untagged = list.filter(m => !(m.categories || []).some(c => String(c).indexOf('n8n:') === 0));\nreturn untagged.slice(0, MAX).map(m => ({ json: m }));"
+      },
+      "id": "2971297a-2cde-4ed7-abe6-e52cbce12b16",
+      "name": "Keep untagged emails",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        136356,
+        60692
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://graph.microsoft.com/v1.0/users/accounts@hinkleyhomes.co.uk/messages/' + encodeURIComponent($json.id) + '/attachments' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOutlookOAuth2Api",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "b62d6f8d-213c-4194-85c8-728afff5fcd7",
+      "name": "Get email attachments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        136616,
+        60692
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "xVu5DTOSVHg6Rm77",
+          "name": "Microsoft Outlook account 2"
+        }
+      },
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Turns each email's attachments into files, the same shape the Outlook trigger gives,\n// so the rest of the workflow treats a catch-up email exactly like a new one.\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const msg = $('Keep untagged emails').itemMatching(i).json;\n  const atts = (items[i].json || {}).value || [];\n  const binary = {};\n  let n = 0;\n  for (const a of atts) {\n    if (a['@odata.type'] !== '#microsoft.graph.fileAttachment' || !a.contentBytes) continue;\n    binary['attachment_' + n] = await this.helpers.prepareBinaryData(Buffer.from(a.contentBytes, 'base64'), a.name || ('attachment_' + n), a.contentType || 'application/octet-stream');\n    n++;\n  }\n  out.push({ json: msg, binary, pairedItem: { item: i } });\n}\nreturn out;"
+      },
+      "id": "b1d4c538-ccce-4c1a-9cc8-8b0db2f1c144",
+      "name": "Add attachment files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        136876,
+        60692
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ 'https://graph.microsoft.com/v1.0/users/accounts@hinkleyhomes.co.uk/messages/' + encodeURIComponent($json.outlook_message_id) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOutlookOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ categories: ($json.outlook_categories || []).filter(c => String(c).indexOf('n8n:') !== 0).concat([$('Config').first().json.cat_not_invoice]) }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "b862420b-0f73-48b3-8c03-391e0a435125",
+      "name": "Tag: nothing to read",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        138800,
+        60560
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "xVu5DTOSVHg6Rm77",
+          "name": "Microsoft Outlook account 2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "width": 1300,
+        "height": 220,
+        "content": "## Catch up on missed emails (run by hand)\nThe Outlook trigger only sees emails that arrive while this workflow is on, and a manual run of the trigger only fetches the newest email. To check emails that were missed, click **Execute workflow** on **Catch up (run by hand)**: it reads every inbox email from the last 3 days with no \"n8n:\" category (up to 40 a run; run it again for more) and sends them through the same checks. Emails already logged in Supabase are skipped. Emails with nothing to read (no attachment and almost no text) are tagged \"n8n: not an invoice\" so they stop showing as untagged."
+      },
+      "id": "eafecddb-aa45-4e83-b630-1bbee390d6f9",
+      "name": "Catch-up notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        135796,
+        60872
+      ]
     }
   ],
   "pinData": {},
@@ -1541,6 +1693,13 @@
         [
           {
             "node": "Word or ODT document?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tag: nothing to read",
             "type": "main",
             "index": 0
           }
@@ -1990,6 +2149,61 @@
         [
           {
             "node": "Save invoice links in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catch up (run by hand)": {
+      "main": [
+        [
+          {
+            "node": "Get untagged inbox emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get untagged inbox emails": {
+      "main": [
+        [
+          {
+            "node": "Keep untagged emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep untagged emails": {
+      "main": [
+        [
+          {
+            "node": "Get email attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get email attachments": {
+      "main": [
+        [
+          {
+            "node": "Add attachment files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add attachment files": {
+      "main": [
+        [
+          {
+            "node": "Config",
             "type": "main",
             "index": 0
           }
