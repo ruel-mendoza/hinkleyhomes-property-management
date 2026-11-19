@@ -62,8 +62,12 @@ export type IntakeFallbackRun = {
 
 let running: Promise<IntakeFallbackRun> | null = null;
 let lastRun: IntakeFallbackRun | null = null;
-// Emails with nothing to read are never logged by n8n either; remember them so they aren't fetched every run.
+// Emails with nothing to read are tagged "not an invoice" (as n8n does) but not logged. If the
+// tag can't be set, remember them so they aren't fetched every run.
 const nothingToRead = new Set<string>();
+// Logged emails that are missing their Outlook tag (the tag failed, e.g. Microsoft throttling)
+// get it back from the logged verdict. Cheap, so more of these are done per run.
+const MAX_RETAG_PER_RUN = 50;
 
 const upn = () => encodeURIComponent(INTAKE_CONFIG.accountsMailbox);
 
@@ -88,8 +92,17 @@ async function run(trigger: "schedule" | "manual"): Promise<IntakeFallbackRun> {
   const mode = env.mode as Mode;
   let runId: string | null = null;
   try {
-    const waiting = await missedEmails();
-    result.waiting = waiting.length;
+    const { waiting, untagged } = await missedEmails();
+    result.waiting = waiting.length + untagged.length;
+    for (const row of untagged.slice(0, MAX_RETAG_PER_RUN)) {
+      try {
+        await graphSend("PATCH", `/users/${upn()}/messages/${encodeURIComponent(row.message.id)}`, { categories: withCategory(row.message.categories, categoryFor(row.verdict, row.action)) }, "The Outlook category could not be set");
+        result.checked += 1;
+        result.verdicts.retagged = (result.verdicts.retagged ?? 0) + 1;
+      } catch (error) {
+        result.warnings.push(`Tag not restored (${row.message.subject ?? "no subject"}): ${error instanceof Error ? error.message : String(error)}`.slice(0, 300));
+      }
+    }
     if (waiting.length) {
       const [row] = await getDb().insert(integrationSyncRunsTable).values({ integration: "accounts_inbox", trigger: `intake_fallback:${trigger}` }).returning({ id: integrationSyncRunsTable.id });
       runId = row?.id ?? null;
@@ -98,6 +111,11 @@ async function run(trigger: "schedule" | "manual"): Promise<IntakeFallbackRun> {
       for (const message of waiting.slice(0, MAX_PER_RUN)) {
         const outcome = await checkOne(message, { mode, apiKey: env.openAiKey!, model: env.model, aliases, history, warnings: result.warnings });
         if (!outcome) continue;
+        if (outcome === "nothing_to_read") {
+          result.checked += 1;
+          result.verdicts.not_invoice = (result.verdicts.not_invoice ?? 0) + 1;
+          continue;
+        }
         result.checked += 1;
         result.verdicts[outcome] = (result.verdicts[outcome] ?? 0) + 1;
       }
@@ -106,7 +124,13 @@ async function run(trigger: "schedule" | "manual"): Promise<IntakeFallbackRun> {
           .set({ status: "succeeded", finishedAt: new Date(), recordsProcessed: result.checked, details: { waiting: result.waiting, verdicts: result.verdicts, warnings: result.warnings.slice(0, 20), mode } })
           .where(eq(integrationSyncRunsTable.id, runId));
       }
-      if (result.checked) logger.warn({ checked: result.checked, verdicts: result.verdicts }, "Backup intake check handled emails n8n had not checked");
+    }
+    if (result.checked) {
+      if (!runId) {
+        const [row] = await getDb().insert(integrationSyncRunsTable).values({ integration: "accounts_inbox", trigger: `intake_fallback:${trigger}`, status: "succeeded", finishedAt: new Date(), recordsProcessed: result.checked, details: { waiting: result.waiting, verdicts: result.verdicts, warnings: result.warnings.slice(0, 20), mode } }).returning({ id: integrationSyncRunsTable.id });
+        runId = row?.id ?? null;
+      }
+      logger.warn({ checked: result.checked, verdicts: result.verdicts }, "Backup intake check handled emails n8n had not checked");
     }
   } catch (error) {
     result.status = "failed";
@@ -120,8 +144,11 @@ async function run(trigger: "schedule" | "manual"): Promise<IntakeFallbackRun> {
   return result;
 }
 
-// Inbox emails from the last few days, older than the grace period, that n8n has not tagged or logged.
-async function missedEmails(): Promise<GraphMessage[]> {
+type LoggedUntagged = { message: GraphMessage; verdict: string; action: string | null };
+
+// Inbox emails from the last few days, older than the grace period, with no "n8n:" tag:
+// those never logged (waiting to be checked) and those logged whose tag was never set (untagged).
+async function missedEmails(): Promise<{ waiting: GraphMessage[]; untagged: LoggedUntagged[] }> {
   const to = new Date(Date.now() - GRACE_MINUTES * 60_000).toISOString().replace(/\.\d{3}Z$/, "Z");
   const from = new Date(Date.now() - LOOKBACK_DAYS * 86_400_000).toISOString().replace(/\.\d{3}Z$/, "Z");
   const query = [
@@ -142,11 +169,33 @@ async function missedEmails(): Promise<GraphMessage[]> {
     !nothingToRead.has(m.internetMessageId) &&
     !(m.categories ?? []).some((c) => c.startsWith("n8n:")) &&
     !isFromAccountsAndNotForward(m));
-  if (!candidates.length) return [];
+  if (!candidates.length) return { waiting: [], untagged: [] };
   const t = invoiceIntakeChecksTable;
-  const logged = await getDb().select({ id: t.internetMessageId }).from(t).where(inArray(t.internetMessageId, candidates.map((m) => m.internetMessageId!)));
-  const done = new Set(logged.map((row) => row.id));
-  return candidates.filter((m) => !done.has(m.internetMessageId!));
+  const logged = await getDb().select({ id: t.internetMessageId, verdict: t.verdict, action: t.action }).from(t).where(inArray(t.internetMessageId, candidates.map((m) => m.internetMessageId!)));
+  const done = new Map(logged.map((row) => [row.id, row]));
+  const waiting: GraphMessage[] = [];
+  const untagged: LoggedUntagged[] = [];
+  for (const m of candidates) {
+    const row = done.get(m.internetMessageId!);
+    if (!row) waiting.push(m);
+    else if (categoryFor(row.verdict, row.action)) untagged.push({ message: m, verdict: row.verdict, action: row.action });
+  }
+  return { waiting, untagged };
+}
+
+// The Outlook category for a logged verdict, as the check sets it.
+function categoryFor(verdict: string, action: string | null): string {
+  const cat = INTAKE_CONFIG.categories;
+  if (verdict === "pass") return cat.pass;
+  if (verdict === "not_invoice") return cat.notInvoice;
+  if (verdict === "review") return cat.review;
+  if (verdict === "bounce") return action === "bounce_sent" ? cat.bounced : action === "draft_created" ? cat.drafted : cat.shadow;
+  return "";
+}
+
+// The email's own categories with any old "n8n:" one replaced.
+function withCategory(existing: string[] | undefined, category: string): string[] {
+  return (existing ?? []).filter((c) => !c.startsWith("n8n:")).concat(category ? [category] : []);
 }
 
 async function loadAliases(): Promise<{ alias: string; organisation: string }[] | null> {
@@ -166,14 +215,21 @@ async function loadHistory(): Promise<IntakeHistoryRow[]> {
 
 type Context = { mode: Mode; apiKey: string; model: string; aliases: { alias: string; organisation: string }[] | null; history: IntakeHistoryRow[]; warnings: string[] };
 
-async function checkOne(listed: GraphMessage, ctx: Context): Promise<CheckResult["verdict"] | null> {
+async function checkOne(listed: GraphMessage, ctx: Context): Promise<CheckResult["verdict"] | "nothing_to_read" | null> {
   const base = `/users/${upn()}/messages/${encodeURIComponent(listed.id)}`;
   const message: GraphMessage = await graphGet(`${base}?$select=id,subject,from,receivedDateTime,internetMessageId,hasAttachments,body,categories,webLink`, "An email could not be read");
   const attachments: GraphAttachment[] = message.hasAttachments ? ((await graphGet<{ value?: GraphAttachment[] }>(`${base}/attachments`, "The email's attachments could not be read")).value ?? []) : [];
   const docs = splitDocuments(message, attachments);
   if (!docs.length) {
-    nothingToRead.add(message.internetMessageId!);
-    return null;
+    // Nothing to read: tag it "not an invoice" like n8n, without logging it.
+    try {
+      await graphSend("PATCH", base, { categories: withCategory(message.categories, INTAKE_CONFIG.categories.notInvoice) }, "The Outlook category could not be set");
+      return "nothing_to_read";
+    } catch (error) {
+      ctx.warnings.push(`Tag not set (${message.subject ?? "no subject"}): ${error instanceof Error ? error.message : String(error)}`.slice(0, 300));
+      nothingToRead.add(message.internetMessageId!);
+      return null;
+    }
   }
 
   // Read each document: a saved reading if this exact file was read before, otherwise the AI.
