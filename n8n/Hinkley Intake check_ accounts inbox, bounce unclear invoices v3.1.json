@@ -715,7 +715,13 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.categories_body) }}",
         "options": {
-          "timeout": 60000
+          "timeout": 60000,
+          "batching": {
+            "batch": {
+              "batchSize": 2,
+              "batchInterval": 1000
+            }
+          }
         }
       },
       "id": "eff816e1-b63b-4dd0-b605-ac65c3796224",
@@ -732,7 +738,10 @@
           "name": "Microsoft Outlook account 2"
         }
       },
-      "onError": "continueRegularOutput"
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -1135,7 +1144,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// One row per email the check sent for review, for the app's invoice_intake_reviews table\n// (Invoices > For review). Saved straight to Supabase, so the values are tidied here.\n// The Outlook link and received time come from the trigger (matched by Internet message id).\nconst trig = {};\nfor (const t of $('Outlook trigger (accounts inbox)').all()) {\n  const j = t.json || {};\n  if (j.internetMessageId) trig[j.internetMessageId] = j;\n  if (j.id) trig[j.id] = j;\n}\nconst txt = (v, max) => (typeof v === 'string' && v.trim()) ? v.trim().slice(0, max) : (typeof v === 'number' ? String(v) : null);\nconst amt = v => { const n = typeof v === 'number' ? v : (typeof v === 'string' && v.trim() ? Number(v.replace(/[£$€,\\s]/g, '')) : NaN); return Number.isFinite(n) ? Math.round(n * 100) / 100 : null; };\nconst out = [];\n$input.all().forEach((it, i) => {\n  const c = it.json || {};\n  const id = txt(c.internet_message_id, 500) || txt(c.outlook_message_id, 500);\n  if (!id) return;\n  const t = trig[c.internet_message_id] || trig[c.outlook_message_id] || {};\n  let parsed = {};\n  try { parsed = JSON.parse(c.issues_json || '{}'); } catch (e) { parsed = {}; }\n  const docs = Array.isArray(parsed.issues) ? parsed.issues : [];\n  const issues = [];\n  for (const d of docs) for (const x of (d.issues || [])) {\n    const message = txt((docs.length > 1 && d.filename ? d.filename + ': ' : '') + (x.message || ''), 1000);\n    if (message) issues.push({ code: txt(x.code, 60) || 'other', message, lines: (x.lines || []).slice(0, 40).map(l => ({ text: txt(l.text, 500) || '(no description)', amount: amt(l.amount) })) });\n  }\n  const reasons = (Array.isArray(c.review_reasons) ? c.review_reasons : (parsed.review || [])).slice(0, 50)\n    .map(r => ({ code: txt((r || {}).code, 60) || 'other', message: txt((r || {}).message, 1000) })).filter(r => r.message);\n  const link = txt(t.webLink, 2000);\n  const date = txt(c.invoice_date, 10);\n  const received = txt(t.receivedDateTime, 40);\n  const cur = txt((docs[0] && docs[0].currency) || 'GBP', 3);\n  out.push({\n    json: {\n      internet_message_id: id,\n      outlook_message_id: txt(c.outlook_message_id, 500),\n      // Only Outlook links: the app opens it in a new tab.\n      web_link: link && /^https:\\/\\/outlook\\.(office365|office|live)\\.com\\//i.test(link) ? link : null,\n      received_at: received && !isNaN(Date.parse(received)) ? new Date(received).toISOString() : null,\n      sender_email: (txt(c.sender_email, 300) || '').toLowerCase() || null,\n      sender_name: txt(c.sender_name, 300),\n      subject: txt(c.subject, 500),\n      supplier_name: txt(c.supplier_name, 300),\n      invoice_number: txt(c.invoice_number, 100),\n      invoice_date: date && /^\\d{4}-\\d{2}-\\d{2}$/.test(date) && !isNaN(Date.parse(date)) ? date : null,\n      total: amt(c.total_gross),\n      currency: cur && /^[A-Za-z]{3}$/.test(cur) ? cur.toUpperCase() : 'GBP',\n      bill_to: txt(c.bill_to, 300),\n      bill_to_company: txt(c.bill_to_company, 200),\n      reasons,\n      issues\n    },\n    pairedItem: { item: i }\n  });\n});\nreturn out;\n"
+        "jsCode": "// One row per email the check sent for review, for the app's invoice_intake_reviews table\n// (Invoices > For review). Saved straight to Supabase, so the values are tidied here.\n// The Outlook link and received time come from the trigger (matched by Internet message id).\nconst trig = {};\nfor (const t of $('Config').all()) {\n  const j = t.json || {};\n  if (j.internetMessageId) trig[j.internetMessageId] = j;\n  if (j.id) trig[j.id] = j;\n}\nconst txt = (v, max) => (typeof v === 'string' && v.trim()) ? v.trim().slice(0, max) : (typeof v === 'number' ? String(v) : null);\nconst amt = v => { const n = typeof v === 'number' ? v : (typeof v === 'string' && v.trim() ? Number(v.replace(/[£$€,\\s]/g, '')) : NaN); return Number.isFinite(n) ? Math.round(n * 100) / 100 : null; };\nconst out = [];\n$input.all().forEach((it, i) => {\n  const c = it.json || {};\n  const id = txt(c.internet_message_id, 500) || txt(c.outlook_message_id, 500);\n  if (!id) return;\n  const t = trig[c.internet_message_id] || trig[c.outlook_message_id] || {};\n  let parsed = {};\n  try { parsed = JSON.parse(c.issues_json || '{}'); } catch (e) { parsed = {}; }\n  const docs = Array.isArray(parsed.issues) ? parsed.issues : [];\n  const issues = [];\n  for (const d of docs) for (const x of (d.issues || [])) {\n    const message = txt((docs.length > 1 && d.filename ? d.filename + ': ' : '') + (x.message || ''), 1000);\n    if (message) issues.push({ code: txt(x.code, 60) || 'other', message, lines: (x.lines || []).slice(0, 40).map(l => ({ text: txt(l.text, 500) || '(no description)', amount: amt(l.amount) })) });\n  }\n  const reasons = (Array.isArray(c.review_reasons) ? c.review_reasons : (parsed.review || [])).slice(0, 50)\n    .map(r => ({ code: txt((r || {}).code, 60) || 'other', message: txt((r || {}).message, 1000) })).filter(r => r.message);\n  const link = txt(t.webLink, 2000);\n  const date = txt(c.invoice_date, 10);\n  const received = txt(t.receivedDateTime, 40);\n  const cur = txt((docs[0] && docs[0].currency) || 'GBP', 3);\n  out.push({\n    json: {\n      internet_message_id: id,\n      outlook_message_id: txt(c.outlook_message_id, 500),\n      // Only Outlook links: the app opens it in a new tab.\n      web_link: link && /^https:\\/\\/outlook\\.(office365|office|live)\\.com\\//i.test(link) ? link : null,\n      received_at: received && !isNaN(Date.parse(received)) ? new Date(received).toISOString() : null,\n      sender_email: (txt(c.sender_email, 300) || '').toLowerCase() || null,\n      sender_name: txt(c.sender_name, 300),\n      subject: txt(c.subject, 500),\n      supplier_name: txt(c.supplier_name, 300),\n      invoice_number: txt(c.invoice_number, 100),\n      invoice_date: date && /^\\d{4}-\\d{2}-\\d{2}$/.test(date) && !isNaN(Date.parse(date)) ? date : null,\n      total: amt(c.total_gross),\n      currency: cur && /^[A-Za-z]{3}$/.test(cur) ? cur.toUpperCase() : 'GBP',\n      bill_to: txt(c.bill_to, 300),\n      bill_to_company: txt(c.bill_to_company, 200),\n      reasons,\n      issues\n    },\n    pairedItem: { item: i }\n  });\n});\nreturn out;\n"
       },
       "id": "9be82b4e-bd24-4dd9-90f4-2838a95dd7c1",
       "name": "Build review row",
@@ -1445,7 +1454,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// The invoice link in each checked invoice email (Xero, QuickBooks, Invoice Simple, Square...),\n// so the app can open it. The link with \"invoice\" in its text or address, on a known invoicing site, wins.\nconst KEEP = ['pass', 'bounce', 'review'];\nconst PLATFORMS = /(^|\\.)(xero\\.com|intuit\\.com|quickbooks\\.com|invoicesimple\\.com|getinvoicesimple\\.com|squareup\\.com|square\\.link|sumup\\.com|zoho\\.com|zoho\\.eu|freeagent\\.com|stripe\\.com|paypal\\.com|invoice2go\\.com|waveapps\\.com|freshbooks\\.com|invoicehome\\.com|kashflow\\.com|clearbooks\\.co\\.uk|sage\\.com|pandle\\.com|invoiceninja\\.com|zervant\\.com|bill\\.com)$/i;\nconst SKIP = /unsubscribe|preferences|privacy|terms|cookie|facebook|twitter|linkedin|instagram|youtube|apps\\.apple|play\\.google|mailto:/i;\nconst trig = {};\nfor (const t of $('Outlook trigger (accounts inbox)').all()) {\n  const j = t.json || {};\n  if (j.internetMessageId) trig[j.internetMessageId] = j;\n  if (j.id) trig[j.id] = j;\n}\nconst best = html => {\n  let top = null;\n  const re = /<a\\b[^>]*href\\s*=\\s*[\"']([^\"']+)[\"'][^>]*>([\\s\\S]*?)<\\/a>/gi;\n  let m;\n  while ((m = re.exec(html)) !== null) {\n    const url = m[1].trim().replace(/&amp;/g, '&');\n    const text = m[2].replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n    let u; try { u = new URL(url); } catch (e) { continue; }\n    if (u.protocol !== 'https:' || SKIP.test(url) || SKIP.test(text)) continue;\n    let score = 0;\n    if (PLATFORMS.test(u.hostname)) score += 2;\n    if (/\\b(view|download|open|see|pay|access)\\b.{0,25}\\b(invoice|bill)\\b|\\binvoice\\b/i.test(text)) score += 2;\n    if (/invoice/i.test(u.pathname + u.search)) score += 1;\n    if (score >= 2 && (!top || score > top.score)) top = { url, score };\n  }\n  if (!top) {   // plain-text emails: a bare invoice address on a known invoicing site\n    for (const url of (html.replace(/<[^>]+>/g, ' ').match(/https:\\/\\/[^\\s\"'<>)]+/g) || [])) {\n      let u; try { u = new URL(url); } catch (e) { continue; }\n      if (!SKIP.test(url) && PLATFORMS.test(u.hostname) && /inv|bill|pay/i.test(u.pathname + u.search)) { top = { url }; break; }\n    }\n  }\n  return top ? top.url : null;\n};\nconst rows = [];\nfor (const it of $input.all()) {\n  const c = it.json || {};\n  if (!KEEP.includes(c.verdict) || !c.internet_message_id) continue;\n  const t = trig[c.internet_message_id] || trig[c.outlook_message_id] || {};\n  const body = t.body;\n  const url = best(String(typeof body === 'string' ? body : (body && body.content) || ''));\n  if (url && url.length <= 2000) rows.push({ internet_message_id: c.internet_message_id, kind: 'link', name: null, url });\n}\nif (!rows.length) return [];\nreturn [{ json: { rows } }];\n"
+        "jsCode": "// The invoice link in each checked invoice email (Xero, QuickBooks, Invoice Simple, Square...),\n// so the app can open it. The link with \"invoice\" in its text or address, on a known invoicing site, wins.\nconst KEEP = ['pass', 'bounce', 'review'];\nconst PLATFORMS = /(^|\\.)(xero\\.com|intuit\\.com|quickbooks\\.com|invoicesimple\\.com|getinvoicesimple\\.com|squareup\\.com|square\\.link|sumup\\.com|zoho\\.com|zoho\\.eu|freeagent\\.com|stripe\\.com|paypal\\.com|invoice2go\\.com|waveapps\\.com|freshbooks\\.com|invoicehome\\.com|kashflow\\.com|clearbooks\\.co\\.uk|sage\\.com|pandle\\.com|invoiceninja\\.com|zervant\\.com|bill\\.com)$/i;\nconst SKIP = /unsubscribe|preferences|privacy|terms|cookie|facebook|twitter|linkedin|instagram|youtube|apps\\.apple|play\\.google|mailto:/i;\nconst trig = {};\nfor (const t of $('Config').all()) {\n  const j = t.json || {};\n  if (j.internetMessageId) trig[j.internetMessageId] = j;\n  if (j.id) trig[j.id] = j;\n}\nconst best = html => {\n  let top = null;\n  const re = /<a\\b[^>]*href\\s*=\\s*[\"']([^\"']+)[\"'][^>]*>([\\s\\S]*?)<\\/a>/gi;\n  let m;\n  while ((m = re.exec(html)) !== null) {\n    const url = m[1].trim().replace(/&amp;/g, '&');\n    const text = m[2].replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n    let u; try { u = new URL(url); } catch (e) { continue; }\n    if (u.protocol !== 'https:' || SKIP.test(url) || SKIP.test(text)) continue;\n    let score = 0;\n    if (PLATFORMS.test(u.hostname)) score += 2;\n    if (/\\b(view|download|open|see|pay|access)\\b.{0,25}\\b(invoice|bill)\\b|\\binvoice\\b/i.test(text)) score += 2;\n    if (/invoice/i.test(u.pathname + u.search)) score += 1;\n    if (score >= 2 && (!top || score > top.score)) top = { url, score };\n  }\n  if (!top) {   // plain-text emails: a bare invoice address on a known invoicing site\n    for (const url of (html.replace(/<[^>]+>/g, ' ').match(/https:\\/\\/[^\\s\"'<>)]+/g) || [])) {\n      let u; try { u = new URL(url); } catch (e) { continue; }\n      if (!SKIP.test(url) && PLATFORMS.test(u.hostname) && /inv|bill|pay/i.test(u.pathname + u.search)) { top = { url }; break; }\n    }\n  }\n  return top ? top.url : null;\n};\nconst rows = [];\nfor (const it of $input.all()) {\n  const c = it.json || {};\n  if (!KEEP.includes(c.verdict) || !c.internet_message_id) continue;\n  const t = trig[c.internet_message_id] || trig[c.outlook_message_id] || {};\n  const body = t.body;\n  const url = best(String(typeof body === 'string' ? body : (body && body.content) || ''));\n  if (url && url.length <= 2000) rows.push({ internet_message_id: c.internet_message_id, kind: 'link', name: null, url });\n}\nif (!rows.length) return [];\nreturn [{ json: { rows } }];\n"
       },
       "id": "bfd03314-72f0-4323-9b42-fb94410dc692",
       "name": "Find invoice links",
@@ -1539,7 +1548,9 @@
           "name": "Microsoft Outlook account 2"
         }
       },
-      "retryOnFail": true
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -1560,7 +1571,13 @@
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "microsoftOutlookOAuth2Api",
         "options": {
-          "timeout": 60000
+          "timeout": 60000,
+          "batching": {
+            "batch": {
+              "batchSize": 2,
+              "batchInterval": 1000
+            }
+          }
         }
       },
       "id": "b62d6f8d-213c-4194-85c8-728afff5fcd7",
@@ -1577,7 +1594,9 @@
           "name": "Microsoft Outlook account 2"
         }
       },
-      "retryOnFail": true
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -1602,7 +1621,13 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ categories: ($json.outlook_categories || []).filter(c => String(c).indexOf('n8n:') !== 0).concat([$('Config').first().json.cat_not_invoice]) }) }}",
         "options": {
-          "timeout": 60000
+          "timeout": 60000,
+          "batching": {
+            "batch": {
+              "batchSize": 2,
+              "batchInterval": 1000
+            }
+          }
         }
       },
       "id": "b862420b-0f73-48b3-8c03-391e0a435125",
@@ -1619,7 +1644,10 @@
           "name": "Microsoft Outlook account 2"
         }
       },
-      "onError": "continueRegularOutput"
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
