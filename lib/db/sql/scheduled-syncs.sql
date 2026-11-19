@@ -1,6 +1,6 @@
 -- Scheduled syncs run by Supabase (pg_cron + pg_net) instead of n8n.
 --
--- These five jobs only wake the PMS and ask it to run a sync. In n8n each run
+-- These jobs only wake the PMS and ask it to run a sync. In n8n each run
 -- counted towards the monthly execution limit; here they're free. The PMS
 -- endpoints are the same ones n8n called (POST, header X-Hinkley-Sync-Key).
 --
@@ -80,7 +80,8 @@ revoke all on function private.pms_call(text, int[], int[], int) from public, an
 
 -- 3. The jobs (same times as the n8n workflows they replace, UK time).
 select cron.unschedule(jobname) from cron.job where jobname in (
-  'pms-coho-actions-sync', 'pms-rent-match-actions', 'pms-smoobu-sync', 'pms-coho-unit-snapshot', 'pms-xero-daily-checks'
+  'pms-coho-actions-sync', 'pms-rent-match-actions', 'pms-smoobu-sync', 'pms-coho-unit-snapshot', 'pms-xero-daily-checks',
+  'pms-intake-fallback'
 );
 
 -- COHO actions mirror: hourly 7am-7pm, every day.
@@ -102,3 +103,10 @@ select cron.schedule('pms-coho-unit-snapshot', '30 22,23 * * *',
 -- Xero daily checks: daily at 8am UK. Its Xero reads still go through the n8n gateway.
 select cron.schedule('pms-xero-daily-checks', '0 7,8 * * *',
   $$select private.pms_call('/api/integrations/xero/daily-checks', array[8], null, 600000)$$);
+
+-- Accounts inbox backup check: every 15 minutes, 7am-9pm UK, every day.
+-- n8n's Outlook trigger only sees emails received since its last poll, so emails that
+-- arrive while n8n is off or over its limit are never tagged. This checks any inbox
+-- email from the last 3 days with no "n8n:" category and no intake record (up to 10 a run).
+select cron.schedule('pms-intake-fallback', '*/15 * * * *',
+  $$select private.pms_call('/api/integrations/intake/fallback', array[7,8,9,10,11,12,13,14,15,16,17,18,19,20,21], null, 300000)$$);

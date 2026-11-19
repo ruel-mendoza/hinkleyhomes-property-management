@@ -14,6 +14,7 @@ import { runDailyChecks } from "../lib/finance-checks";
 import { codingPlan, recordResult, recordReview, savedReading } from "../lib/bill-coding";
 import type { XeroBill } from "../lib/bill-coding-rules";
 import { parseIntakeReview, recordIntakeReview } from "../lib/intake-reviews";
+import { runIntakeFallback } from "../lib/intake-fallback";
 import { smoobuMode } from "../lib/integrations-env";
 import { handleSmoobuEvent, syncStays } from "../lib/stays";
 import { handleChargeAutomationEvent } from "../lib/guest-checks";
@@ -397,6 +398,16 @@ router.post("/integrations/intake/review", requireSyncKey, async (req, res): Pro
     req.log.error({ err: error }, "Intake review could not be saved");
     res.status(500).json({ error: "The review could not be saved." });
   }
+});
+
+// Backup intake check, run by Supabase pg_cron every 15 minutes (lib/db/sql/scheduled-syncs.sql).
+// n8n's Outlook trigger only sees emails received since its last poll, so anything that
+// arrived while n8n was off or over its limit is never tagged; this wakes the app to check
+// those (lib/intake-fallback.ts). Up to 10 emails a run.
+router.post("/integrations/intake/fallback", requireSyncKey, async (_req, res): Promise<void> => {
+  const result = await runIntakeFallback("schedule");
+  const notSetUp = result.status === "skipped" && result.error !== null;
+  res.status(notSetUp ? 503 : result.status === "failed" ? 502 : 200).json(result);
 });
 
 // --- Xero daily checks (n8n "Xero daily checks" workflow, 8am) -------------------------
