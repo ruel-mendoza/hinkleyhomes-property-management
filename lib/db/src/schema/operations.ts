@@ -145,13 +145,17 @@ export const staffPresenceTable = pgTable(
 
 export type StaffPresence = typeof staffPresenceTable.$inferSelect;
 
-// Each staff member's choice of popup notices (the bell in the top bar). Keyed
+// Each staff member's choice of popup notices and the state of their
+// notification list (the bell in the top bar). Keyed
 // by lower-case email, so it survives a new sign-in account. No row = all on.
 export const staffNoticeSettingsTable = pgTable("staff_notice_settings", {
   email: text("email").primaryKey(),
   enabled: boolean("enabled").notNull().default(true),
   // Kinds turned off: invoice, bill, bank, sync (see api-server lib/notices.ts).
   mutedKinds: text("muted_kinds").array().notNull().default(sql`'{}'::text[]`),
+  // The bell's list: opened (items after this are unread) and cleared (items before this are hidden).
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  clearedAt: timestamp("cleared_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }).enableRLS();
 

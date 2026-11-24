@@ -2105,10 +2105,73 @@ export const ListLatestNoticesResponse = zod.object({
 
 
 /**
+ * @summary The signed-in staff member's notification list (the bell) for the last 7 days, newest first, with when they last opened it and how many are unread
+ */
+export const GetNoticeHistoryResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().describe('Unique per event, so the page shows each one once'),
+  "kind": zod.enum(['invoice', 'bill', 'bank', 'sync']),
+  "tone": zod.enum(['ok', 'warn', 'alert']),
+  "title": zod.string(),
+  "text": zod.string(),
+  "detail": zod.string().nullable(),
+  "href": zod.string().describe('Page to open, inside the app'),
+  "link": zod.string().describe('Label for the link'),
+  "sticky": zod.boolean().describe('Stays until closed (someone needs to act); otherwise closes on its own'),
+  "at": zod.string()
+})),
+  "lastSeenAt": zod.string().nullable().describe('When the person last opened the list; items after this are new'),
+  "unread": zod.number().int()
+})
+
+
+/**
+ * @summary Mark the notification list as seen (when the bell is opened)
+ */
+export const MarkNoticesSeenResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().describe('Unique per event, so the page shows each one once'),
+  "kind": zod.enum(['invoice', 'bill', 'bank', 'sync']),
+  "tone": zod.enum(['ok', 'warn', 'alert']),
+  "title": zod.string(),
+  "text": zod.string(),
+  "detail": zod.string().nullable(),
+  "href": zod.string().describe('Page to open, inside the app'),
+  "link": zod.string().describe('Label for the link'),
+  "sticky": zod.boolean().describe('Stays until closed (someone needs to act); otherwise closes on its own'),
+  "at": zod.string()
+})),
+  "lastSeenAt": zod.string().nullable().describe('When the person last opened the list; items after this are new'),
+  "unread": zod.number().int()
+})
+
+
+/**
+ * @summary Clear the signed-in staff member's notification list (later updates still appear)
+ */
+export const ClearNoticeHistoryResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().describe('Unique per event, so the page shows each one once'),
+  "kind": zod.enum(['invoice', 'bill', 'bank', 'sync']),
+  "tone": zod.enum(['ok', 'warn', 'alert']),
+  "title": zod.string(),
+  "text": zod.string(),
+  "detail": zod.string().nullable(),
+  "href": zod.string().describe('Page to open, inside the app'),
+  "link": zod.string().describe('Label for the link'),
+  "sticky": zod.boolean().describe('Stays until closed (someone needs to act); otherwise closes on its own'),
+  "at": zod.string()
+})),
+  "lastSeenAt": zod.string().nullable().describe('When the person last opened the list; items after this are new'),
+  "unread": zod.number().int()
+})
+
+
+/**
  * @summary The signed-in staff member's popup notice choices (all on until changed)
  */
 export const GetNoticeSettingsResponse = zod.object({
-  "enabled": zod.boolean().describe('False turns every popup off'),
+  "enabled": zod.boolean().describe('False turns the popups off (the bell\'s list still shows updates)'),
   "muted": zod.array(zod.enum(['invoice', 'bill', 'bank', 'sync'])).describe('Kinds turned off')
 })
 
@@ -2117,12 +2180,12 @@ export const GetNoticeSettingsResponse = zod.object({
  * @summary Turn popup notices on or off, or turn off some kinds, for the signed-in staff member (written to the audit log)
  */
 export const UpdateNoticeSettingsBody = zod.object({
-  "enabled": zod.boolean().describe('False turns every popup off'),
+  "enabled": zod.boolean().describe('False turns the popups off (the bell\'s list still shows updates)'),
   "muted": zod.array(zod.enum(['invoice', 'bill', 'bank', 'sync'])).describe('Kinds turned off')
 })
 
 export const UpdateNoticeSettingsResponse = zod.object({
-  "enabled": zod.boolean().describe('False turns every popup off'),
+  "enabled": zod.boolean().describe('False turns the popups off (the bell\'s list still shows updates)'),
   "muted": zod.array(zod.enum(['invoice', 'bill', 'bank', 'sync'])).describe('Kinds turned off')
 })
 

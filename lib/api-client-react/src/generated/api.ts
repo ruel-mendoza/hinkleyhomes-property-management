@@ -90,6 +90,7 @@ import type {
   ListIntakeChecksParams,
   ListLatestNoticesParams,
   MoneyOverview,
+  NoticeHistory,
   NoticeList,
   NoticeSettings,
   Occupancy,
@@ -4855,6 +4856,231 @@ export function useListLatestNotices<TData = Awaited<ReturnType<typeof listLates
 
 
 
+
+export const getGetNoticeHistoryUrl = () => {
+
+
+
+
+  return `/api/notices/history`
+}
+
+/**
+ * @summary The signed-in staff member's notification list (the bell) for the last 7 days, newest first, with when they last opened it and how many are unread
+ */
+export const getNoticeHistory = async ( options?: Parameters<typeof customFetch>[1]): Promise<NoticeHistory> => {
+
+  return customFetch<NoticeHistory>(getGetNoticeHistoryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNoticeHistoryQueryKey = () => {
+    return [
+    `/api/notices/history`
+    ] as const;
+    }
+
+
+export const getGetNoticeHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getNoticeHistory>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNoticeHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNoticeHistoryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNoticeHistory>>> = ({ signal }) => getNoticeHistory({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNoticeHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNoticeHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getNoticeHistory>>>
+export type GetNoticeHistoryQueryError = ErrorType<void>
+
+
+/**
+ * @summary The signed-in staff member's notification list (the bell) for the last 7 days, newest first, with when they last opened it and how many are unread
+ */
+
+export function useGetNoticeHistory<TData = Awaited<ReturnType<typeof getNoticeHistory>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNoticeHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNoticeHistoryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMarkNoticesSeenUrl = () => {
+
+
+
+
+  return `/api/notices/history/seen`
+}
+
+/**
+ * @summary Mark the notification list as seen (when the bell is opened)
+ */
+export const markNoticesSeen = async ( options?: Parameters<typeof customFetch>[1]): Promise<NoticeHistory> => {
+
+  return customFetch<NoticeHistory>(getMarkNoticesSeenUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkNoticesSeenMutationKey = () => ['markNoticesSeen'] as const;
+
+export const getMarkNoticesSeenMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markNoticesSeen>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markNoticesSeen>>, TError,void, TContext> => {
+
+const mutationKey = getMarkNoticesSeenMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markNoticesSeen>>, void> = () => {
+
+
+          return  markNoticesSeen(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkNoticesSeenMutationResult = NonNullable<Awaited<ReturnType<typeof markNoticesSeen>>>
+
+    export type MarkNoticesSeenMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Mark the notification list as seen (when the bell is opened)
+ */
+export const useMarkNoticesSeen = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markNoticesSeen>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markNoticesSeen>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getMarkNoticesSeenMutationOptions(options));
+    }
+
+export const getClearNoticeHistoryUrl = () => {
+
+
+
+
+  return `/api/notices/history/clear`
+}
+
+/**
+ * @summary Clear the signed-in staff member's notification list (later updates still appear)
+ */
+export const clearNoticeHistory = async ( options?: Parameters<typeof customFetch>[1]): Promise<NoticeHistory> => {
+
+  return customFetch<NoticeHistory>(getClearNoticeHistoryUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getClearNoticeHistoryMutationKey = () => ['clearNoticeHistory'] as const;
+
+export const getClearNoticeHistoryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearNoticeHistory>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof clearNoticeHistory>>, TError,void, TContext> => {
+
+const mutationKey = getClearNoticeHistoryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof clearNoticeHistory>>, void> = () => {
+
+
+          return  clearNoticeHistory(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ClearNoticeHistoryMutationResult = NonNullable<Awaited<ReturnType<typeof clearNoticeHistory>>>
+
+    export type ClearNoticeHistoryMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Clear the signed-in staff member's notification list (later updates still appear)
+ */
+export const useClearNoticeHistory = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearNoticeHistory>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof clearNoticeHistory>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getClearNoticeHistoryMutationOptions(options));
+    }
 
 export const getGetNoticeSettingsUrl = () => {
 

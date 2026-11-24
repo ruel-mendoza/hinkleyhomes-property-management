@@ -8,7 +8,7 @@
 import type { NoticeKind } from './noticeKind';
 
 export interface NoticeSettings {
-  /** False turns every popup off */
+  /** False turns the popups off (the bell's list still shows updates) */
   enabled: boolean;
   /** Kinds turned off */
   muted: NoticeKind[];

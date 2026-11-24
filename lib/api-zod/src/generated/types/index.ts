@@ -168,6 +168,7 @@ export * from './moneyPropertyRef';
 export * from './moneyRentReview';
 export * from './moneyXero';
 export * from './notice';
+export * from './noticeHistory';
 export * from './noticeKind';
 export * from './noticeList';
 export * from './noticeSettings';

@@ -2610,10 +2610,20 @@ export interface Notice {
 }
 
 export interface NoticeSettings {
-  /** False turns every popup off */
+  /** False turns the popups off (the bell's list still shows updates) */
   enabled: boolean;
   /** Kinds turned off */
   muted: NoticeKind[];
+}
+
+export interface NoticeHistory {
+  items: Notice[];
+  /**
+     * When the person last opened the list; items after this are new
+     * @nullable
+     */
+  lastSeenAt: string | null;
+  unread: number;
 }
 
 export interface NoticeList {

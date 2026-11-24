@@ -16,23 +16,49 @@
 .hh-notice-body a:hover { text-decoration: underline; }
 .hh-notice-close { flex: none; background: none; border: 0; color: #93a3b6; cursor: pointer; padding: 2px; border-radius: 4px; }
 .hh-notice-close:hover { color: #f1f5f9; background: #ffffff12; }
-/* The bell in the top bar (NoticeBell): on/off and kinds. */
+/* The bell in the top bar (NoticeBell): notification list, unread count and settings. */
 .hh-bell { position: relative; }
-.hh-bell-button { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 1px solid #2a374d; border-radius: 999px; background: #192538; color: #c6d1de; cursor: pointer; }
+.hh-bell-button { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 1px solid #2a374d; border-radius: 999px; background: #192538; color: #c6d1de; cursor: pointer; }
 .hh-bell-button:hover, .hh-bell-button[aria-expanded=true] { border-color: #3b4c66; background: #1f2c41; }
 .hh-bell-button:focus-visible { outline: 2px solid #79cdb0; outline-offset: 2px; }
 .hh-bell-button.off { color: #8f9db0; }
-.hh-bell-panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 60; width: min(320px, calc(100vw - 24px)); background: #192538; border: 1px solid #344159; border-radius: 10px; box-shadow: 0 16px 40px #04091299; }
+.hh-bell-count { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #d95926; color: #fff; font-size: 12px; font-weight: 700; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px #0f1a2a; }
+.hh-bell-panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 60; display: flex; flex-direction: column; width: min(380px, calc(100vw - 24px)); max-height: min(560px, calc(100vh - 90px)); background: #192538; border: 1px solid #344159; border-radius: 10px; box-shadow: 0 16px 40px #04091299; overflow: hidden; }
+.hh-bell-head { display: flex; align-items: center; gap: 4px; padding: 10px 10px 10px 14px; border-bottom: 1px solid #2a374d; }
+.hh-bell-head strong { flex: 1; font-size: 15px; color: #f1f5f9; }
+.hh-bell-icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 0; border-radius: 6px; background: none; color: #a9b6c6; cursor: pointer; }
+.hh-bell-icon:hover:not(:disabled) { background: #ffffff12; color: #f1f5f9; }
+.hh-bell-icon:disabled { opacity: .4; cursor: default; }
+.hh-bell-list { list-style: none; margin: 0; padding: 4px 0; overflow-y: auto; }
+.hh-bell-item { display: flex; gap: 10px; padding: 10px 14px; color: #dbe4ee; text-decoration: none; border-left: 3px solid transparent; }
+.hh-bell-item:hover { background: #1f2c41; }
+.hh-bell-item.new { background: #1c2b40; border-left-color: #79cdb0; }
+.hh-bell-item.new.warn { border-left-color: #e0a54a; }
+.hh-bell-item.new.alert { border-left-color: #d95926; }
+.hh-bell-item-icon { flex: none; margin-top: 2px; color: #79cdb0; }
+.hh-bell-item.warn .hh-bell-item-icon { color: #e0a54a; }
+.hh-bell-item.alert .hh-bell-item-icon { color: #e9825d; }
+.hh-bell-item-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 12px; }
+.hh-bell-item-body strong { font-size: 13px; color: #f1f5f9; }
+.hh-bell-item-body span, .hh-bell-item-body small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.hh-bell-item-body small { color: #93a3b6; }
+.hh-bell-item-body em { font-style: normal; font-size: 12px; color: #7f8ea2; }
+.hh-bell-divider { display: flex; align-items: center; gap: 10px; padding: 8px 14px; color: #79cdb0; font-size: 12px; font-weight: 600; }
+.hh-bell-divider::before, .hh-bell-divider::after { content: ""; flex: 1; height: 1px; background: #2f3f57; }
+.hh-bell-empty { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0; padding: 32px 16px; text-align: center; font-size: 12px; color: #8f9db0; }
+.hh-bell-empty svg { color: #79cdb0; margin-bottom: 6px; }
+.hh-bell-empty strong { font-size: 14px; color: #f1f5f9; }
 .hh-bell-panel label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
 .hh-bell-panel label span { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
-.hh-bell-panel strong { font-size: 13px; color: #e7edf4; }
-.hh-bell-panel small { font-size: 12px; color: #8f9db0; line-height: 1.4; }
+.hh-bell-panel label strong { font-size: 13px; color: #e7edf4; }
+.hh-bell-panel label small { font-size: 12px; color: #8f9db0; line-height: 1.4; }
 .hh-bell-panel input { accent-color: #267966; margin-top: 2px; width: 15px; height: 15px; flex: none; cursor: pointer; }
 .hh-bell-main { padding: 12px 14px; border-bottom: 1px solid #2a374d; }
-.hh-bell-panel ul { list-style: none; margin: 0; padding: 6px 14px; }
-.hh-bell-panel li label { padding: 7px 0; }
-.hh-bell-panel label.disabled { opacity: .5; cursor: default; }
-.hh-bell-panel label.disabled input { cursor: default; }
+.hh-bell-sub { margin: 0; padding: 10px 14px 0; font-size: 12px; font-weight: 600; color: #a9b6c6; }
+.hh-bell-kinds { list-style: none; margin: 0; padding: 4px 14px 8px; overflow-y: auto; }
+.hh-bell-kinds li label { padding: 7px 0; }
 .hh-bell-foot { margin: 0; padding: 10px 14px 12px; border-top: 1px solid #2a374d; font-size: 12px; color: #8f9db0; line-height: 1.5; }
+.hh-bell-link { border: 0; background: none; padding: 0; color: #79cdb0; font: inherit; font-weight: 600; cursor: pointer; }
+.hh-bell-link:hover { text-decoration: underline; }
 
-@media (max-width: 460px) { .hh-notices { right: 16px; left: 16px; bottom: 16px; width: auto; } }
+@media (max-width: 460px) { .hh-notices { right: 16px; left: 16px; bottom: 16px; width: auto; } .hh-bell-panel { position: fixed; top: 60px; right: 12px; left: 12px; width: auto; } }

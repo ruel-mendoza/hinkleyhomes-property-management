@@ -1276,6 +1276,48 @@ paths:
                 $ref: "#/components/schemas/NoticeList"
         "503":
           description: Database is not configured
+  /notices/history:
+    get:
+      operationId: getNoticeHistory
+      tags: [health]
+      summary: The signed-in staff member's notification list (the bell) for the last 7 days, newest first, with when they last opened it and how many are unread
+      responses:
+        "200":
+          description: Notification list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoticeHistory"
+        "503":
+          description: Database is not configured
+  /notices/history/seen:
+    post:
+      operationId: markNoticesSeen
+      tags: [health]
+      summary: Mark the notification list as seen (when the bell is opened)
+      responses:
+        "200":
+          description: Notification list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoticeHistory"
+        "503":
+          description: Database is not configured
+  /notices/history/clear:
+    post:
+      operationId: clearNoticeHistory
+      tags: [health]
+      summary: Clear the signed-in staff member's notification list (later updates still appear)
+      responses:
+        "200":
+          description: Notification list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoticeHistory"
+        "503":
+          description: Database is not configured
   /notices/settings:
     get:
       operationId: getNoticeSettings
@@ -4693,13 +4735,26 @@ components:
       properties:
         enabled:
           type: boolean
-          description: False turns every popup off
+          description: False turns the popups off (the bell's list still shows updates)
         muted:
           type: array
           description: Kinds turned off
           items:
             $ref: "#/components/schemas/NoticeKind"
       required: [enabled, muted]
+    NoticeHistory:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notice"
+        lastSeenAt:
+          type: ["string", "null"]
+          description: When the person last opened the list; items after this are new
+        unread:
+          type: integer
+      required: [items, lastSeenAt, unread]
     NoticeList:
       type: object
       properties:

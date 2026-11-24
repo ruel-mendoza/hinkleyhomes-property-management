@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { auditLogTable, billCodingReviewsTable, exceptionQueueTable, getDb, integrationSyncRunsTable, invoiceIntakeChecksTable, staffNoticeSettingsTable } from "@workspace/db";
 
 // Popup notices (web: components/notices/InvoiceNotices.tsx) for updates pushed
@@ -96,11 +96,44 @@ export async function saveNoticeSettings(
   });
 }
 
+// Popups: what's new since the page's last read, oldest first. Nothing when popups are off.
 export async function latestNotices(since: Date, settings: NoticeSettings = ALL_ON): Promise<Notice[]> {
-  if (!settings.enabled || settings.muted.length === KINDS.length) return [];
-  const on = (kind: Notice["kind"]) => !settings.muted.includes(kind);
+  if (!settings.enabled) return [];
+  return (await collectNotices(new Date(since.getTime() - LOOK_BACK_MS), settings.muted, PER_SOURCE, "oldest")).slice(-20);
+}
+
+// The bell's list: the last 7 days (or since the person cleared it), newest first.
+// Popups being off doesn't hide the list; kinds turned off are left out of both.
+export type NoticeHistory = { items: Notice[]; lastSeenAt: string | null; unread: number };
+const HISTORY_DAYS = 7;
+const HISTORY_PER_SOURCE = 15;
+
+export async function noticeHistory(email: string | undefined): Promise<NoticeHistory> {
+  const t = staffNoticeSettingsTable;
+  const [row] = email ? await getDb().select().from(t).where(eq(t.email, email.toLowerCase())).limit(1) : [];
+  const weekAgo = new Date(Date.now() - HISTORY_DAYS * 86_400_000);
+  const from = row?.clearedAt && row.clearedAt > weekAgo ? row.clearedAt : weekAgo;
+  const muted = row ? KINDS.filter((kind) => row.mutedKinds.includes(kind)) : [];
+  const items = (await collectNotices(from, muted, HISTORY_PER_SOURCE, "newest")).reverse().slice(0, 50);
+  const lastSeenAt = row?.lastSeenAt?.toISOString() ?? null;
+  return { items, lastSeenAt, unread: items.filter((item) => !lastSeenAt || item.at > lastSeenAt).length };
+}
+
+// Opening the list marks everything in it as seen; the trash button clears it.
+export async function markNoticesSeen(email: string, clear: boolean): Promise<NoticeHistory> {
+  const t = staffNoticeSettingsTable;
+  const now = new Date();
+  const set = clear ? { lastSeenAt: now, clearedAt: now } : { lastSeenAt: now };
+  await getDb().insert(t).values({ email: email.toLowerCase(), ...set }).onConflictDoUpdate({ target: t.email, set });
+  return noticeHistory(email);
+}
+
+async function collectNotices(from: Date, muted: Notice["kind"][], perSource: number, first: "oldest" | "newest"): Promise<Notice[]> {
+  if (muted.length === KINDS.length) return [];
+  const on = (kind: Notice["kind"]) => !muted.includes(kind);
+  const order = first === "oldest" ? asc : desc;
+  const limit = perSource;
   const db = getDb();
-  const from = new Date(since.getTime() - LOOK_BACK_MS);
   const ic = invoiceIntakeChecksTable;
   const br = billCodingReviewsTable;
   const eq_ = exceptionQueueTable;
@@ -110,7 +143,7 @@ export async function latestNotices(since: Date, settings: NoticeSettings = ALL_
   const [invoices, billsRaised, billsWritten, bank, syncs] = await Promise.all([
     !on("invoice") ? none : db.select().from(ic)
       .where(and(gt(ic.processedAt, from), inArray(ic.verdict, ["pass", "review", "bounce"])))
-      .orderBy(asc(ic.processedAt)).limit(PER_SOURCE),
+      .orderBy(order(ic.processedAt)).limit(limit),
     // A bill is checked again each run; only its first held or test-mode row counts.
     !on("bill") ? none : db.select().from(br)
       .where(and(
@@ -118,13 +151,13 @@ export async function latestNotices(since: Date, settings: NoticeSettings = ALL_
         inArray(br.status, ["held", "shadow_planned"]),
         sql`not exists (select 1 from bill_coding_reviews p where p.idempotency_key = ${br.idempotencyKey} and p.status = ${br.status} and p.created_at < ${br.createdAt})`,
       ))
-      .orderBy(asc(br.createdAt)).limit(PER_SOURCE),
+      .orderBy(order(br.createdAt)).limit(limit),
     !on("bill") ? none : db.select().from(br)
       .where(and(gt(br.updatedAt, from), inArray(br.status, ["created_draft", "updated_draft", "create_failed"])))
-      .orderBy(asc(br.updatedAt)).limit(PER_SOURCE),
+      .orderBy(order(br.updatedAt)).limit(limit),
     !on("bank") ? none : db.select().from(eq_)
       .where(and(gt(eq_.createdAt, from), eq(eq_.kind, "bank_detail_change")))
-      .orderBy(asc(eq_.createdAt)).limit(PER_SOURCE),
+      .orderBy(order(eq_.createdAt)).limit(limit),
     // A failed run counts only when the run before it (same job) didn't fail too.
     !on("sync") ? none : db.select().from(sr)
       .where(and(
@@ -132,7 +165,7 @@ export async function latestNotices(since: Date, settings: NoticeSettings = ALL_
         eq(sr.status, "failed"),
         sql`coalesce((select p.status::text from integration_sync_runs p where p.integration = ${sr.integration} and split_part(p.trigger, ':', 1) = split_part(${sr.trigger}, ':', 1) and p.status <> 'running' and p.started_at < ${sr.startedAt} order by p.started_at desc limit 1), 'succeeded') <> 'failed'`,
       ))
-      .orderBy(asc(sr.finishedAt)).limit(PER_SOURCE),
+      .orderBy(order(sr.finishedAt)).limit(limit),
   ]);
 
   const notices: Notice[] = [
@@ -194,5 +227,5 @@ export async function latestNotices(since: Date, settings: NoticeSettings = ALL_
       };
     }),
   ];
-  return notices.sort((a, b) => a.at.localeCompare(b.at)).slice(-20);
+  return notices.sort((a, b) => a.at.localeCompare(b.at));
 }

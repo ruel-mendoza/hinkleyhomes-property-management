@@ -1,13 +1,16 @@
 import { Router, type IRouter } from "express";
 import { isDatabaseConfigured } from "@workspace/db";
 import {
+  ClearNoticeHistoryResponse,
+  GetNoticeHistoryResponse,
+  MarkNoticesSeenResponse,
   GetNoticeSettingsResponse,
   ListLatestNoticesQueryParams,
   ListLatestNoticesResponse,
   UpdateNoticeSettingsBody,
   UpdateNoticeSettingsResponse,
 } from "@workspace/api-zod";
-import { latestNotices, readNoticeSettings, saveNoticeSettings } from "../lib/notices";
+import { latestNotices, markNoticesSeen, noticeHistory, readNoticeSettings, saveNoticeSettings } from "../lib/notices";
 
 // Popup notices for background updates; see lib/notices.ts. The first read,
 // with no since, only returns the current time, so opening the app doesn't
@@ -38,6 +41,41 @@ router.get("/notices/latest", async (req, res): Promise<void> => {
     res.status(503).json({ error: "Notices could not be read." });
   }
 });
+
+// The bell's list. Before the table is pushed it simply comes back empty.
+router.get("/notices/history", async (req, res): Promise<void> => {
+  if (!isDatabaseConfigured()) {
+    res.status(503).json({ error: "The database is not configured." });
+    return;
+  }
+  try {
+    res.json(GetNoticeHistoryResponse.parse(await noticeHistory((res.locals.staff as Staff)?.email)));
+  } catch (error) {
+    req.log.error({ err: error }, "Notification list could not be read");
+    res.status(503).json({ error: "The notification list isn't set up yet: run the database push." });
+  }
+});
+
+for (const [path, clear] of [["/notices/history/seen", false], ["/notices/history/clear", true]] as const) {
+  router.post(path, async (req, res): Promise<void> => {
+    if (!isDatabaseConfigured()) {
+      res.status(503).json({ error: "The database is not configured." });
+      return;
+    }
+    const staff = res.locals.staff as Staff;
+    if (!staff?.email) {
+      res.status(400).json({ error: "No staff email on this sign-in." });
+      return;
+    }
+    try {
+      const history = await markNoticesSeen(staff.email, clear);
+      res.json((clear ? ClearNoticeHistoryResponse : MarkNoticesSeenResponse).parse(history));
+    } catch (error) {
+      req.log.error({ err: error }, "Notification list could not be updated");
+      res.status(503).json({ error: "The notification list isn't set up yet: run the database push." });
+    }
+  });
+}
 
 router.get("/notices/settings", async (req, res): Promise<void> => {
   if (!isDatabaseConfigured()) {
