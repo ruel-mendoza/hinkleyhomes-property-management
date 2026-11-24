@@ -73,7 +73,6 @@ import type {
   IntakeChecksCleared,
   IntakeFallbackRun,
   IntakeFallbackStatus,
-  IntakeNoticeList,
   IntakeReviewList,
   IntakeReviewResolve,
   IntakeReviewResolved,
@@ -89,8 +88,9 @@ import type {
   ListCohoPropertiesParams,
   ListFinanceAlertsParams,
   ListIntakeChecksParams,
-  ListLatestIntakeChecksParams,
+  ListLatestNoticesParams,
   MoneyOverview,
+  NoticeList,
   Occupancy,
   OkResult,
   OverdueReport,
@@ -4771,7 +4771,7 @@ export function useListIntakeChecks<TData = Awaited<ReturnType<typeof listIntake
 
 
 
-export const getListLatestIntakeChecksUrl = (params?: ListLatestIntakeChecksParams,) => {
+export const getListLatestNoticesUrl = (params?: ListLatestNoticesParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -4783,15 +4783,15 @@ export const getListLatestIntakeChecksUrl = (params?: ListLatestIntakeChecksPara
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/invoices/intake-checks/latest?${stringifiedParams}` : `/api/invoices/intake-checks/latest`
+  return stringifiedParams.length > 0 ? `/api/notices/latest?${stringifiedParams}` : `/api/notices/latest`
 }
 
 /**
- * @summary Invoices the intake check has checked since a given time (not-invoices left out), for the popup notices; without since it only returns the current time to start from
+ * @summary Popup notices for updates pushed in the background since a given time: invoices checked in the accounts inbox, supplier bills coded, held or failed in Xero, supplier bank details flagged, and background syncs that failed. Without since it only returns the current time to start from.
  */
-export const listLatestIntakeChecks = async (params?: ListLatestIntakeChecksParams, options?: Parameters<typeof customFetch>[1]): Promise<IntakeNoticeList> => {
+export const listLatestNotices = async (params?: ListLatestNoticesParams, options?: Parameters<typeof customFetch>[1]): Promise<NoticeList> => {
 
-  return customFetch<IntakeNoticeList>(getListLatestIntakeChecksUrl(params),
+  return customFetch<NoticeList>(getListLatestNoticesUrl(params),
   {
     ...options,
     method: 'GET'
@@ -4804,45 +4804,45 @@ export const listLatestIntakeChecks = async (params?: ListLatestIntakeChecksPara
 
 
 
-export const getListLatestIntakeChecksQueryKey = (params?: ListLatestIntakeChecksParams,) => {
+export const getListLatestNoticesQueryKey = (params?: ListLatestNoticesParams,) => {
     return [
-    `/api/invoices/intake-checks/latest`, ...(params ? [params] : [])
+    `/api/notices/latest`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListLatestIntakeChecksQueryOptions = <TData = Awaited<ReturnType<typeof listLatestIntakeChecks>>, TError = ErrorType<void>>(params?: ListLatestIntakeChecksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLatestIntakeChecks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListLatestNoticesQueryOptions = <TData = Awaited<ReturnType<typeof listLatestNotices>>, TError = ErrorType<void>>(params?: ListLatestNoticesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLatestNotices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListLatestIntakeChecksQueryKey(params);
+  const queryKey =  queryOptions?.queryKey ?? getListLatestNoticesQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLatestIntakeChecks>>> = ({ signal }) => listLatestIntakeChecks(params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLatestNotices>>> = ({ signal }) => listLatestNotices(params, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLatestIntakeChecks>>, TError, TData> & { queryKey: QueryKey }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLatestNotices>>, TError, TData> & { queryKey: QueryKey }
 }
 
-export type ListLatestIntakeChecksQueryResult = NonNullable<Awaited<ReturnType<typeof listLatestIntakeChecks>>>
-export type ListLatestIntakeChecksQueryError = ErrorType<void>
+export type ListLatestNoticesQueryResult = NonNullable<Awaited<ReturnType<typeof listLatestNotices>>>
+export type ListLatestNoticesQueryError = ErrorType<void>
 
 
 /**
- * @summary Invoices the intake check has checked since a given time (not-invoices left out), for the popup notices; without since it only returns the current time to start from
+ * @summary Popup notices for updates pushed in the background since a given time: invoices checked in the accounts inbox, supplier bills coded, held or failed in Xero, supplier bank details flagged, and background syncs that failed. Without since it only returns the current time to start from.
  */
 
-export function useListLatestIntakeChecks<TData = Awaited<ReturnType<typeof listLatestIntakeChecks>>, TError = ErrorType<void>>(
- params?: ListLatestIntakeChecksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLatestIntakeChecks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export function useListLatestNotices<TData = Awaited<ReturnType<typeof listLatestNotices>>, TError = ErrorType<void>>(
+ params?: ListLatestNoticesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLatestNotices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListLatestIntakeChecksQueryOptions(params,options)
+  const queryOptions = getListLatestNoticesQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -2572,25 +2572,47 @@ export interface IntakeCheck {
   fixedByAlias: boolean;
 }
 
-export interface IntakeNotice {
+export type NoticeKind = typeof NoticeKind[keyof typeof NoticeKind];
+
+
+export const NoticeKind = {
+  invoice: 'invoice',
+  bill: 'bill',
+  bank: 'bank',
+  sync: 'sync',
+} as const;
+
+export type NoticeTone = typeof NoticeTone[keyof typeof NoticeTone];
+
+
+export const NoticeTone = {
+  ok: 'ok',
+  warn: 'warn',
+  alert: 'alert',
+} as const;
+
+export interface Notice {
+  /** Unique per event, so the page shows each one once */
   id: string;
-  processedAt: string;
-  /** pass, review or bounce */
-  verdict: string;
+  kind: NoticeKind;
+  tone: NoticeTone;
+  title: string;
+  text: string;
   /** @nullable */
-  supplierName: string | null;
-  /** @nullable */
-  invoiceNumber: string | null;
-  /** @nullable */
-  total: number | null;
-  /** @nullable */
-  subject: string | null;
+  detail: string | null;
+  /** Page to open, inside the app */
+  href: string;
+  /** Label for the link */
+  link: string;
+  /** Stays until closed (someone needs to act); otherwise closes on its own */
+  sticky: boolean;
+  at: string;
 }
 
-export interface IntakeNoticeList {
-  /** The database time of this read; send it back as since on the first follow-up */
+export interface NoticeList {
+  /** The server time of this read; send it back as since on the next read */
   now: string;
-  items: IntakeNotice[];
+  items: Notice[];
 }
 
 export type IntakeCheckListCounts = {
@@ -3245,7 +3267,7 @@ export type ListIntakeChecksParams = {
 verdict?: IntakeCheckFilter;
 };
 
-export type ListLatestIntakeChecksParams = {
+export type ListLatestNoticesParams = {
 since?: string;
 };
 

@@ -2081,22 +2081,25 @@ export const ListIntakeChecksResponse = zod.object({
 
 
 /**
- * @summary Invoices the intake check has checked since a given time (not-invoices left out), for the popup notices; without since it only returns the current time to start from
+ * @summary Popup notices for updates pushed in the background since a given time: invoices checked in the accounts inbox, supplier bills coded, held or failed in Xero, supplier bank details flagged, and background syncs that failed. Without since it only returns the current time to start from.
  */
-export const ListLatestIntakeChecksQueryParams = zod.object({
+export const ListLatestNoticesQueryParams = zod.object({
   "since": zod.coerce.string().optional()
 })
 
-export const ListLatestIntakeChecksResponse = zod.object({
-  "now": zod.string().describe('The database time of this read; send it back as since on the first follow-up'),
+export const ListLatestNoticesResponse = zod.object({
+  "now": zod.string().describe('The server time of this read; send it back as since on the next read'),
   "items": zod.array(zod.object({
-  "id": zod.string(),
-  "processedAt": zod.string(),
-  "verdict": zod.string().describe('pass, review or bounce'),
-  "supplierName": zod.string().nullable(),
-  "invoiceNumber": zod.string().nullable(),
-  "total": zod.number().nullable(),
-  "subject": zod.string().nullable()
+  "id": zod.string().describe('Unique per event, so the page shows each one once'),
+  "kind": zod.enum(['invoice', 'bill', 'bank', 'sync']),
+  "tone": zod.enum(['ok', 'warn', 'alert']),
+  "title": zod.string(),
+  "text": zod.string(),
+  "detail": zod.string().nullable(),
+  "href": zod.string().describe('Page to open, inside the app'),
+  "link": zod.string().describe('Label for the link'),
+  "sticky": zod.boolean().describe('Stays until closed (someone needs to act); otherwise closes on its own'),
+  "at": zod.string()
 }))
 })
 

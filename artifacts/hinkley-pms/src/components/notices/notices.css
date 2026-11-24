@@ -1,17 +1,17 @@
-/* Invoice popup notices (InvoiceNotices.tsx), bottom right above the page. */
+/* Background update notices (BackgroundNotices.tsx), sliding up from the bottom right. */
 .hh-notices { position: fixed; right: 20px; bottom: 20px; z-index: 90; display: flex; flex-direction: column; gap: 8px; width: 320px; max-width: calc(100vw - 32px); }
 .hh-notice { display: flex; gap: 10px; align-items: flex-start; background: #192538; border: 1px solid #2a3a52; border-left: 3px solid #79cdb0; border-radius: 8px; padding: 11px 12px; color: #dbe4ee; box-shadow: 0 10px 28px #0006; animation: hh-notice-in .38s cubic-bezier(.2, .9, .3, 1.15) both; }
 @keyframes hh-notice-in { from { opacity: 0; transform: translate(40px, 60px) scale(.96); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .hh-notice { animation: none; } }
-.hh-notice.review { border-left-color: #e0a54a; }
-.hh-notice.bounce { border-left-color: #d95926; }
+.hh-notice.warn { border-left-color: #e0a54a; }
+.hh-notice.alert { border-left-color: #d95926; }
 .hh-notice-icon { flex: none; margin-top: 1px; color: #79cdb0; }
-.hh-notice.review .hh-notice-icon { color: #e0a54a; }
-.hh-notice.bounce .hh-notice-icon { color: #e9825d; }
+.hh-notice.warn .hh-notice-icon { color: #e0a54a; }
+.hh-notice.alert .hh-notice-icon { color: #e9825d; }
 .hh-notice-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
 .hh-notice-body strong { font-size: 13px; color: #f1f5f9; }
-.hh-notice-body span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hh-notice-body small { font-size: 12px; color: #93a3b6; }
+.hh-notice-body span, .hh-notice-body small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
+.hh-notice-body small { font-size: 12px; color: #93a3b6; -webkit-line-clamp: 2; }
 .hh-notice-body a { margin-top: 4px; color: #79cdb0; font-weight: 600; text-decoration: none; }
 .hh-notice-body a:hover { text-decoration: underline; }
 .hh-notice-close { flex: none; background: none; border: 0; color: #93a3b6; cursor: pointer; padding: 2px; border-radius: 4px; }
