@@ -73,6 +73,7 @@ import type {
   IntakeChecksCleared,
   IntakeFallbackRun,
   IntakeFallbackStatus,
+  IntakeNoticeList,
   IntakeReviewList,
   IntakeReviewResolve,
   IntakeReviewResolved,
@@ -88,6 +89,7 @@ import type {
   ListCohoPropertiesParams,
   ListFinanceAlertsParams,
   ListIntakeChecksParams,
+  ListLatestIntakeChecksParams,
   MoneyOverview,
   Occupancy,
   OkResult,
@@ -4757,6 +4759,90 @@ export function useListIntakeChecks<TData = Awaited<ReturnType<typeof listIntake
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListIntakeChecksQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListLatestIntakeChecksUrl = (params?: ListLatestIntakeChecksParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/invoices/intake-checks/latest?${stringifiedParams}` : `/api/invoices/intake-checks/latest`
+}
+
+/**
+ * @summary Invoices the intake check has checked since a given time (not-invoices left out), for the popup notices; without since it only returns the current time to start from
+ */
+export const listLatestIntakeChecks = async (params?: ListLatestIntakeChecksParams, options?: Parameters<typeof customFetch>[1]): Promise<IntakeNoticeList> => {
+
+  return customFetch<IntakeNoticeList>(getListLatestIntakeChecksUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListLatestIntakeChecksQueryKey = (params?: ListLatestIntakeChecksParams,) => {
+    return [
+    `/api/invoices/intake-checks/latest`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListLatestIntakeChecksQueryOptions = <TData = Awaited<ReturnType<typeof listLatestIntakeChecks>>, TError = ErrorType<void>>(params?: ListLatestIntakeChecksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLatestIntakeChecks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListLatestIntakeChecksQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLatestIntakeChecks>>> = ({ signal }) => listLatestIntakeChecks(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLatestIntakeChecks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListLatestIntakeChecksQueryResult = NonNullable<Awaited<ReturnType<typeof listLatestIntakeChecks>>>
+export type ListLatestIntakeChecksQueryError = ErrorType<void>
+
+
+/**
+ * @summary Invoices the intake check has checked since a given time (not-invoices left out), for the popup notices; without since it only returns the current time to start from
+ */
+
+export function useListLatestIntakeChecks<TData = Awaited<ReturnType<typeof listLatestIntakeChecks>>, TError = ErrorType<void>>(
+ params?: ListLatestIntakeChecksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLatestIntakeChecks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListLatestIntakeChecksQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

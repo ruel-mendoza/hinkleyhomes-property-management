@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, ne, sql } from "drizzle-orm";
 import { auditLogTable, getDb, invoiceIntakeChecksTable, invoiceIntakeReviewsTable, isDatabaseConfigured } from "@workspace/db";
 import {
   ClearNotInvoiceIntakeChecksResponse,
@@ -7,6 +7,8 @@ import {
   ListIntakeChecksQueryParams,
   ListIntakeChecksResponse,
   ListIntakeReviewsResponse,
+  ListLatestIntakeChecksQueryParams,
+  ListLatestIntakeChecksResponse,
   ResolveIntakeReviewBody,
   ResolveIntakeReviewParams,
   ResolveIntakeReviewResponse,
@@ -92,6 +94,44 @@ router.get("/invoices/intake-checks", async (req, res): Promise<void> => {
     }));
   } catch (error) {
     req.log.error({ err: error }, "Intake checks could not be read");
+    res.status(503).json({ error: "The inbox log isn't set up yet: run the database push." });
+  }
+});
+
+// Popup notices (components/notices/InvoiceNotices.tsx): invoices n8n (or the
+// backup check) has checked since the last read. The first read, with no since,
+// only returns the current time, so opening the app doesn't replay old checks.
+// Each read looks back 2 more minutes (the page drops ids it has shown), which
+// covers a row committed late or a small clock gap between n8n and the app.
+router.get("/invoices/intake-checks/latest", async (req, res): Promise<void> => {
+  if (!isDatabaseConfigured()) {
+    res.status(503).json({ error: "The database is not configured." });
+    return;
+  }
+  const query = ListLatestIntakeChecksQueryParams.safeParse(req.query);
+  const since = query.success && query.data.since ? new Date(query.data.since) : null;
+  const t = invoiceIntakeChecksTable;
+  try {
+    const now = new Date();
+    const rows = since && !Number.isNaN(since.getTime())
+      ? await getDb().select().from(t)
+        .where(and(gt(t.processedAt, new Date(since.getTime() - 2 * 60_000)), inArray(t.verdict, ["pass", "review", "bounce"])))
+        .orderBy(asc(t.processedAt)).limit(10)
+      : [];
+    res.json(ListLatestIntakeChecksResponse.parse({
+      now: now.toISOString(),
+      items: rows.map((row) => ({
+        id: row.id,
+        processedAt: row.processedAt.toISOString(),
+        verdict: row.verdict,
+        supplierName: row.supplierName,
+        invoiceNumber: row.invoiceNumber,
+        total: row.totalGross === null ? null : Number(row.totalGross),
+        subject: row.subject,
+      })),
+    }));
+  } catch (error) {
+    req.log.error({ err: error }, "Latest intake checks could not be read");
     res.status(503).json({ error: "The inbox log isn't set up yet: run the database push." });
   }
 });

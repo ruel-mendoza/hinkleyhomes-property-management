@@ -46,6 +46,7 @@ import ListingsWidget from '@/pages/listings-widget';
 import { MoneyPanels, formatPounds } from '@/components/overview/MoneyPanels';
 import { NeedsAttention } from '@/components/overview/NeedsAttention';
 import { PresenceIndicator, usePresenceHeartbeat } from '@/components/presence/PresenceIndicator';
+import { InvoiceNotices } from '@/components/notices/InvoiceNotices';
 import {
   AccessRestrictedPage,
   AuthLandingPage,
@@ -157,6 +158,7 @@ function AppShell() {
       </main>
     </div>
     {toast && <div className="toast-msg" role="status">{toast}</div>}
+    <InvoiceNotices />
   </div>;
 }
 

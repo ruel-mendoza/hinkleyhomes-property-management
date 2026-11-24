@@ -2081,6 +2081,27 @@ export const ListIntakeChecksResponse = zod.object({
 
 
 /**
+ * @summary Invoices the intake check has checked since a given time (not-invoices left out), for the popup notices; without since it only returns the current time to start from
+ */
+export const ListLatestIntakeChecksQueryParams = zod.object({
+  "since": zod.coerce.string().optional()
+})
+
+export const ListLatestIntakeChecksResponse = zod.object({
+  "now": zod.string().describe('The database time of this read; send it back as since on the first follow-up'),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "processedAt": zod.string(),
+  "verdict": zod.string().describe('pass, review or bounce'),
+  "supplierName": zod.string().nullable(),
+  "invoiceNumber": zod.string().nullable(),
+  "total": zod.number().nullable(),
+  "subject": zod.string().nullable()
+}))
+})
+
+
+/**
  * @summary Delete every not-invoice email from the inbox log (n8n skips emails it has tagged as not an invoice in Outlook, so they are not checked again); senders and subjects go to the audit log
  */
 export const ClearNotInvoiceIntakeChecksResponse = zod.object({

@@ -1256,6 +1256,26 @@ paths:
                 $ref: "#/components/schemas/IntakeCheckList"
         "503":
           description: Database is not configured
+  /invoices/intake-checks/latest:
+    get:
+      operationId: listLatestIntakeChecks
+      tags: [xero]
+      summary: Invoices the intake check has checked since a given time (not-invoices left out), for the popup notices; without since it only returns the current time to start from
+      parameters:
+        - name: since
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Newly checked invoices, oldest first (up to 10)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntakeNoticeList"
+        "503":
+          description: Database is not configured
   /invoices/intake-checks/clear-not-invoices:
     post:
       operationId: clearNotInvoiceIntakeChecks
@@ -4601,6 +4621,36 @@ components:
           type: boolean
           description: A bounce whose every problem is now covered by an alias
       required: [id, processedAt, senderEmail, subject, supplierName, invoiceNumber, invoiceDate, total, billTo, verdict, issueCodes, action, checkedBy, files, aliasFixes, fixedByAlias]
+    IntakeNotice:
+      type: object
+      properties:
+        id:
+          type: string
+        processedAt:
+          type: string
+        verdict:
+          type: string
+          description: pass, review or bounce
+        supplierName:
+          type: ["string", "null"]
+        invoiceNumber:
+          type: ["string", "null"]
+        total:
+          type: ["number", "null"]
+        subject:
+          type: ["string", "null"]
+      required: [id, processedAt, verdict, supplierName, invoiceNumber, total, subject]
+    IntakeNoticeList:
+      type: object
+      properties:
+        now:
+          type: string
+          description: The server time of this read; send it back as since on the next read
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/IntakeNotice"
+      required: [now, items]
     IntakeCheckList:
       type: object
       properties:

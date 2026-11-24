@@ -2572,6 +2572,27 @@ export interface IntakeCheck {
   fixedByAlias: boolean;
 }
 
+export interface IntakeNotice {
+  id: string;
+  processedAt: string;
+  /** pass, review or bounce */
+  verdict: string;
+  /** @nullable */
+  supplierName: string | null;
+  /** @nullable */
+  invoiceNumber: string | null;
+  /** @nullable */
+  total: number | null;
+  /** @nullable */
+  subject: string | null;
+}
+
+export interface IntakeNoticeList {
+  /** The database time of this read; send it back as since on the first follow-up */
+  now: string;
+  items: IntakeNotice[];
+}
+
 export type IntakeCheckListCounts = {
   pass: number;
   /** Bounces still waiting for a corrected invoice (not fixed by an alias) */
@@ -3222,6 +3243,10 @@ status?: FinanceAlertFilter;
 
 export type ListIntakeChecksParams = {
 verdict?: IntakeCheckFilter;
+};
+
+export type ListLatestIntakeChecksParams = {
+since?: string;
 };
 
 export type ListBillReviewsParams = {
