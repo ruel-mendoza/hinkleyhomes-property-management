@@ -1276,6 +1276,41 @@ paths:
                 $ref: "#/components/schemas/NoticeList"
         "503":
           description: Database is not configured
+  /notices/settings:
+    get:
+      operationId: getNoticeSettings
+      tags: [health]
+      summary: The signed-in staff member's popup notice choices (all on until changed)
+      responses:
+        "200":
+          description: Notice settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoticeSettings"
+        "503":
+          description: Database is not configured
+    put:
+      operationId: updateNoticeSettings
+      tags: [health]
+      summary: Turn popup notices on or off, or turn off some kinds, for the signed-in staff member (written to the audit log)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NoticeSettings"
+      responses:
+        "200":
+          description: The saved settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoticeSettings"
+        "400":
+          description: Invalid settings
+        "503":
+          description: Database is not configured
   /invoices/intake-checks/clear-not-invoices:
     post:
       operationId: clearNotInvoiceIntakeChecks
@@ -4628,8 +4663,7 @@ components:
           type: string
           description: Unique per event, so the page shows each one once
         kind:
-          type: string
-          enum: [invoice, bill, bank, sync]
+          $ref: "#/components/schemas/NoticeKind"
         tone:
           type: string
           enum: [ok, warn, alert]
@@ -4651,6 +4685,21 @@ components:
         at:
           type: string
       required: [id, kind, tone, title, text, detail, href, link, sticky, at]
+    NoticeKind:
+      type: string
+      enum: [invoice, bill, bank, sync]
+    NoticeSettings:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          description: False turns every popup off
+        muted:
+          type: array
+          description: Kinds turned off
+          items:
+            $ref: "#/components/schemas/NoticeKind"
+      required: [enabled, muted]
     NoticeList:
       type: object
       properties:

@@ -2572,6 +2572,15 @@ export interface IntakeCheck {
   fixedByAlias: boolean;
 }
 
+export type NoticeTone = typeof NoticeTone[keyof typeof NoticeTone];
+
+
+export const NoticeTone = {
+  ok: 'ok',
+  warn: 'warn',
+  alert: 'alert',
+} as const;
+
 export type NoticeKind = typeof NoticeKind[keyof typeof NoticeKind];
 
 
@@ -2580,15 +2589,6 @@ export const NoticeKind = {
   bill: 'bill',
   bank: 'bank',
   sync: 'sync',
-} as const;
-
-export type NoticeTone = typeof NoticeTone[keyof typeof NoticeTone];
-
-
-export const NoticeTone = {
-  ok: 'ok',
-  warn: 'warn',
-  alert: 'alert',
 } as const;
 
 export interface Notice {
@@ -2607,6 +2607,13 @@ export interface Notice {
   /** Stays until closed (someone needs to act); otherwise closes on its own */
   sticky: boolean;
   at: string;
+}
+
+export interface NoticeSettings {
+  /** False turns every popup off */
+  enabled: boolean;
+  /** Kinds turned off */
+  muted: NoticeKind[];
 }
 
 export interface NoticeList {

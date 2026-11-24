@@ -170,6 +170,7 @@ export * from './moneyXero';
 export * from './notice';
 export * from './noticeKind';
 export * from './noticeList';
+export * from './noticeSettings';
 export * from './noticeTone';
 export * from './occupancy';
 export * from './occupancyRow';

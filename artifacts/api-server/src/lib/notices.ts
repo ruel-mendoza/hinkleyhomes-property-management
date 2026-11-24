@@ -1,5 +1,5 @@
 import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
-import { billCodingReviewsTable, exceptionQueueTable, getDb, integrationSyncRunsTable, invoiceIntakeChecksTable } from "@workspace/db";
+import { auditLogTable, billCodingReviewsTable, exceptionQueueTable, getDb, integrationSyncRunsTable, invoiceIntakeChecksTable, staffNoticeSettingsTable } from "@workspace/db";
 
 // Popup notices (web: components/notices/InvoiceNotices.tsx) for updates pushed
 // in the background, read from the rows n8n and the scheduled jobs already write:
@@ -8,6 +8,8 @@ import { billCodingReviewsTable, exceptionQueueTable, getDb, integrationSyncRuns
 //            draft written to Xero, or the Xero write failed
 //   bank     supplier bank details flagged (exception_queue, bank_detail_change)
 //   sync     a background sync that failed (integration_sync_runs), once until it works again
+// Each staff member can turn notices off, or turn off some kinds, with the bell
+// in the top bar (staff_notice_settings); what's turned off isn't sent at all.
 // The page asks with the time of its last read; each read looks back 2 more
 // minutes (the page skips ids it has shown), which covers rows committed late
 // and small clock gaps between n8n and the app.
@@ -56,7 +58,47 @@ function syncLabel(integration: string, trigger: string): { name: string; href: 
   return { name: `${integration.replaceAll("_", " ")} sync`, href: "/dashboard" };
 }
 
-export async function latestNotices(since: Date): Promise<Notice[]> {
+export type NoticeSettings = { enabled: boolean; muted: Notice["kind"][] };
+const KINDS: Notice["kind"][] = ["invoice", "bill", "bank", "sync"];
+const ALL_ON: NoticeSettings = { enabled: true, muted: [] };
+
+export async function readNoticeSettings(email: string | undefined): Promise<NoticeSettings> {
+  if (!email) return ALL_ON;
+  const t = staffNoticeSettingsTable;
+  const [row] = await getDb().select().from(t).where(eq(t.email, email.toLowerCase())).limit(1);
+  return row ? { enabled: row.enabled, muted: KINDS.filter((kind) => row.mutedKinds.includes(kind)) } : ALL_ON;
+}
+
+export async function saveNoticeSettings(
+  settings: NoticeSettings,
+  staff: { email: string; userId: string | null },
+  request: { requestId: string | null; ipAddress: string | null },
+): Promise<NoticeSettings> {
+  const t = staffNoticeSettingsTable;
+  const email = staff.email.toLowerCase();
+  const next = { enabled: settings.enabled, muted: KINDS.filter((kind) => settings.muted.includes(kind)) };
+  return getDb().transaction(async (tx) => {
+    const [before] = await tx.select().from(t).where(eq(t.email, email)).limit(1);
+    await tx.insert(t).values({ email, enabled: next.enabled, mutedKinds: next.muted })
+      .onConflictDoUpdate({ target: t.email, set: { enabled: next.enabled, mutedKinds: next.muted } });
+    await tx.insert(auditLogTable).values({
+      actorEmail: staff.email,
+      actorUserId: staff.userId,
+      action: "notice_settings.update",
+      tableName: "staff_notice_settings",
+      recordId: email,
+      before: before ? { enabled: before.enabled, muted: before.mutedKinds } : null,
+      after: next,
+      requestId: request.requestId,
+      ipAddress: request.ipAddress,
+    });
+    return next;
+  });
+}
+
+export async function latestNotices(since: Date, settings: NoticeSettings = ALL_ON): Promise<Notice[]> {
+  if (!settings.enabled || settings.muted.length === KINDS.length) return [];
+  const on = (kind: Notice["kind"]) => !settings.muted.includes(kind);
   const db = getDb();
   const from = new Date(since.getTime() - LOOK_BACK_MS);
   const ic = invoiceIntakeChecksTable;
@@ -64,26 +106,27 @@ export async function latestNotices(since: Date): Promise<Notice[]> {
   const eq_ = exceptionQueueTable;
   const sr = integrationSyncRunsTable;
 
+  const none = Promise.resolve([]);
   const [invoices, billsRaised, billsWritten, bank, syncs] = await Promise.all([
-    db.select().from(ic)
+    !on("invoice") ? none : db.select().from(ic)
       .where(and(gt(ic.processedAt, from), inArray(ic.verdict, ["pass", "review", "bounce"])))
       .orderBy(asc(ic.processedAt)).limit(PER_SOURCE),
     // A bill is checked again each run; only its first held or test-mode row counts.
-    db.select().from(br)
+    !on("bill") ? none : db.select().from(br)
       .where(and(
         gt(br.createdAt, from),
         inArray(br.status, ["held", "shadow_planned"]),
         sql`not exists (select 1 from bill_coding_reviews p where p.idempotency_key = ${br.idempotencyKey} and p.status = ${br.status} and p.created_at < ${br.createdAt})`,
       ))
       .orderBy(asc(br.createdAt)).limit(PER_SOURCE),
-    db.select().from(br)
+    !on("bill") ? none : db.select().from(br)
       .where(and(gt(br.updatedAt, from), inArray(br.status, ["created_draft", "updated_draft", "create_failed"])))
       .orderBy(asc(br.updatedAt)).limit(PER_SOURCE),
-    db.select().from(eq_)
+    !on("bank") ? none : db.select().from(eq_)
       .where(and(gt(eq_.createdAt, from), eq(eq_.kind, "bank_detail_change")))
       .orderBy(asc(eq_.createdAt)).limit(PER_SOURCE),
     // A failed run counts only when the run before it (same job) didn't fail too.
-    db.select().from(sr)
+    !on("sync") ? none : db.select().from(sr)
       .where(and(
         gt(sr.finishedAt, from),
         eq(sr.status, "failed"),

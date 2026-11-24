@@ -2105,6 +2105,29 @@ export const ListLatestNoticesResponse = zod.object({
 
 
 /**
+ * @summary The signed-in staff member's popup notice choices (all on until changed)
+ */
+export const GetNoticeSettingsResponse = zod.object({
+  "enabled": zod.boolean().describe('False turns every popup off'),
+  "muted": zod.array(zod.enum(['invoice', 'bill', 'bank', 'sync'])).describe('Kinds turned off')
+})
+
+
+/**
+ * @summary Turn popup notices on or off, or turn off some kinds, for the signed-in staff member (written to the audit log)
+ */
+export const UpdateNoticeSettingsBody = zod.object({
+  "enabled": zod.boolean().describe('False turns every popup off'),
+  "muted": zod.array(zod.enum(['invoice', 'bill', 'bank', 'sync'])).describe('Kinds turned off')
+})
+
+export const UpdateNoticeSettingsResponse = zod.object({
+  "enabled": zod.boolean().describe('False turns every popup off'),
+  "muted": zod.array(zod.enum(['invoice', 'bill', 'bank', 'sync'])).describe('Kinds turned off')
+})
+
+
+/**
  * @summary Delete every not-invoice email from the inbox log (n8n skips emails it has tagged as not an invoice in Outlook, so they are not checked again); senders and subjects go to the audit log
  */
 export const ClearNotInvoiceIntakeChecksResponse = zod.object({

@@ -1,4 +1,5 @@
 import { bigserial, boolean, date, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { id, timestamps } from "./columns";
@@ -143,3 +144,15 @@ export const staffPresenceTable = pgTable(
 ).enableRLS();
 
 export type StaffPresence = typeof staffPresenceTable.$inferSelect;
+
+// Each staff member's choice of popup notices (the bell in the top bar). Keyed
+// by lower-case email, so it survives a new sign-in account. No row = all on.
+export const staffNoticeSettingsTable = pgTable("staff_notice_settings", {
+  email: text("email").primaryKey(),
+  enabled: boolean("enabled").notNull().default(true),
+  // Kinds turned off: invoice, bill, bank, sync (see api-server lib/notices.ts).
+  mutedKinds: text("muted_kinds").array().notNull().default(sql`'{}'::text[]`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}).enableRLS();
+
+export type StaffNoticeSettings = typeof staffNoticeSettingsTable.$inferSelect;

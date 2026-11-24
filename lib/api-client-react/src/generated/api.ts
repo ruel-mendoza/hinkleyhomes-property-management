@@ -91,6 +91,7 @@ import type {
   ListLatestNoticesParams,
   MoneyOverview,
   NoticeList,
+  NoticeSettings,
   Occupancy,
   OkResult,
   OverdueReport,
@@ -4854,6 +4855,171 @@ export function useListLatestNotices<TData = Awaited<ReturnType<typeof listLates
 
 
 
+
+export const getGetNoticeSettingsUrl = () => {
+
+
+
+
+  return `/api/notices/settings`
+}
+
+/**
+ * @summary The signed-in staff member's popup notice choices (all on until changed)
+ */
+export const getNoticeSettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<NoticeSettings> => {
+
+  return customFetch<NoticeSettings>(getGetNoticeSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNoticeSettingsQueryKey = () => {
+    return [
+    `/api/notices/settings`
+    ] as const;
+    }
+
+
+export const getGetNoticeSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getNoticeSettings>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNoticeSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNoticeSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNoticeSettings>>> = ({ signal }) => getNoticeSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNoticeSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNoticeSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getNoticeSettings>>>
+export type GetNoticeSettingsQueryError = ErrorType<void>
+
+
+/**
+ * @summary The signed-in staff member's popup notice choices (all on until changed)
+ */
+
+export function useGetNoticeSettings<TData = Awaited<ReturnType<typeof getNoticeSettings>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNoticeSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNoticeSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateNoticeSettingsUrl = () => {
+
+
+
+
+  return `/api/notices/settings`
+}
+
+/**
+ * @summary Turn popup notices on or off, or turn off some kinds, for the signed-in staff member (written to the audit log)
+ */
+export const updateNoticeSettings = async (noticeSettings: NoticeSettings, options?: Parameters<typeof customFetch>[1]): Promise<NoticeSettings> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NoticeSettings>(getUpdateNoticeSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(noticeSettings)
+  }
+);}
+
+
+
+
+
+export const getUpdateNoticeSettingsMutationKey = () => ['updateNoticeSettings'] as const;
+
+export const getUpdateNoticeSettingsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateNoticeSettings>>, TError,UpdateNoticeSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateNoticeSettings>>, TError,UpdateNoticeSettingsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateNoticeSettingsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateNoticeSettings>>, UpdateNoticeSettingsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateNoticeSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateNoticeSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateNoticeSettings>>>
+    export type UpdateNoticeSettingsMutationBody = BodyType<NoticeSettings>
+    export type UpdateNoticeSettingsMutationError = ErrorType<void>
+    export type UpdateNoticeSettingsMutationVariables = {data: BodyType<NoticeSettings>}
+
+    /**
+ * @summary Turn popup notices on or off, or turn off some kinds, for the signed-in staff member (written to the audit log)
+ */
+export const useUpdateNoticeSettings = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateNoticeSettings>>, TError,UpdateNoticeSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateNoticeSettings>>,
+        TError,
+        UpdateNoticeSettingsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateNoticeSettingsMutationOptions(options));
+    }
 
 export const getClearNotInvoiceIntakeChecksUrl = () => {
 
