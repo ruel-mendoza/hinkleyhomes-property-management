@@ -1,25 +1,27 @@
 import { useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { getListFinanceAlertsQueryKey, useGetReceivables, useListFinanceAlerts, useListIntakeReviews } from "@workspace/api-client-react";
+import { getListFinanceAlertsQueryKey, useGetPayRuns, useGetReceivables, useListFinanceAlerts, useListIntakeReviews } from "@workspace/api-client-react";
 import { AlertsTab, ChecksRunButton, RunStatus } from "./FinanceChecks";
 import { BillCodingTab } from "./BillCodingTab";
 import { IntakeChecksTab } from "./IntakeChecksTab";
 import { IntakeReviewsTab, intakeReviewsQueryOptions } from "./IntakeReviewsTab";
 import { LedgerView, receivablesQueryOptions } from "./XeroLedger";
+import { PayRunsTab, payRunsQueryOptions } from "./PayRunsTab";
 import "./finance.css";
 
 // Supplier bills, in the order a bill arrives: emails to accounts@ the intake
 // check looked at (Inbox), the ones it sent for a person (For review), bills
 // read and coded to a property in Xero (Bill coding), open bills across the
-// five companies (To pay), and bill, bank-detail and spend alerts.
+// five companies (To pay), Telleroo pay runs, and bill, bank-detail and spend alerts.
 
-type Tab = "inbox" | "review" | "coding" | "pay" | "alerts";
-const TABS: Tab[] = ["inbox", "review", "coding", "pay", "alerts"];
+type Tab = "inbox" | "review" | "coding" | "pay" | "payruns" | "alerts";
+const TABS: Tab[] = ["inbox", "review", "coding", "pay", "payruns", "alerts"];
 const SUBTITLE: Record<Tab, string> = {
   inbox: "Every email to accounts@ the intake check looked at, with the saved invoice or its link",
   review: "Bills emailed to accounts@ that the intake check sent for a person to look at",
   coding: "Supplier bills read from Xero and coded to a property, or held for an answer",
   pay: "Open bills for all five companies in Xero, with the daily check's priority",
+  payruns: "Supplier pay runs in Telleroo and where each one has got to",
   alerts: "Price, bank-detail and spend changes the daily check found in supplier bills",
 };
 
@@ -36,6 +38,7 @@ export default function SupplierBillsPage() {
   const tab: Tab = TABS.find((key) => key === get("tab")) ?? "inbox";
   const reviewOpen = useListIntakeReviews(intakeReviewsQueryOptions()).data?.openCount;
   const bills = useGetReceivables(receivablesQueryOptions).data?.bills.length;
+  const openPayRuns = useGetPayRuns(payRunsQueryOptions).data?.open;
   const alerts = useListFinanceAlerts({ status: "open" }, { query: { queryKey: getListFinanceAlertsQueryKey({ status: "open" }), staleTime: 60_000 } }).data;
   const [toast, setToast] = useState("");
   const flash = (message: string) => { setToast(message); setTimeout(() => setToast(""), 4000); };
@@ -63,6 +66,7 @@ export default function SupplierBillsPage() {
         {tabButton("review", "For review", reviewOpen !== undefined && <span className={reviewOpen ? "hh-chk-count bad" : ""}>{reviewOpen}</span>)}
         {tabButton("coding", "Bill coding")}
         {tabButton("pay", "To pay", bills !== undefined && <span>{bills}</span>)}
+        {tabButton("payruns", "Pay runs", !!openPayRuns && <span>{openPayRuns}</span>)}
         {tabButton("alerts", "Alerts", alerts && <span className={alerts.openHighCount ? "hh-chk-count bad" : ""}>{alerts.openCount}</span>)}
       </div>
 
@@ -70,6 +74,7 @@ export default function SupplierBillsPage() {
       {tab === "review" && <IntakeReviewsTab flash={flash} />}
       {tab === "coding" && <BillCodingTab get={get} setParams={setParams} flash={flash} />}
       {tab === "pay" && <LedgerView ledger="bills" get={get} setParams={setParams} flash={flash} />}
+      {tab === "payruns" && <PayRunsTab />}
       {tab === "alerts" && <AlertsTab get={get} setParams={setParams} flash={flash} />}
 
       {toast && <div className="toast-msg" role="status">{toast}</div>}

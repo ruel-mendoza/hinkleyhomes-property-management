@@ -9,6 +9,33 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Telleroo pay runs that are still open or changed in the last 60 days (read-only, from Supabase)
+ */
+export const GetPayRunsResponse = zod.object({
+  "asOf": zod.string(),
+  "open": zod.number().int().describe('Pay runs not yet paid or cancelled'),
+  "awaitingApproval": zod.number().int(),
+  "openAmount": zod.number(),
+  "paidThisMonth": zod.number().describe('Total paid by pay runs made this month (UK time)'),
+  "lastEventAt": zod.string().nullable().describe('When the last Telleroo webhook arrived; null if none yet'),
+  "payRuns": zod.array(zod.object({
+  "id": zod.string().describe('Telleroo\'s pay run id'),
+  "name": zod.string().nullable(),
+  "status": zod.string().describe('Telleroo status, e.g. awaiting_approval, sending, paid, cancelled'),
+  "payeesType": zod.string().nullable(),
+  "scheduledFor": zod.string().nullable(),
+  "requestedAmount": zod.number().nullable(),
+  "paidAmount": zod.number().nullable(),
+  "payments": zod.number().int().describe('Number of payments in the pay run'),
+  "rejected": zod.number().int().describe('Payments Telleroo rejected'),
+  "tellerooUrl": zod.string().nullable(),
+  "createdAt": zod.string().nullable().describe('When the pay run was made in Telleroo (ISO date-time)'),
+  "lastCheckedAt": zod.string()
+}))
+})
+
+
+/**
  * @summary Owner statements for one month, split into landlord payout, Hinkley fee, housekeeping and costs (read-only from Rental Ninja)
  */
 export const getOwnerStatementsQueryMonthRegExp = new RegExp('^\\d{4}-\\d{2}$');

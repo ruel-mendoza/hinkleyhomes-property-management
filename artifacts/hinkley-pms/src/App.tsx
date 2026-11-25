@@ -37,6 +37,7 @@ import RentPage from '@/pages/finance/RentPage';
 import { bankFeedQueryOptions } from '@/pages/finance/BankFeedPage';
 import { MoneyTrend } from '@/pages/finance/MoneyTrend';
 import { ReceivablesStrip } from '@/pages/finance/XeroLedger';
+import { PayRunsStrip } from '@/pages/finance/PayRunsTab';
 import OwedToUsPage from '@/pages/finance/OwedToUsPage';
 import SupplierBillsPage from '@/pages/finance/SupplierBillsPage';
 import AccountsPage, { AccountsStrip } from '@/pages/accounts/AccountsPage';
@@ -199,6 +200,7 @@ function Overview({ profileName, configured, statusLoading, properties, properti
     <MoneyPanels data={moneyQuery.data} loading={moneyQuery.isLoading} failed={moneyQuery.isError} propertyReference={propertyReference} lead={<NeedsAttention money={moneyQuery.data} propertyReference={propertyReference} />} />
     <MoneyTrend side={<OccupancyCard propertyReference={propertyReference} />} />
     <ReceivablesStrip />
+    <PayRunsStrip />
     <AccountsStrip />
     <OwnerStatementsStrip />
     <section className="panel arrival-panel"><div className="panel-head"><div><div className="panel-title">Coming up in COHO</div><div className="panel-caption">Tenancies, viewings, repairs and COHO actions in the next 7 days</div></div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Link href="/maintenance" className="button" style={{ textDecoration: 'none' }}><Wrench size={13} /> Maintenance</Link><Link href="/actions" className="button" style={{ textDecoration: 'none' }}><ClipboardList size={13} /> Actions</Link><Link href="/calendar" className="button" style={{ textDecoration: 'none' }}>Open calendar <ArrowUpRight size={13} /></Link></div></div>

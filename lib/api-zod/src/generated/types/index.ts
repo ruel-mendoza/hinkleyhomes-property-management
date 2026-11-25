@@ -188,6 +188,8 @@ export * from './ownerStatementPaymentKind';
 export * from './ownerStatementPaymentStatus';
 export * from './ownerStatements';
 export * from './payableBill';
+export * from './payRun';
+export * from './payRuns';
 export * from './performance';
 export * from './performanceMonth';
 export * from './performancePeriod';

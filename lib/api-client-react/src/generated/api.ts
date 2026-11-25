@@ -97,6 +97,7 @@ import type {
   OkResult,
   OverdueReport,
   OwnerStatements,
+  PayRuns,
   Performance,
   PresenceHeartbeat,
   PresenceList,
@@ -154,6 +155,83 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetPayRunsUrl = () => {
+
+
+
+
+  return `/api/payments/pay-runs`
+}
+
+/**
+ * @summary Telleroo pay runs that are still open or changed in the last 60 days (read-only, from Supabase)
+ */
+export const getPayRuns = async ( options?: Parameters<typeof customFetch>[1]): Promise<PayRuns> => {
+
+  return customFetch<PayRuns>(getGetPayRunsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPayRunsQueryKey = () => {
+    return [
+    `/api/payments/pay-runs`
+    ] as const;
+    }
+
+
+export const getGetPayRunsQueryOptions = <TData = Awaited<ReturnType<typeof getPayRuns>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPayRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPayRunsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPayRuns>>> = ({ signal }) => getPayRuns({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPayRuns>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPayRunsQueryResult = NonNullable<Awaited<ReturnType<typeof getPayRuns>>>
+export type GetPayRunsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Telleroo pay runs that are still open or changed in the last 60 days (read-only, from Supabase)
+ */
+
+export function useGetPayRuns<TData = Awaited<ReturnType<typeof getPayRuns>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPayRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPayRunsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetOwnerStatementsUrl = (params?: GetOwnerStatementsParams,) => {
   const normalizedParams = new URLSearchParams();

@@ -253,6 +253,51 @@ export interface OwnerStatement {
   payment: OwnerStatementPayment | null;
 }
 
+export interface PayRun {
+  /** Telleroo's pay run id */
+  id: string;
+  /** @nullable */
+  name: string | null;
+  /** Telleroo status, e.g. awaiting_approval, sending, paid, cancelled */
+  status: string;
+  /** @nullable */
+  payeesType: string | null;
+  /** @nullable */
+  scheduledFor: string | null;
+  /** @nullable */
+  requestedAmount: number | null;
+  /** @nullable */
+  paidAmount: number | null;
+  /** Number of payments in the pay run */
+  payments: number;
+  /** Payments Telleroo rejected */
+  rejected: number;
+  /** @nullable */
+  tellerooUrl: string | null;
+  /**
+     * When the pay run was made in Telleroo (ISO date-time)
+     * @nullable
+     */
+  createdAt: string | null;
+  lastCheckedAt: string;
+}
+
+export interface PayRuns {
+  asOf: string;
+  /** Pay runs not yet paid or cancelled */
+  open: number;
+  awaitingApproval: number;
+  openAmount: number;
+  /** Total paid by pay runs made this month (UK time) */
+  paidThisMonth: number;
+  /**
+     * When the last Telleroo webhook arrived; null if none yet
+     * @nullable
+     */
+  lastEventAt: string | null;
+  payRuns: PayRun[];
+}
+
 export interface OwnerStatements {
   /** YYYY-MM */
   month: string;

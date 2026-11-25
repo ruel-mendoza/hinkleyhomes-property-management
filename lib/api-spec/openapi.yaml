@@ -18,7 +18,23 @@ tags:
     description: Hinkley Homes Stays short-stay bookings and guest messages, read-only from Smoobu
   - name: rentalninja
     description: Monthly owner statements for serviced-accommodation landlords, read-only from Rental Ninja's accounting API
+  - name: telleroo
+    description: Supplier pay runs in Telleroo, as saved in Supabase by the n8n "Telleroo events" workflow (read-only)
 paths:
+  /payments/pay-runs:
+    get:
+      operationId: getPayRuns
+      tags: [telleroo]
+      summary: Telleroo pay runs that are still open or changed in the last 60 days (read-only, from Supabase)
+      responses:
+        "200":
+          description: Pay runs, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayRuns"
+        "503":
+          description: The database is not configured
   /owner-statements:
     get:
       operationId: getOwnerStatements
@@ -2018,6 +2034,62 @@ components:
         reference:
           type: ["string", "null"]
       required: [status, company, kind, date, amount, parts, sharedWith, reference]
+    PayRun:
+      type: object
+      properties:
+        id:
+          description: Telleroo's pay run id
+          type: string
+        name:
+          type: ["string", "null"]
+        status:
+          description: Telleroo status, e.g. awaiting_approval, sending, paid, cancelled
+          type: string
+        payeesType:
+          type: ["string", "null"]
+        scheduledFor:
+          type: ["string", "null"]
+        requestedAmount:
+          type: ["number", "null"]
+        paidAmount:
+          type: ["number", "null"]
+        payments:
+          description: Number of payments in the pay run
+          type: integer
+        rejected:
+          description: Payments Telleroo rejected
+          type: integer
+        tellerooUrl:
+          type: ["string", "null"]
+        createdAt:
+          description: When the pay run was made in Telleroo (ISO date-time)
+          type: ["string", "null"]
+        lastCheckedAt:
+          type: string
+      required: [id, name, status, payeesType, scheduledFor, requestedAmount, paidAmount, payments, rejected, tellerooUrl, createdAt, lastCheckedAt]
+    PayRuns:
+      type: object
+      properties:
+        asOf:
+          type: string
+        open:
+          description: Pay runs not yet paid or cancelled
+          type: integer
+        awaitingApproval:
+          type: integer
+        openAmount:
+          type: number
+        paidThisMonth:
+          description: Total paid by pay runs made this month (UK time)
+          type: number
+        lastEventAt:
+          description: When the last Telleroo webhook arrived; null if none yet
+          type: ["string", "null"]
+        payRuns:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayRun"
+      required: [asOf, open, awaitingApproval, openAmount, paidThisMonth, lastEventAt, payRuns]
     OwnerStatements:
       type: object
       properties:
