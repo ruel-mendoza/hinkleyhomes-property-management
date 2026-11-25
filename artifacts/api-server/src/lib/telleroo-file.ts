@@ -16,10 +16,12 @@ import { xeroGatewayRequest } from "./xero-gateway";
 // in telleroo_file_bills and audit_log without the bank numbers.
 
 const REPEAT_DAYS = 30;
-// Telleroo's reference limit. Characters outside this set are dropped, as banks reject them.
+// Telleroo (25 Nov 2026): up to 18 characters of letters, numbers, spaces and
+// hyphens; other characters become a hyphen, and a longer reference rejects the row.
+// The same replacement is done here so the reference recorded matches what is sent.
 const REFERENCE_MAX = 18;
 const reference = (number: string | null) =>
-  (number ?? "").replace(/[^A-Za-z0-9 \-./&]/g, "").replace(/\s+/g, " ").trim().slice(0, REFERENCE_MAX).trim() || "HINKLEY HOMES";
+  (number ?? "").replace(/[^A-Za-z0-9 -]+/g, "-").replace(/\s+/g, " ").replace(/-{2,}/g, "-").replace(/^[\s-]+|[\s-]+$/g, "").slice(0, REFERENCE_MAX).replace(/[\s-]+$/g, "") || "HINKLEY HOMES";
 
 type RecordValue = Record<string, unknown>;
 const asRecord = (value: unknown): RecordValue => (value !== null && typeof value === "object" && !Array.isArray(value) ? (value as RecordValue) : {});

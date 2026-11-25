@@ -17,6 +17,8 @@ const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "nume
 
 // Telleroo status -> [label, status class].
 const STATUS: Record<string, [string, string]> = {
+  // A pay run added by hand from its Telleroo link; filled in by the next 30-minute check.
+  unknown: ["Details on the way", "na"],
   validating: ["Checking payees", "upcoming"],
   validated: ["Checked", "upcoming"],
   processing: ["Processing", "upcoming"],

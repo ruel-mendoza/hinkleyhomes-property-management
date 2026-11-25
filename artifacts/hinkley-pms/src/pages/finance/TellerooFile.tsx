@@ -47,7 +47,7 @@ export function TellerooFileResult({ result, pending, onRepeat, onClose }: { res
       <div className="panel-head">
         <div>
           <div className="panel-title">{result.included.length ? `Telleroo file: ${result.included.length} ${result.included.length === 1 ? "bill" : "bills"}, ${pence.format(result.total)}` : "No Telleroo file made"}</div>
-          <div className="panel-caption">{result.included.length ? <>Saved as {result.fileName}. In Telleroo, choose <strong>New pay run</strong> and upload it; it's approved there as usual.</> : "None of the ticked bills could be paid from Telleroo yet."}</div>
+          <div className="panel-caption">{result.included.length ? <>Saved as {result.fileName}. In Telleroo, choose <strong>New pay run</strong>, upload it with the payment category <strong>Supplier - Business</strong> (or <strong>Supplier - Person</strong> if every payee is a person), and approve it there as usual.</> : "None of the ticked bills could be paid from Telleroo yet."}</div>
         </div>
         <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={14} /></button>
       </div>
