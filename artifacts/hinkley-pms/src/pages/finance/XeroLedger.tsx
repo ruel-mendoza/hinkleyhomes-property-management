@@ -20,6 +20,7 @@ import { errorText } from "@/components/action-modals";
 import { ModalShell } from "@/components/properties/ModalShell";
 import { downloadText, formatDate } from "@/services/properties";
 import { ReminderBanner, ReminderCell, ReminderSettingsModal, SendReminderModal } from "./ReminderControls";
+import { TellerooFileResult, useTellerooFile } from "./TellerooFile";
 import "./finance.css";
 
 // The Xero invoice or bill list shared by "Owed to us" (sales invoices) and
@@ -98,6 +99,11 @@ export function LedgerView({ ledger, get, setParams, flash }: { ledger: Ledger }
   const [editing, setEditing] = useState<ReceivableInvoice | null>(null);
   const [sending, setSending] = useState<ReceivableInvoice | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Bills ticked for a Telleroo file; only bills approved in Xero can be ticked.
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const pickKey = (row: PayableBill) => `${row.tenantId}|${row.billId}`;
+  const telleroo = useTellerooFile(flash, () => setPicked(new Set()));
+  const picks = () => [...picked].map((key) => { const [tenantId, billId] = key.split("|"); return { tenantId, billId }; });
 
   // The daily checks' ranking for each overdue item, matched by company and Xero id.
   const ranked = useMemo(() => new Map((overdue?.items ?? []).filter((item) => item.ledger === (isInvoices ? "receivable" : "payable")).map((item) => [`${item.tenantId}-${item.invoiceId}`, item])), [overdue, isInvoices]);
@@ -237,7 +243,10 @@ export function LedgerView({ ledger, get, setParams, flash }: { ledger: Ledger }
               {ORDERS.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
             </select>
             <button type="button" className="button" onClick={exportCsv} disabled={!visible.length} data-testid="button-invoices-export"><Download size={14} /> Export (CSV)</button>
+            {!isInvoices && <button type="button" className="button primary" onClick={() => telleroo.make(picks())} disabled={!picked.size || telleroo.pending} title="Download a pay run file to upload in Telleroo" data-testid="button-telleroo-file"><Download size={14} /> {telleroo.pending ? "Checking bills…" : `Telleroo file${picked.size ? ` (${picked.size})` : ""}`}</button>}
           </div>
+
+          {!isInvoices && telleroo.result && <TellerooFileResult result={telleroo.result} pending={telleroo.pending} onRepeat={(repeat) => telleroo.make(repeat, true)} onClose={telleroo.clear} />}
 
           <section className="panel table-panel">
             <div className="table-wrap">
@@ -284,11 +293,12 @@ export function LedgerView({ ledger, get, setParams, flash }: { ledger: Ledger }
                 </table>
               ) : (
                 <table className="hh-fin-table hh-inv-table">
-                  <colgroup><col className="c-invoice" /><col className="c-for" /><col className="c-due" /><col className="c-amount" /><col className="c-status" /></colgroup>
-                  <thead><tr><th>Bill</th><th>For</th><th>Due</th><th className="num">Amount due</th><th>Status</th></tr></thead>
+                  <colgroup><col className="c-pick" /><col className="c-invoice" /><col className="c-for" /><col className="c-due" /><col className="c-amount" /><col className="c-status" /></colgroup>
+                  <thead><tr><th>{(() => { const payable = (visible as PayableBill[]).filter((row) => row.status === "AUTHORISED"); const all = payable.length > 0 && payable.every((row) => picked.has(pickKey(row))); return <input type="checkbox" checked={all} disabled={!payable.length} onChange={() => setPicked(all ? new Set() : new Set(payable.map(pickKey)))} aria-label="Tick all approved bills shown" title="Tick all approved bills shown" />; })()}</th><th>Bill</th><th>For</th><th>Due</th><th className="num">Amount due</th><th>Status</th></tr></thead>
                   <tbody>
                     {(visible as PayableBill[]).map((row) => (
                       <tr key={row.billId}>
+                        <td><input type="checkbox" checked={picked.has(pickKey(row))} disabled={row.status !== "AUTHORISED"} onChange={() => setPicked((current) => { const next = new Set(current); next.has(pickKey(row)) ? next.delete(pickKey(row)) : next.add(pickKey(row)); return next; })} aria-label={`Tick ${row.number ?? "bill"} for the Telleroo file`} title={row.status === "AUTHORISED" ? "Tick for the Telleroo file" : "Approve it in Xero first"} /></td>
                         <td>
                           <span className="hh-inv-head"><strong className="hh-nowrap">{row.number ?? "—"}</strong><CompanyTag tenantId={row.tenantId} name={row.company} /></span>
                           <span className="hh-inv-contact">{row.contactName}</span>
@@ -299,7 +309,7 @@ export function LedgerView({ ledger, get, setParams, flash }: { ledger: Ledger }
                         <td><span className={`status ${row.status === "SUBMITTED" ? "pending" : row.daysOverdue > 0 ? "overdue" : "upcoming"}`}>{row.status === "SUBMITTED" ? "Awaiting approval" : row.daysOverdue > 0 ? "Overdue" : "To pay"}</span></td>
                       </tr>
                     ))}
-                    {!visible.length && <tr><td colSpan={5}><div className="empty-state"><h3>No bills</h3>{emptyNote("bill")}</div></td></tr>}
+                    {!visible.length && <tr><td colSpan={6}><div className="empty-state"><h3>No bills</h3>{emptyNote("bill")}</div></td></tr>}
                   </tbody>
                 </table>
               )}

@@ -25,3 +25,10 @@ create role n8n_telleroo_writer with login password 'CHANGE-ME-to-a-long-random-
 grant usage on schema public to n8n_telleroo_writer;
 grant insert on table public.telleroo_events to n8n_telleroo_writer;
 grant select, insert, update on table public.telleroo_pay_runs to n8n_telleroo_writer;
+
+-- 3. Make sure the row policies have their conditions (25 Nov 2026: the push
+--    had left them empty, which hides every row from n8n). Safe to run again.
+alter policy telleroo_events_n8n_insert on public.telleroo_events with check (true);
+alter policy telleroo_pay_runs_n8n_read on public.telleroo_pay_runs using (true);
+alter policy telleroo_pay_runs_n8n_insert on public.telleroo_pay_runs with check (true);
+alter policy telleroo_pay_runs_n8n_update on public.telleroo_pay_runs using (true) with check (true);

@@ -253,6 +253,51 @@ export interface OwnerStatement {
   payment: OwnerStatementPayment | null;
 }
 
+export type TellerooFileRequestBillsItem = {
+  tenantId: string;
+  billId: string;
+};
+
+export interface TellerooFileRequest {
+  /**
+     * @minItems 1
+     * @maxItems 200
+     */
+  bills: TellerooFileRequestBillsItem[];
+  /** Include bills that were already put in a Telleroo file in the last 30 days */
+  includeRepeats?: boolean;
+}
+
+export interface TellerooFileBill {
+  tenantId: string;
+  billId: string;
+  company: string;
+  supplier: string;
+  /** @nullable */
+  number: string | null;
+  /** @nullable */
+  amount: number | null;
+  /**
+     * Why the bill was left out; null when it is in the file
+     * @nullable
+     */
+  reason: string | null;
+  /** Left out only because it was already in a recent file */
+  repeat: boolean;
+}
+
+export interface TellerooFile {
+  fileName: string;
+  /**
+     * The upload file for Telleroo; null when no bill could be included
+     * @nullable
+     */
+  csv: string | null;
+  total: number;
+  included: TellerooFileBill[];
+  skipped: TellerooFileBill[];
+}
+
 export interface PayRun {
   /** Telleroo's pay run id */
   id: string;
@@ -2485,6 +2530,23 @@ export interface FinanceAlert {
   resolvedAt: string | null;
   /** @nullable */
   resolution: string | null;
+  /** The alert is about bank details that can be marked verified */
+  canVerifyBank: boolean;
+}
+
+export interface BankVerification {
+  /**
+     * The number already held for the supplier that was called
+     * @minLength 6
+     * @maxLength 40
+     */
+  phoneNumber: string;
+  /**
+     * Who confirmed the details and what they said
+     * @minLength 3
+     * @maxLength 1000
+     */
+  note: string;
 }
 
 export interface FinanceAlertList {

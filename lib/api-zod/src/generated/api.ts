@@ -36,6 +36,48 @@ export const GetPayRunsResponse = zod.object({
 
 
 /**
+ * @summary Builds a Telleroo pay run upload file (CSV) for the chosen Xero bills, after re-checking each bill in Xero and the supplier's verified bank details. Records which bills went into a file and audit-logs the download.
+ */
+export const createTellerooFileBodyBillsMax = 200;
+
+
+
+export const CreateTellerooFileBody = zod.object({
+  "bills": zod.array(zod.object({
+  "tenantId": zod.string(),
+  "billId": zod.string()
+})).min(1).max(createTellerooFileBodyBillsMax),
+  "includeRepeats": zod.boolean().optional().describe('Include bills that were already put in a Telleroo file in the last 30 days')
+})
+
+export const CreateTellerooFileResponse = zod.object({
+  "fileName": zod.string(),
+  "csv": zod.string().nullable().describe('The upload file for Telleroo; null when no bill could be included'),
+  "total": zod.number(),
+  "included": zod.array(zod.object({
+  "tenantId": zod.string(),
+  "billId": zod.string(),
+  "company": zod.string(),
+  "supplier": zod.string(),
+  "number": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "reason": zod.string().nullable().describe('Why the bill was left out; null when it is in the file'),
+  "repeat": zod.boolean().describe('Left out only because it was already in a recent file')
+})),
+  "skipped": zod.array(zod.object({
+  "tenantId": zod.string(),
+  "billId": zod.string(),
+  "company": zod.string(),
+  "supplier": zod.string(),
+  "number": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "reason": zod.string().nullable().describe('Why the bill was left out; null when it is in the file'),
+  "repeat": zod.boolean().describe('Left out only because it was already in a recent file')
+}))
+})
+
+
+/**
  * @summary Owner statements for one month, split into landlord payout, Hinkley fee, housekeeping and costs (read-only from Rental Ninja)
  */
 export const getOwnerStatementsQueryMonthRegExp = new RegExp('^\\d{4}-\\d{2}$');
@@ -1979,7 +2021,8 @@ export const ListFinanceAlertsResponse = zod.object({
   "createdAt": zod.string(),
   "resolvedBy": zod.string().nullable(),
   "resolvedAt": zod.string().nullable(),
-  "resolution": zod.string().nullable()
+  "resolution": zod.string().nullable(),
+  "canVerifyBank": zod.boolean().describe('The alert is about bank details that can be marked verified')
 })),
   "openCount": zod.number().int(),
   "openHighCount": zod.number().int()
@@ -2017,7 +2060,48 @@ export const UpdateFinanceAlertResponse = zod.object({
   "createdAt": zod.string(),
   "resolvedBy": zod.string().nullable(),
   "resolvedAt": zod.string().nullable(),
-  "resolution": zod.string().nullable()
+  "resolution": zod.string().nullable(),
+  "canVerifyBank": zod.boolean().describe('The alert is about bank details that can be marked verified')
+})
+
+
+/**
+ * @summary Mark the bank details behind a bank-detail alert as verified after phoning the supplier. Makes them the supplier's current account, resolves the alert and writes the audit log. The person who submitted the details can't verify them.
+ */
+export const VerifyBankDetailsParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const verifyBankDetailsBodyPhoneNumberMin = 6;
+export const verifyBankDetailsBodyPhoneNumberMax = 40;
+
+export const verifyBankDetailsBodyNoteMin = 3;
+export const verifyBankDetailsBodyNoteMax = 1000;
+
+
+
+export const VerifyBankDetailsBody = zod.object({
+  "phoneNumber": zod.string().min(verifyBankDetailsBodyPhoneNumberMin).max(verifyBankDetailsBodyPhoneNumberMax).describe('The number already held for the supplier that was called'),
+  "note": zod.string().min(verifyBankDetailsBodyNoteMin).max(verifyBankDetailsBodyNoteMax).describe('Who confirmed the details and what they said')
+})
+
+export const VerifyBankDetailsResponse = zod.object({
+  "id": zod.string(),
+  "kind": zod.string(),
+  "code": zod.string(),
+  "severity": zod.enum(['high', 'warn', 'info']),
+  "status": zod.enum(['open', 'resolved', 'ignored']),
+  "summary": zod.string(),
+  "tenantId": zod.string().nullable(),
+  "company": zod.string().nullable(),
+  "supplier": zod.string().nullable(),
+  "number": zod.string().nullable(),
+  "billId": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "resolvedBy": zod.string().nullable(),
+  "resolvedAt": zod.string().nullable(),
+  "resolution": zod.string().nullable(),
+  "canVerifyBank": zod.boolean().describe('The alert is about bank details that can be marked verified')
 })
 
 

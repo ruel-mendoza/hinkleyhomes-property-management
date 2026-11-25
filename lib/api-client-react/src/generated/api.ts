@@ -21,6 +21,7 @@ import type {
 
 import type {
   AttentionReport,
+  BankVerification,
   BillCodingSettings,
   BillCodingSettingsUpdate,
   BillReviewAnswers,
@@ -126,6 +127,8 @@ import type {
   StaysPerformance,
   StaysSyncResult,
   SyncCohoActionsParams,
+  TellerooFile,
+  TellerooFileRequest,
   TrackingOptions
 } from './api.schemas';
 
@@ -232,6 +235,94 @@ export function useGetPayRuns<TData = Awaited<ReturnType<typeof getPayRuns>>, TE
 
 
 
+
+export const getCreateTellerooFileUrl = () => {
+
+
+
+
+  return `/api/payments/telleroo-file`
+}
+
+/**
+ * @summary Builds a Telleroo pay run upload file (CSV) for the chosen Xero bills, after re-checking each bill in Xero and the supplier's verified bank details. Records which bills went into a file and audit-logs the download.
+ */
+export const createTellerooFile = async (tellerooFileRequest: TellerooFileRequest, options?: Parameters<typeof customFetch>[1]): Promise<TellerooFile> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TellerooFile>(getCreateTellerooFileUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(tellerooFileRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateTellerooFileMutationKey = () => ['createTellerooFile'] as const;
+
+export const getCreateTellerooFileMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTellerooFile>>, TError,CreateTellerooFileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTellerooFile>>, TError,CreateTellerooFileMutationVariables, TContext> => {
+
+const mutationKey = getCreateTellerooFileMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTellerooFile>>, CreateTellerooFileMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createTellerooFile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTellerooFileMutationResult = NonNullable<Awaited<ReturnType<typeof createTellerooFile>>>
+    export type CreateTellerooFileMutationBody = BodyType<TellerooFileRequest>
+    export type CreateTellerooFileMutationError = ErrorType<void>
+    export type CreateTellerooFileMutationVariables = {data: BodyType<TellerooFileRequest>}
+
+    /**
+ * @summary Builds a Telleroo pay run upload file (CSV) for the chosen Xero bills, after re-checking each bill in Xero and the supplier's verified bank details. Records which bills went into a file and audit-logs the download.
+ */
+export const useCreateTellerooFile = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTellerooFile>>, TError,CreateTellerooFileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createTellerooFile>>,
+        TError,
+        CreateTellerooFileMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateTellerooFileMutationOptions(options));
+    }
 
 export const getGetOwnerStatementsUrl = (params?: GetOwnerStatementsParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -4688,6 +4779,95 @@ export const useUpdateFinanceAlert = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUpdateFinanceAlertMutationOptions(options));
+    }
+
+export const getVerifyBankDetailsUrl = (id: string,) => {
+
+
+
+
+  return `/api/checks/alerts/${id}/verify-bank`
+}
+
+/**
+ * @summary Mark the bank details behind a bank-detail alert as verified after phoning the supplier. Makes them the supplier's current account, resolves the alert and writes the audit log. The person who submitted the details can't verify them.
+ */
+export const verifyBankDetails = async (id: string,
+    bankVerification: BankVerification, options?: Parameters<typeof customFetch>[1]): Promise<FinanceAlert> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FinanceAlert>(getVerifyBankDetailsUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(bankVerification)
+  }
+);}
+
+
+
+
+
+export const getVerifyBankDetailsMutationKey = () => ['verifyBankDetails'] as const;
+
+export const getVerifyBankDetailsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyBankDetails>>, TError,VerifyBankDetailsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyBankDetails>>, TError,VerifyBankDetailsMutationVariables, TContext> => {
+
+const mutationKey = getVerifyBankDetailsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyBankDetails>>, VerifyBankDetailsMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  verifyBankDetails(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyBankDetailsMutationResult = NonNullable<Awaited<ReturnType<typeof verifyBankDetails>>>
+    export type VerifyBankDetailsMutationBody = BodyType<BankVerification>
+    export type VerifyBankDetailsMutationError = ErrorType<void>
+    export type VerifyBankDetailsMutationVariables = {id: string;data: BodyType<BankVerification>}
+
+    /**
+ * @summary Mark the bank details behind a bank-detail alert as verified after phoning the supplier. Makes them the supplier's current account, resolves the alert and writes the audit log. The person who submitted the details can't verify them.
+ */
+export const useVerifyBankDetails = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyBankDetails>>, TError,VerifyBankDetailsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyBankDetails>>,
+        TError,
+        VerifyBankDetailsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyBankDetailsMutationOptions(options));
     }
 
 export const getListIntakeReviewsUrl = () => {

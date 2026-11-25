@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, RefreshCw, RotateCcw, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, RefreshCw, RotateCcw, ShieldCheck, XCircle } from "lucide-react";
 import {
   getGetOverdueReportQueryKey,
   getListCheckRunsQueryKey,
@@ -10,6 +10,7 @@ import {
   useListReminderLog,
   useRunChecksNow,
   useUpdateFinanceAlert,
+  useVerifyBankDetails,
   type CheckRun,
   type FinanceAlert,
   type FinanceAlertFilter,
@@ -105,6 +106,7 @@ export function AlertsTab({ get, setParams, flash }: { get: (key: string) => str
   const status = (FILTERS.some(([key]) => key === get("status")) ? get("status") : "open") as FinanceAlertFilter;
   const query = useListFinanceAlerts({ status }, { query: { queryKey: getListFinanceAlertsQueryKey({ status }), staleTime: 60_000 } });
   const [acting, setActing] = useState<{ alert: FinanceAlert; status: FinanceAlertStatus } | null>(null);
+  const [verifying, setVerifying] = useState<FinanceAlert | null>(null);
   const items = query.data?.items ?? [];
 
   return (
@@ -144,6 +146,7 @@ export function AlertsTab({ get, setParams, flash }: { get: (key: string) => str
                     <td className="hh-inv-actions">
                       {alert.status === "open" ? (
                         <>
+                          {alert.canVerifyBank && <button type="button" className="icon-btn" onClick={() => setVerifying(alert)} title="Verify bank details: you phoned the supplier and they confirmed them" aria-label="Verify bank details" data-testid="button-verify-bank"><ShieldCheck size={15} /></button>}
                           <button type="button" className="icon-btn" onClick={() => setActing({ alert, status: "resolved" })} title="Resolve: checked and dealt with" aria-label="Resolve alert"><CheckCircle2 size={15} /></button>
                           <button type="button" className="icon-btn" onClick={() => setActing({ alert, status: "ignored" })} title="Ignore: not a problem" aria-label="Ignore alert"><XCircle size={15} /></button>
                         </>
@@ -164,7 +167,50 @@ export function AlertsTab({ get, setParams, flash }: { get: (key: string) => str
       </p>
 
       {acting && <AlertModal alert={acting.alert} status={acting.status} onClose={() => setActing(null)} onDone={(message) => { setActing(null); flash(message); }} />}
+      {verifying && <VerifyBankModal alert={verifying} onClose={() => setVerifying(null)} onDone={(message) => { setVerifying(null); flash(message); }} />}
     </>
+  );
+}
+
+// Bank details become the supplier's current, verified account (used in Telleroo files).
+function VerifyBankModal({ alert, onClose, onDone }: { alert: FinanceAlert; onClose: () => void; onDone: (message: string) => void }) {
+  const queryClient = useQueryClient();
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [note, setNote] = useState("");
+  const mutation = useVerifyBankDetails({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: ["/api/checks/alerts"] });
+        onDone(`Bank details verified${alert.supplier ? ` for ${alert.supplier}` : ""}.`);
+      },
+    },
+  });
+  const ready = phoneNumber.trim().length >= 6 && note.trim().length >= 3;
+  return (
+    <ModalShell
+      title="Verify bank details"
+      caption={`${alert.supplier ?? "Supplier"}${alert.company ? ` · ${alert.company}` : ""}`}
+      onClose={onClose}
+      onSubmit={(event) => { event.preventDefault(); if (ready) mutation.mutate({ id: alert.id, data: { phoneNumber: phoneNumber.trim(), note: note.trim() } }); }}
+      testId="modal-verify-bank"
+      footer={<>
+        <button type="button" className="button" onClick={onClose}>Cancel</button>
+        <button type="submit" className="button primary" disabled={!ready || mutation.isPending}>{mutation.isPending ? "Saving…" : "Verify"}</button>
+      </>}
+    >
+      <p className="hh-chk-summary">{alert.summary}</p>
+      <p className="hh-fin-foot">Phone the supplier on a number you already hold (not one on the bill or in the email) and read them the sort code and account number.</p>
+      <label className="field full">
+        Number you phoned
+        <input value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} maxLength={40} placeholder="e.g. 0161 555 0123" autoComplete="off" required />
+      </label>
+      <label className="field full">
+        Who confirmed them
+        <textarea rows={3} maxLength={1000} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Name of the person and what they confirmed" required />
+      </label>
+      {mutation.isError && <p className="hh-field-error" role="alert">{errorText(mutation.error)}</p>}
+      <p className="hh-fin-foot">These become the supplier's current bank details and can then go in a Telleroo file. Recorded with your name in the audit log.</p>
+    </ModalShell>
   );
 }
 

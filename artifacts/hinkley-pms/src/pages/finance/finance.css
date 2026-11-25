@@ -169,6 +169,7 @@
 /* Invoices tables: fixed layout so they fit the page instead of scrolling sideways */
 .hh-inv-table{table-layout:fixed;min-width:760px}
 .hh-inv-table td{white-space:normal;overflow-wrap:anywhere}
+.hh-inv-table col.c-pick{width:36px}
 .hh-inv-table col.c-invoice{width:22%}
 .hh-inv-table col.c-for{width:auto}
 .hh-inv-table col.c-due{width:118px}
@@ -246,3 +247,10 @@ td.hh-chk-summary{min-width:260px;width:60ch}
 .hh-intake-fix:hover{background:#1d4a3c}
 .hh-intake-fix.done{border:0;padding:0;color:#8f9db0;cursor:default}
 .hh-intake-fix.done svg{color:#79cdb0;flex:none}
+
+/* Supplier bills > To pay: Telleroo file result */
+.hh-tfile{margin:0 0 12px;padding-bottom:14px}
+.hh-tfile-lead{margin:0;padding:0 17px;font-size:13px;color:#c6d1de}
+.hh-tfile-list{margin:6px 0 12px;padding:0 17px 0 33px;display:flex;flex-direction:column;gap:4px;font-size:13px;color:#a9b6c7}
+.hh-tfile-list strong{color:#e2e9f1}
+.hh-tfile .button{margin-left:17px}

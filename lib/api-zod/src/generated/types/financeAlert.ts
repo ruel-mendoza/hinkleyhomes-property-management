@@ -32,4 +32,6 @@ export interface FinanceAlert {
   resolvedAt: string | null;
   /** @nullable */
   resolution: string | null;
+  /** The alert is about bank details that can be marked verified */
+  canVerifyBank: boolean;
 }

@@ -35,6 +35,28 @@ paths:
                 $ref: "#/components/schemas/PayRuns"
         "503":
           description: The database is not configured
+  /payments/telleroo-file:
+    post:
+      operationId: createTellerooFile
+      tags: [telleroo]
+      summary: Builds a Telleroo pay run upload file (CSV) for the chosen Xero bills, after re-checking each bill in Xero and the supplier's verified bank details. Records which bills went into a file and audit-logs the download.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TellerooFileRequest"
+      responses:
+        "200":
+          description: The file (null when no bill could be included) and the bills left out, with reasons
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TellerooFile"
+        "400":
+          description: Invalid request
+        "503":
+          description: The database or the Xero gateway is not configured
   /owner-statements:
     get:
       operationId: getOwnerStatements
@@ -1238,6 +1260,41 @@ paths:
           description: Alert not found
         "503":
           description: Database is not configured
+  /checks/alerts/{id}/verify-bank:
+    post:
+      operationId: verifyBankDetails
+      tags: [xero]
+      summary: Mark the bank details behind a bank-detail alert as verified after phoning the supplier. Makes them the supplier's current account, resolves the alert and writes the audit log. The person who submitted the details can't verify them.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankVerification"
+      responses:
+        "200":
+          description: The resolved alert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinanceAlert"
+        "400":
+          description: Invalid request
+        "403":
+          description: The same person submitted these bank details
+        "404":
+          description: Alert or bank details not found
+        "409":
+          description: Already verified
+        "503":
+          description: Database is not configured
   /invoices/intake-reviews:
     get:
       operationId: listIntakeReviews
@@ -2034,6 +2091,66 @@ components:
         reference:
           type: ["string", "null"]
       required: [status, company, kind, date, amount, parts, sharedWith, reference]
+    TellerooFileRequest:
+      type: object
+      properties:
+        bills:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            type: object
+            properties:
+              tenantId:
+                type: string
+              billId:
+                type: string
+            required: [tenantId, billId]
+        includeRepeats:
+          description: Include bills that were already put in a Telleroo file in the last 30 days
+          type: boolean
+      required: [bills]
+    TellerooFileBill:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        billId:
+          type: string
+        company:
+          type: string
+        supplier:
+          type: string
+        number:
+          type: ["string", "null"]
+        amount:
+          type: ["number", "null"]
+        reason:
+          description: Why the bill was left out; null when it is in the file
+          type: ["string", "null"]
+        repeat:
+          description: Left out only because it was already in a recent file
+          type: boolean
+      required: [tenantId, billId, company, supplier, number, amount, reason, repeat]
+    TellerooFile:
+      type: object
+      properties:
+        fileName:
+          type: string
+        csv:
+          description: The upload file for Telleroo; null when no bill could be included
+          type: ["string", "null"]
+        total:
+          type: number
+        included:
+          type: array
+          items:
+            $ref: "#/components/schemas/TellerooFileBill"
+        skipped:
+          type: array
+          items:
+            $ref: "#/components/schemas/TellerooFileBill"
+      required: [fileName, csv, total, included, skipped]
     PayRun:
       type: object
       properties:
@@ -4642,7 +4759,24 @@ components:
           type: ["string", "null"]
         resolution:
           type: ["string", "null"]
-      required: [id, kind, code, severity, status, summary, tenantId, company, supplier, number, billId, createdAt, resolvedBy, resolvedAt, resolution]
+        canVerifyBank:
+          description: The alert is about bank details that can be marked verified
+          type: boolean
+      required: [id, kind, code, severity, status, summary, tenantId, company, supplier, number, billId, createdAt, resolvedBy, resolvedAt, resolution, canVerifyBank]
+    BankVerification:
+      type: object
+      properties:
+        phoneNumber:
+          description: The number already held for the supplier that was called
+          type: string
+          minLength: 6
+          maxLength: 40
+        note:
+          description: Who confirmed the details and what they said
+          type: string
+          minLength: 3
+          maxLength: 1000
+      required: [phoneNumber, note]
     FinanceAlertList:
       type: object
       properties:

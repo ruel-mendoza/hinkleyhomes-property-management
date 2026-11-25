@@ -20,7 +20,11 @@ import {
   UpdateFinanceAlertBody,
   UpdateFinanceAlertParams,
   UpdateFinanceAlertResponse,
+  VerifyBankDetailsBody,
+  VerifyBankDetailsParams,
+  VerifyBankDetailsResponse,
 } from "@workspace/api-zod";
+import { BankVerificationError, VERIFIABLE_CODES, verifyBankDetails } from "../lib/bank-verification";
 import { readXeroGatewayEnv } from "../lib/integrations-env";
 import { DAILY_CHECKS_TRIGGER, firstCheckDay, lastCheckRuns, loadTracking, overdueChange, overdueInputs, runDailyChecks } from "../lib/finance-checks";
 import { rankOverdue } from "../lib/overdue-ranking";
@@ -138,6 +142,7 @@ function alertView(row: ExceptionItem) {
     resolvedBy: row.resolvedBy,
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
     resolution: row.resolution,
+    canVerifyBank: row.status === "open" && row.sourceTable === "supplier_bank_details" && VERIFIABLE_CODES.includes(text("code") ?? ""),
   };
 }
 
@@ -205,6 +210,38 @@ router.put("/checks/alerts/:id", async (req, res): Promise<void> => {
     .returning();
   await audit(req, res, `finance_alert.${body.data.status}`, before.id, { status: before.status, resolution: before.resolution }, { status: after.status, resolution: after.resolution });
   res.json(UpdateFinanceAlertResponse.parse(alertView(after)));
+});
+
+router.post("/checks/alerts/:id/verify-bank", async (req, res): Promise<void> => {
+  if (!isDatabaseConfigured()) {
+    notConfigured(res);
+    return;
+  }
+  const params = VerifyBankDetailsParams.safeParse(req.params);
+  const body = VerifyBankDetailsBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Give the number you phoned and who confirmed the details." });
+    return;
+  }
+  const staff = res.locals.staff as { userId?: string; email?: string } | undefined;
+  try {
+    const alert = await verifyBankDetails({
+      alertId: params.data.id,
+      ...body.data,
+      staffEmail: staff?.email ?? null,
+      staffUserId: staff?.userId ?? null,
+      requestId: req.id !== undefined && req.id !== null ? String(req.id) : null,
+      ip: req.ip ?? null,
+    });
+    res.json(VerifyBankDetailsResponse.parse(alertView(alert)));
+  } catch (error) {
+    if (error instanceof BankVerificationError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    req.log.error({ err: error }, "Bank details could not be verified");
+    res.status(500).json({ error: "The verification couldn't be saved. Try again in a moment." });
+  }
 });
 
 router.get("/checks/reminders", async (req, res): Promise<void> => {

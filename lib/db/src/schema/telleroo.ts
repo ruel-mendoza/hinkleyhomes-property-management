@@ -78,3 +78,23 @@ export const tellerooPayRunsTable = pgTable(
 ).enableRLS();
 
 export type TellerooPayRun = typeof tellerooPayRunsTable.$inferSelect;
+
+// Bills put into a Telleroo upload file from Supplier bills > To pay, so the
+// same bill isn't paid twice. One row per bill per download; the file itself
+// (which holds full bank details) is never stored. Only the app reads and writes it.
+export const tellerooFileBillsTable = pgTable(
+  "telleroo_file_bills",
+  {
+    id: id(),
+    xeroTenantId: text("xero_tenant_id").notNull(),
+    xeroBillId: text("xero_bill_id").notNull(),
+    billNumber: text("bill_number"),
+    supplierName: text("supplier_name").notNull(),
+    amount: money("amount").notNull(),
+    reference: text("reference").notNull(),
+    fileName: text("file_name").notNull(),
+    downloadedBy: text("downloaded_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("telleroo_file_bills_bill_idx").on(t.xeroTenantId, t.xeroBillId, t.createdAt)],
+).enableRLS();
