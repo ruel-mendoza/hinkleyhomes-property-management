@@ -251,6 +251,7 @@ td.hh-chk-summary{min-width:260px;width:60ch}
 /* Supplier bills > To pay: Telleroo file result */
 .hh-tfile{margin:0 0 12px;padding-bottom:14px}
 .hh-tfile-lead{margin:0;padding:0 17px;font-size:13px;color:#c6d1de}
+.hh-tfile-lead.bad{color:#f08f91}
 .hh-tfile-list{margin:6px 0 12px;padding:0 17px 0 33px;display:flex;flex-direction:column;gap:4px;font-size:13px;color:#a9b6c7}
 .hh-tfile-list strong{color:#e2e9f1}
 .hh-tfile .button{margin-left:17px}

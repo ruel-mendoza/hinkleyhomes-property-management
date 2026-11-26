@@ -1,5 +1,6 @@
 import { desc, gte, max, notInArray, or } from "drizzle-orm";
 import { getDb, tellerooEventsTable, tellerooPayRunsTable } from "@workspace/db";
+import { payeeChecks } from "./telleroo-payees";
 
 // Pay runs for the Supplier bills page. The app never calls Telleroo: the n8n
 // workflow "Telleroo events (production)" saves each webhook and re-reads the
@@ -19,9 +20,10 @@ export async function payRuns() {
   const db = getDb();
   const t = tellerooPayRunsTable;
   const since = new Date(Date.now() - RECENT_DAYS * 86_400_000);
-  const [rows, [last]] = await Promise.all([
+  const [rows, [last], payees] = await Promise.all([
     db.select().from(t).where(or(notInArray(t.status, CLOSED), gte(t.updatedAt, since))).orderBy(desc(t.tellerooCreatedAt), desc(t.createdAt)).limit(LIMIT),
     db.select({ at: max(tellerooEventsTable.receivedAt) }).from(tellerooEventsTable),
+    payeeChecks(),
   ]);
   const open = rows.filter((row) => !CLOSED.includes(row.status));
   const month = ukMonth();
@@ -36,6 +38,11 @@ export async function payRuns() {
         .reduce((sum, row) => sum + (amount(row.paidAmount) ?? 0), 0),
     ),
     lastEventAt: last?.at ? last.at.toISOString() : null,
+    payeesChecked: payees.length,
+    payeesMatching: payees.filter((payee) => payee.status === "match").length,
+    payeesDiffering: payees.filter((payee) => payee.status === "differs" || payee.status === "old").length,
+    // Only the payees that need a look; matches are counted above.
+    payeeIssues: payees.filter((payee) => payee.status !== "match").map(({ key: id, supplierId: _supplierId, ...payee }) => ({ id, ...payee })),
     payRuns: rows.map((row) => ({
       id: row.tellerooId,
       name: row.name,

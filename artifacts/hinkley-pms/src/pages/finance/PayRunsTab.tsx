@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { AlertTriangle, ArrowUpRight } from "lucide-react";
-import { getGetPayRunsQueryKey, useGetPayRuns } from "@workspace/api-client-react";
+import { getGetPayRunsQueryKey, useGetPayRuns, type PayRuns } from "@workspace/api-client-react";
 import { errorText } from "@/components/action-modals";
 import { formatDate } from "@/services/properties";
 import "./finance.css";
@@ -32,6 +32,52 @@ const STATUS: Record<string, [string, string]> = {
   cancelled: ["Cancelled", "na"],
 };
 const statusOf = (status: string): [string, string] => STATUS[status] ?? [status.replace(/_/g, " "), "na"];
+
+// Payee check status -> [label, status class, what to do].
+const PAYEE: Record<string, [string, string, string]> = {
+  differs: ["Different account", "failed", "Telleroo paid an account that isn't the verified one. Check with the supplier before the next payment."],
+  old: ["Not the verified account", "failed", "Telleroo paid older or unverified bank details on file. Update the payee in Telleroo."],
+  unverified: ["Not verified yet", "pending", "Verify the supplier's bank details on Alerts."],
+  missing: ["No details on file", "na", "No bank details on file for this supplier to compare."],
+  unknown: ["Supplier not found", "na", "No supplier matches this payee name."],
+};
+
+function PayeeCheckPanel({ data }: { data: PayRuns }) {
+  return (
+    <section className="panel table-panel">
+      <div className="panel-head">
+        <div>
+          <div className="panel-title">Payee bank details</div>
+          <div className="panel-caption">The account Telleroo last paid each payee, compared with the verified details on file. {data.payeesChecked ? `${data.payeesMatching} of ${data.payeesChecked} match.` : "Payees show here after their first pay run."}</div>
+        </div>
+        <Link href="/checks" className="button">Alerts</Link>
+      </div>
+      {data.payeeIssues.length > 0 ? (
+        <div className="table-wrap">
+          <table className="hh-fin-table">
+            <thead><tr><th>Payee</th><th>Check</th><th>Telleroo paid</th><th>On file</th><th>Last paid</th></tr></thead>
+            <tbody>
+              {data.payeeIssues.map((payee) => {
+                const [label, tone, hint] = PAYEE[payee.status] ?? [payee.status, "na", ""];
+                return (
+                  <tr key={payee.id}>
+                    <td className="hh-chk-summary"><strong>{payee.supplier ?? payee.payeeName}</strong>{payee.supplier && payee.supplier !== payee.payeeName && <small className="hh-fin-sub">Paid as {payee.payeeName}</small>}</td>
+                    <td className="hh-chk-summary"><span className={`status ${tone}`}>{label}</span><small className="hh-fin-sub">{hint}</small></td>
+                    <td>{payee.tellerooAccount}{payee.sortCodeDiffers && <small className="hh-fin-sub bad">Different sort code</small>}</td>
+                    <td>{payee.fileAccount ?? "—"}</td>
+                    <td className="hh-chk-summary">{payee.paidAt ? formatDate(payee.paidAt) : "—"}<small className="hh-fin-sub">{payee.tellerooUrl ? <a href={payee.tellerooUrl} target="_blank" rel="noreferrer">{payee.payRunName || "Pay run"}</a> : payee.payRunName}</small></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="empty-state"><h3>{data.payeesChecked ? "Every payee matches" : "Nothing to compare yet"}</h3><p>{data.payeesChecked ? "Telleroo paid the verified account for every payee." : "Once Telleroo has paid a supplier, its bank details are checked here."}</p></div>
+      )}
+    </section>
+  );
+}
 
 export function PayRunsTab() {
   const query = useGetPayRuns(payRunsQueryOptions);
@@ -82,6 +128,8 @@ export function PayRunsTab() {
           </div>
         </section>
       )}
+
+      {data && <PayeeCheckPanel data={data} />}
     </>
   );
 }
@@ -101,6 +149,7 @@ export function PayRunsStrip() {
                 <div><span>Awaiting approval</span><strong className={data.awaitingApproval ? "warn" : ""}>{data.awaitingApproval}</strong></div>
                 <div><span>Still to pay</span><strong>{whole.format(data.openAmount)}</strong></div>
                 <div><span>Paid this month</span><strong className="good">{whole.format(data.paidThisMonth)}</strong></div>
+                {data.payeesDiffering > 0 && <div><span>Bank details differ</span><strong className="bad">{data.payeesDiffering}</strong></div>}
               </>
             )}
       </div>

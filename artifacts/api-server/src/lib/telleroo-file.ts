@@ -2,6 +2,7 @@ import { and, desc, eq, gte, inArray, isNotNull } from "drizzle-orm";
 import { getDb, supplierBankDetailsTable, suppliersTable, tellerooFileBillsTable } from "@workspace/db";
 import { COMPANIES } from "../routes/money";
 import { supplierKey } from "./bill-checks";
+import { payeeChecks } from "./telleroo-payees";
 import { xeroGatewayRequest } from "./xero-gateway";
 
 // Telleroo pay run upload file for Supplier bills > To pay. Staff tick bills,
@@ -31,7 +32,7 @@ const round = (value: number) => Math.round(value * 100) / 100;
 const cell = (value: string) => (/[",\r\n]/.test(value) || /^[=+\-@]/.test(value) ? `"${value.replace(/^([=+\-@])/, "'$1").replace(/"/g, '""')}"` : value);
 const when = (date: Date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Europe/London" });
 
-export type FileBill = { tenantId: string; billId: string; company: string; supplier: string; number: string | null; amount: number | null; reason: string | null; repeat: boolean };
+export type FileBill = { tenantId: string; billId: string; company: string; supplier: string; number: string | null; amount: number | null; reason: string | null; repeat: boolean; warning: string | null };
 
 export class TellerooFileError extends Error {}
 
@@ -72,6 +73,9 @@ export async function buildTellerooFile(input: { bills: { tenantId: string; bill
   const verified = new Map(bankRows.map((row) => [row.supplierId, row]));
   const anyBank = new Set((await db.select({ supplierId: b.supplierId }).from(b)).map((row) => row.supplierId));
 
+  // Where Telleroo last paid each supplier, so a change of account is pointed out before approval.
+  const lastPaid = new Map((await payeeChecks()).filter((payee) => payee.supplierId).map((payee) => [payee.supplierId!, payee]));
+
   // 3. Bills already put in a file recently.
   const f = tellerooFileBillsTable;
   const since = new Date(Date.now() - REPEAT_DAYS * 86_400_000);
@@ -85,7 +89,7 @@ export async function buildTellerooFile(input: { bills: { tenantId: string; bill
     const company = COMPANIES.find((item) => item.tenantId === choice.tenantId)!;
     const bill = xero.get(`${choice.tenantId}|${choice.billId.toLowerCase()}`);
     const contact = asRecord(bill?.Contact);
-    const base = { tenantId: choice.tenantId, billId: choice.billId, company: company.name, supplier: str(contact.Name) ?? "Unknown supplier", number: str(bill?.InvoiceNumber), amount: bill ? round(Number(bill.AmountDue) || 0) : null, repeat: false };
+    const base = { tenantId: choice.tenantId, billId: choice.billId, company: company.name, supplier: str(contact.Name) ?? "Unknown supplier", number: str(bill?.InvoiceNumber), amount: bill ? round(Number(bill.AmountDue) || 0) : null, repeat: false, warning: null as string | null };
     const skip = (reason: string, repeat = false) => skipped.push({ ...base, reason, repeat });
     if (!bill) { skip("Not found in Xero."); continue; }
     if (bill.Type !== "ACCPAY") { skip("Not a supplier bill."); continue; }
@@ -103,6 +107,8 @@ export async function buildTellerooFile(input: { bills: { tenantId: string; bill
     const before = earlier.find((row) => row.xeroTenantId === choice.tenantId && row.xeroBillId === choice.billId.toLowerCase());
     if (before && !input.includeRepeats) { skip(`Already in a Telleroo file on ${when(before.createdAt)}${before.downloadedBy ? ` by ${before.downloadedBy}` : ""}.`, true); continue; }
 
+    const paid = lastPaid.get(bank.supplierId);
+    if (paid && paid.status !== "match") base.warning = `Telleroo last paid this supplier to account ${paid.tellerooAccount}${paid.sortCodeDiffers ? " (different sort code)" : ""}, not ${paid.fileAccount ?? `…${accountNo.slice(-4)}`} on file. Check before approving.`;
     const ref = reference(base.number);
     const recipient = bank.accountName.trim() || base.supplier;
     included.push({ ...base, amount: base.amount, reason: null, reference: ref, row: [base.amount.toFixed(2), recipient, accountNo, sortCode, ref].map(cell).join(",") });

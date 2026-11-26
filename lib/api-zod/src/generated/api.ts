@@ -18,6 +18,21 @@ export const GetPayRunsResponse = zod.object({
   "openAmount": zod.number(),
   "paidThisMonth": zod.number().describe('Total paid by pay runs made this month (UK time)'),
   "lastEventAt": zod.string().nullable().describe('When the last Telleroo webhook arrived; null if none yet'),
+  "payeesChecked": zod.number().int().describe('Payees found in saved pay runs, each compared with the supplier\'s verified bank details'),
+  "payeesMatching": zod.number().int(),
+  "payeesDiffering": zod.number().int().describe('Payees Telleroo last paid to an account other than the verified one on file'),
+  "payeeIssues": zod.array(zod.object({
+  "id": zod.string(),
+  "supplier": zod.string().nullable().describe('Supplier the payment was matched to; null when none was found'),
+  "payeeName": zod.string(),
+  "status": zod.enum(['differs', 'old', 'unverified', 'missing', 'unknown']).describe('differs (another account), old (an older or unverified account on file), unverified, missing (no details on file), unknown (no supplier found)'),
+  "tellerooAccount": zod.string().describe('Last 4 digits of the account Telleroo paid, e.g. …1234'),
+  "fileAccount": zod.string().nullable().describe('Last 4 digits of the verified account on file'),
+  "sortCodeDiffers": zod.boolean(),
+  "paidAt": zod.string().nullable(),
+  "payRunName": zod.string().nullable(),
+  "tellerooUrl": zod.string().nullable()
+})).describe('Payees that don\'t match the verified details on file (matches are only counted)'),
   "payRuns": zod.array(zod.object({
   "id": zod.string().describe('Telleroo\'s pay run id'),
   "name": zod.string().nullable(),
@@ -62,7 +77,8 @@ export const CreateTellerooFileResponse = zod.object({
   "number": zod.string().nullable(),
   "amount": zod.number().nullable(),
   "reason": zod.string().nullable().describe('Why the bill was left out; null when it is in the file'),
-  "repeat": zod.boolean().describe('Left out only because it was already in a recent file')
+  "repeat": zod.boolean().describe('Left out only because it was already in a recent file'),
+  "warning": zod.string().nullable().describe('In the file, but Telleroo last paid this supplier to different bank details')
 })),
   "skipped": zod.array(zod.object({
   "tenantId": zod.string(),
@@ -72,7 +88,8 @@ export const CreateTellerooFileResponse = zod.object({
   "number": zod.string().nullable(),
   "amount": zod.number().nullable(),
   "reason": zod.string().nullable().describe('Why the bill was left out; null when it is in the file'),
-  "repeat": zod.boolean().describe('Left out only because it was already in a recent file')
+  "repeat": zod.boolean().describe('Left out only because it was already in a recent file'),
+  "warning": zod.string().nullable().describe('In the file, but Telleroo last paid this supplier to different bank details')
 }))
 })
 

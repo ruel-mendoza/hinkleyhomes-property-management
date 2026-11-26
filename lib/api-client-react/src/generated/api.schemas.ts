@@ -284,6 +284,11 @@ export interface TellerooFileBill {
   reason: string | null;
   /** Left out only because it was already in a recent file */
   repeat: boolean;
+  /**
+     * In the file, but Telleroo last paid this supplier to different bank details
+     * @nullable
+     */
+  warning: string | null;
 }
 
 export interface TellerooFile {
@@ -327,6 +332,46 @@ export interface PayRun {
   lastCheckedAt: string;
 }
 
+/**
+ * differs (another account), old (an older or unverified account on file), unverified, missing (no details on file), unknown (no supplier found)
+ */
+export type PayeeCheckStatus = typeof PayeeCheckStatus[keyof typeof PayeeCheckStatus];
+
+
+export const PayeeCheckStatus = {
+  differs: 'differs',
+  old: 'old',
+  unverified: 'unverified',
+  missing: 'missing',
+  unknown: 'unknown',
+} as const;
+
+export interface PayeeCheck {
+  id: string;
+  /**
+     * Supplier the payment was matched to; null when none was found
+     * @nullable
+     */
+  supplier: string | null;
+  payeeName: string;
+  /** differs (another account), old (an older or unverified account on file), unverified, missing (no details on file), unknown (no supplier found) */
+  status: PayeeCheckStatus;
+  /** Last 4 digits of the account Telleroo paid, e.g. …1234 */
+  tellerooAccount: string;
+  /**
+     * Last 4 digits of the verified account on file
+     * @nullable
+     */
+  fileAccount: string | null;
+  sortCodeDiffers: boolean;
+  /** @nullable */
+  paidAt: string | null;
+  /** @nullable */
+  payRunName: string | null;
+  /** @nullable */
+  tellerooUrl: string | null;
+}
+
 export interface PayRuns {
   asOf: string;
   /** Pay runs not yet paid or cancelled */
@@ -340,6 +385,13 @@ export interface PayRuns {
      * @nullable
      */
   lastEventAt: string | null;
+  /** Payees found in saved pay runs, each compared with the supplier's verified bank details */
+  payeesChecked: number;
+  payeesMatching: number;
+  /** Payees Telleroo last paid to an account other than the verified one on file */
+  payeesDiffering: number;
+  /** Payees that don't match the verified details on file (matches are only counted) */
+  payeeIssues: PayeeCheck[];
   payRuns: PayRun[];
 }
 

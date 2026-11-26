@@ -2131,7 +2131,10 @@ components:
         repeat:
           description: Left out only because it was already in a recent file
           type: boolean
-      required: [tenantId, billId, company, supplier, number, amount, reason, repeat]
+        warning:
+          description: In the file, but Telleroo last paid this supplier to different bank details
+          type: ["string", "null"]
+      required: [tenantId, billId, company, supplier, number, amount, reason, repeat, warning]
     TellerooFile:
       type: object
       properties:
@@ -2202,11 +2205,53 @@ components:
         lastEventAt:
           description: When the last Telleroo webhook arrived; null if none yet
           type: ["string", "null"]
+        payeesChecked:
+          description: Payees found in saved pay runs, each compared with the supplier's verified bank details
+          type: integer
+        payeesMatching:
+          type: integer
+        payeesDiffering:
+          description: Payees Telleroo last paid to an account other than the verified one on file
+          type: integer
+        payeeIssues:
+          description: Payees that don't match the verified details on file (matches are only counted)
+          type: array
+          items:
+            $ref: "#/components/schemas/PayeeCheck"
         payRuns:
           type: array
           items:
             $ref: "#/components/schemas/PayRun"
-      required: [asOf, open, awaitingApproval, openAmount, paidThisMonth, lastEventAt, payRuns]
+      required: [asOf, open, awaitingApproval, openAmount, paidThisMonth, lastEventAt, payeesChecked, payeesMatching, payeesDiffering, payeeIssues, payRuns]
+    PayeeCheck:
+      type: object
+      properties:
+        id:
+          type: string
+        supplier:
+          description: Supplier the payment was matched to; null when none was found
+          type: ["string", "null"]
+        payeeName:
+          type: string
+        status:
+          type: string
+          enum: [differs, old, unverified, missing, unknown]
+          description: differs (another account), old (an older or unverified account on file), unverified, missing (no details on file), unknown (no supplier found)
+        tellerooAccount:
+          description: Last 4 digits of the account Telleroo paid, e.g. …1234
+          type: string
+        fileAccount:
+          description: Last 4 digits of the verified account on file
+          type: ["string", "null"]
+        sortCodeDiffers:
+          type: boolean
+        paidAt:
+          type: ["string", "null"]
+        payRunName:
+          type: ["string", "null"]
+        tellerooUrl:
+          type: ["string", "null"]
+      required: [id, supplier, payeeName, status, tellerooAccount, fileAccount, sortCodeDiffers, paidAt, payRunName, tellerooUrl]
     OwnerStatements:
       type: object
       properties:

@@ -36,13 +36,17 @@ export type TellerooPayRunPayment = {
   amount: string | null;
   payeeName: string | null;
   accountLast4: string | null;
+  // Saved from 26 Nov 2026 for the payee check (lib/telleroo-payees.ts); missing on older rows.
+  sortCode?: string | null;
+  payeeId?: string | null;
   reference: string | null;
   idempotentKey: string | null;
   info: Record<string, unknown> | null;
 };
 
 // Latest state of each pay run, re-read from Telleroo by n8n after a webhook and
-// every 30 minutes while it is still open. Bank account numbers are cut to the last 4 digits.
+// every 30 minutes while it is still open. Bank account numbers are cut to the last 4 digits;
+// the sort code is kept so the payee check can compare it with the details on file.
 export const tellerooPayRunsTable = pgTable(
   "telleroo_pay_runs",
   {

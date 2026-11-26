@@ -189,6 +189,8 @@ export * from './ownerStatementPaymentKind';
 export * from './ownerStatementPaymentStatus';
 export * from './ownerStatements';
 export * from './payableBill';
+export * from './payeeCheck';
+export * from './payeeCheckStatus';
 export * from './payRun';
 export * from './payRuns';
 export * from './performance';

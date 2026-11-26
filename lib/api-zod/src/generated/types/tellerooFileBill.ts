@@ -22,4 +22,9 @@ export interface TellerooFileBill {
   reason: string | null;
   /** Left out only because it was already in a recent file */
   repeat: boolean;
+  /**
+     * In the file, but Telleroo last paid this supplier to different bank details
+     * @nullable
+     */
+  warning: string | null;
 }

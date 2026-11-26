@@ -42,6 +42,7 @@ export function useTellerooFile(flash: (message: string) => void, onDone: () => 
 
 export function TellerooFileResult({ result, pending, onRepeat, onClose }: { result: TellerooFile & { picks: Pick[] }; pending: boolean; onRepeat: (picks: Pick[]) => void; onClose: () => void }) {
   const repeats = result.skipped.filter((bill) => bill.repeat);
+  const warned = result.included.filter((bill) => bill.warning);
   return (
     <section className="panel hh-tfile">
       <div className="panel-head">
@@ -51,6 +52,14 @@ export function TellerooFileResult({ result, pending, onRepeat, onClose }: { res
         </div>
         <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={14} /></button>
       </div>
+      {warned.length > 0 && (
+        <>
+          <p className="hh-tfile-lead bad">Check before approving ({warned.length}):</p>
+          <ul className="hh-tfile-list">
+            {warned.map((bill) => <li key={`${bill.tenantId}|${bill.billId}`}><strong>{bill.supplier}</strong> {bill.number ?? ""} — {bill.warning}</li>)}
+          </ul>
+        </>
+      )}
       {result.skipped.length > 0 && (
         <>
           <p className="hh-tfile-lead">Left out ({result.skipped.length}):</p>

@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PayeeCheck } from './payeeCheck';
 import type { PayRun } from './payRun';
 
 export interface PayRuns {
@@ -20,5 +21,12 @@ export interface PayRuns {
      * @nullable
      */
   lastEventAt: string | null;
+  /** Payees found in saved pay runs, each compared with the supplier's verified bank details */
+  payeesChecked: number;
+  payeesMatching: number;
+  /** Payees Telleroo last paid to an account other than the verified one on file */
+  payeesDiffering: number;
+  /** Payees that don't match the verified details on file (matches are only counted) */
+  payeeIssues: PayeeCheck[];
   payRuns: PayRun[];
 }
