@@ -9,6 +9,12 @@ import type { ChecklistStepsUpdateStepsItem } from './checklistStepsUpdateStepsI
 
 export interface ChecklistStepsUpdate {
   /**
+     * The section whose steps are replaced; other sections are left as they are
+     * @minLength 1
+     * @maxLength 80
+     */
+  section: string;
+  /**
      * @minItems 1
      * @maxItems 40
      */

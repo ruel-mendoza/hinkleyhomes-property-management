@@ -8,6 +8,7 @@
 
 export interface ChecklistItem {
   id: string;
+  section: string;
   title: string;
   /** @nullable */
   detail: string | null;

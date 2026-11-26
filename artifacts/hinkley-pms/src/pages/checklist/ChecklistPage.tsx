@@ -26,7 +26,8 @@ function StepLink({ link }: { link: string | null }) {
 export default function ChecklistPage() {
   const queryClient = useQueryClient();
   const [day, setDay] = useState<string | undefined>(undefined);
-  const [editing, setEditing] = useState(false);
+  // The list being edited: its name, or "" for a new list.
+  const [editing, setEditing] = useState<string | null>(null);
   const query = useGetChecklist(day ? { day } : undefined, { query: { queryKey: checklistQueryKey(day), refetchInterval: 60_000 } });
   const data = query.data;
   const isToday = !!data && data.day === data.today;
@@ -44,12 +45,12 @@ export default function ChecklistPage() {
           <p className="page-sub">Tick each step once it's done. The list is shared by the office and starts fresh every morning.</p>
         </div>
         <div className="head-actions">
-          {data && !editing && (
+          {data && editing === null && (
             <>
               <button type="button" className="button" onClick={() => setDay(shiftDay(data.day, -1))} aria-label="Previous day"><ChevronLeft size={14} /></button>
               <button type="button" className="button" disabled={isToday} onClick={() => setDay(shiftDay(data.day, 1) >= data.today ? undefined : shiftDay(data.day, 1))} aria-label="Next day"><ChevronRight size={14} /></button>
               {!isToday && <button type="button" className="button" onClick={() => setDay(undefined)}>Today</button>}
-              {isToday && <button type="button" className="button" onClick={() => setEditing(true)}><Pencil size={14} /> <span>Edit steps</span></button>}
+              {isToday && <button type="button" className="button" onClick={() => setEditing("")}><Plus size={14} /> <span>New list</span></button>}
             </>
           )}
         </div>
@@ -58,33 +59,42 @@ export default function ChecklistPage() {
       {query.isLoading && <section className="panel hh-ck-note">Loading the checklist…</section>}
       {query.isError && <p className="hh-props-alert" role="alert"><AlertTriangle size={14} /> The checklist could not be loaded: {errorText(query.error)}</p>}
 
-      {data && (editing ? <StepsEditor data={data} onDone={(next) => { if (next) saved(next); setEditing(false); }} /> : <ChecklistPanel data={data} isToday={isToday} onSaved={saved} />)}
+      {data && (editing !== null
+        ? <StepsEditor data={data} section={editing} onDone={(next) => { if (next) saved(next); setEditing(null); }} />
+        : !data.sections.length
+          ? <section className="panel"><div className="empty-state"><ListChecks size={21} /><h3>No lists yet</h3><p>Use New list to add the office's daily steps.</p></div></section>
+          : data.sections.map((section) => <ChecklistPanel key={section} data={data} section={section} isToday={isToday} onSaved={saved} onEdit={() => setEditing(section)} />))}
     </>
   );
 }
 
-function ChecklistPanel({ data, isToday, onSaved }: { data: Checklist; isToday: boolean; onSaved: (next: Checklist) => void }) {
+function ChecklistPanel({ data, section, isToday, onSaved, onEdit }: { data: Checklist; section: string; isToday: boolean; onSaved: (next: Checklist) => void; onEdit: () => void }) {
   const tick = useTickChecklistStep({ mutation: { onSuccess: onSaved } });
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const [note, setNote] = useState("");
-  const allDone = data.total > 0 && data.done === data.total;
+  const steps = data.steps.filter((step) => step.section === section);
+  const done = steps.filter((step) => step.doneBy).length;
+  const allDone = steps.length > 0 && done === steps.length;
   const save = (item: ChecklistItem, done: boolean, text: string | null = item.note) => tick.mutate({ data: { stepId: item.id, day: data.day, done, note: text } });
 
   return (
     <section className="panel hh-ck">
       <div className="panel-head">
         <div>
-          <div className="panel-title">{isToday ? "Today" : longDay(data.day)}{isToday && <span className="hh-ck-date"> · {longDay(data.day)}</span>}</div>
-          <div className="panel-caption">{allDone ? "Everything is done." : `${data.done} of ${data.total} done.`}{!isToday && " Past days can't be changed."}</div>
+          <div className="panel-title">{section}</div>
+          <div className="panel-caption">{isToday ? `Today, ${longDay(data.day)}` : longDay(data.day)} · {allDone ? "everything is done." : `${done} of ${steps.length} done.`}{!isToday && " Past days can't be changed."}</div>
         </div>
-        <span className={`status ${allDone ? "paid" : data.done ? "pending" : "na"}`}>{allDone ? "Done" : data.done ? "In progress" : "Not started"}</span>
+        <div className="hh-ck-actions">
+          <span className={`status ${allDone ? "paid" : done ? "pending" : "na"}`}>{allDone ? "Done" : done ? "In progress" : "Not started"}</span>
+          {isToday && <button type="button" className="button" onClick={onEdit}><Pencil size={13} /> <span>Edit</span></button>}
+        </div>
       </div>
       {tick.isError && <p className="hh-props-alert" role="alert"><AlertTriangle size={14} /> {errorText(tick.error)}</p>}
-      {!data.steps.length ? (
-        <div className="empty-state"><ListChecks size={21} /><h3>No steps yet</h3><p>Use Edit steps to add the office's daily steps.</p></div>
+      {!steps.length ? (
+        <div className="empty-state"><ListChecks size={21} /><h3>No steps in this list</h3><p>Use Edit to add steps.</p></div>
       ) : (
         <ol className="hh-ck-list">
-          {data.steps.map((item, index) => {
+          {steps.map((item, index) => {
             const done = !!item.doneBy;
             return (
               <li key={item.id} className={done ? "done" : ""}>
@@ -119,21 +129,32 @@ function ChecklistPanel({ data, isToday, onSaved }: { data: Checklist; isToday: 
 
 type Draft = { key: string; id: string | null; title: string; detail: string; link: string };
 
-function StepsEditor({ data, onDone }: { data: Checklist; onDone: (next?: Checklist) => void }) {
+function StepsEditor({ data, section, onDone }: { data: Checklist; section: string; onDone: (next?: Checklist) => void }) {
   const update = useUpdateChecklistSteps({ mutation: { onSuccess: (next) => onDone(next) } });
-  const [steps, setSteps] = useState<Draft[]>(() => data.steps.map((step) => ({ key: step.id, id: step.id, title: step.title, detail: step.detail ?? "", link: step.link ?? "" })));
+  const isNew = !section;
+  const [name, setName] = useState(section);
+  const [steps, setSteps] = useState<Draft[]>(() => isNew
+    ? [{ key: "new-0", id: null, title: "", detail: "", link: "" }]
+    : data.steps.filter((step) => step.section === section).map((step) => ({ key: step.id, id: step.id, title: step.title, detail: step.detail ?? "", link: step.link ?? "" })));
   const change = (key: string, patch: Partial<Draft>) => setSteps((current) => current.map((step) => (step.key === key ? { ...step, ...patch } : step)));
   const move = (index: number, by: number) => setSteps((current) => { const next = [...current]; const [step] = next.splice(index, 1); next.splice(index + by, 0, step); return next; });
-  const canSave = steps.length > 0 && steps.every((step) => step.title.trim());
+  const taken = isNew && data.sections.some((item) => item.toLowerCase() === name.trim().toLowerCase());
+  const canSave = !!name.trim() && !taken && steps.length > 0 && steps.every((step) => step.title.trim());
 
   return (
     <section className="panel hh-ck">
       <div className="panel-head">
         <div>
-          <div className="panel-title">Edit steps</div>
+          <div className="panel-title">{isNew ? "New list" : `Edit ${section}`}</div>
           <div className="panel-caption">Changes apply from today for everyone. A link can be a page in the app, like /stays, or a full https:// address.</div>
         </div>
       </div>
+      {isNew && (
+        <div className="hh-ck-name">
+          <input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder="List name, e.g. Weekly checks" aria-label="List name" autoFocus />
+          {taken && <small className="hh-fin-sub bad">There is already a list with that name.</small>}
+        </div>
+      )}
       {update.isError && <p className="hh-props-alert" role="alert"><AlertTriangle size={14} /> {errorText(update.error)}</p>}
       <ol className="hh-ck-edit">
         {steps.map((step, index) => (
@@ -156,7 +177,7 @@ function StepsEditor({ data, onDone }: { data: Checklist; onDone: (next?: Checkl
         <button type="button" className="button" onClick={() => setSteps((current) => [...current, { key: `new-${Date.now()}`, id: null, title: "", detail: "", link: "" }])}><Plus size={14} /> Add step</button>
         <span />
         <button type="button" className="button" onClick={() => onDone()}>Cancel</button>
-        <button type="button" className="button primary" disabled={!canSave || update.isPending} onClick={() => update.mutate({ data: { steps: steps.map((step) => ({ id: step.id, title: step.title.trim(), detail: step.detail.trim() || null, link: step.link.trim() || null })) } })}>
+        <button type="button" className="button primary" disabled={!canSave || update.isPending} onClick={() => update.mutate({ data: { section: name.trim(), steps: steps.map((step) => ({ id: step.id, title: step.title.trim(), detail: step.detail.trim() || null, link: step.link.trim() || null })) } })}>
           {update.isPending ? "Saving…" : "Save steps"}
         </button>
       </div>
@@ -171,13 +192,17 @@ export function ChecklistStrip() {
   const next = data?.steps.find((step) => !step.doneBy);
   return (
     <section className="panel hh-perf-strip" aria-label="Daily checklist">
-      <div><div className="panel-title">Daily checklist</div><div className="panel-caption">Today, shared by the office</div></div>
+      <div><div className="panel-title">Daily checklist</div><div className="panel-caption">Done today, shared by the office</div></div>
       <div className="hh-perf-strip-stats">
         {query.isLoading ? <div><span>Loading…</span></div>
           : !data ? <div><span>The checklist could not be loaded</span></div>
             : (
               <>
-                <div><span>Done today</span><strong className={data.total && data.done === data.total ? "good" : data.done ? "warn" : ""}>{data.done} of {data.total}</strong></div>
+                {data.sections.map((section) => {
+                  const steps = data.steps.filter((step) => step.section === section);
+                  const done = steps.filter((step) => step.doneBy).length;
+                  return <div key={section}><span>{section}</span><strong className={steps.length && done === steps.length ? "good" : done ? "warn" : ""}>{done} of {steps.length}</strong></div>;
+                })}
                 <div className="hh-ck-strip-next"><span>{next ? "Next step" : "All done"}</span><strong>{next ? next.title : "Nothing left today"}</strong></div>
               </>
             )}

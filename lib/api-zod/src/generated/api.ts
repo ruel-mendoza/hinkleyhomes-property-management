@@ -2313,8 +2313,10 @@ export const GetChecklistResponse = zod.object({
   "today": zod.string().describe('Today in the UK (YYYY-MM-DD)'),
   "done": zod.number().int(),
   "total": zod.number().int(),
+  "sections": zod.array(zod.string()).describe('Section names in the order they are shown'),
   "steps": zod.array(zod.object({
   "id": zod.string(),
+  "section": zod.string(),
   "title": zod.string(),
   "detail": zod.string().nullable(),
   "link": zod.string().nullable().describe('An app path or a full https link'),
@@ -2346,8 +2348,10 @@ export const TickChecklistStepResponse = zod.object({
   "today": zod.string().describe('Today in the UK (YYYY-MM-DD)'),
   "done": zod.number().int(),
   "total": zod.number().int(),
+  "sections": zod.array(zod.string()).describe('Section names in the order they are shown'),
   "steps": zod.array(zod.object({
   "id": zod.string(),
+  "section": zod.string(),
   "title": zod.string(),
   "detail": zod.string().nullable(),
   "link": zod.string().nullable().describe('An app path or a full https link'),
@@ -2361,8 +2365,10 @@ export const TickChecklistStepResponse = zod.object({
 
 
 /**
- * @summary Replace the list of steps (order as sent; steps left out are switched off)
+ * @summary Replace one section's steps (order as sent; steps left out are switched off)
  */
+export const updateChecklistStepsBodySectionMax = 80;
+
 export const updateChecklistStepsBodyStepsItemTitleMax = 200;
 
 export const updateChecklistStepsBodyStepsItemDetailMax = 1000;
@@ -2374,6 +2380,7 @@ export const updateChecklistStepsBodyStepsMax = 40;
 
 
 export const UpdateChecklistStepsBody = zod.object({
+  "section": zod.string().min(1).max(updateChecklistStepsBodySectionMax).describe('The section whose steps are replaced; other sections are left as they are'),
   "steps": zod.array(zod.object({
   "id": zod.string().uuid().nullable(),
   "title": zod.string().min(1).max(updateChecklistStepsBodyStepsItemTitleMax),
@@ -2387,8 +2394,10 @@ export const UpdateChecklistStepsResponse = zod.object({
   "today": zod.string().describe('Today in the UK (YYYY-MM-DD)'),
   "done": zod.number().int(),
   "total": zod.number().int(),
+  "sections": zod.array(zod.string()).describe('Section names in the order they are shown'),
   "steps": zod.array(zod.object({
   "id": zod.string(),
+  "section": zod.string(),
   "title": zod.string(),
   "detail": zod.string().nullable(),
   "link": zod.string().nullable().describe('An app path or a full https link'),

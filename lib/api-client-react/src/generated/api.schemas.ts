@@ -2782,6 +2782,7 @@ export interface Notice {
 
 export interface ChecklistItem {
   id: string;
+  section: string;
   title: string;
   /** @nullable */
   detail: string | null;
@@ -2812,6 +2813,8 @@ export interface Checklist {
   today: string;
   done: number;
   total: number;
+  /** Section names in the order they are shown */
+  sections: string[];
   steps: ChecklistItem[];
 }
 
@@ -2847,6 +2850,12 @@ export type ChecklistStepsUpdateStepsItem = {
 };
 
 export interface ChecklistStepsUpdate {
+  /**
+     * The section whose steps are replaced; other sections are left as they are
+     * @minLength 1
+     * @maxLength 80
+     */
+  section: string;
   /**
      * @minItems 1
      * @maxItems 40

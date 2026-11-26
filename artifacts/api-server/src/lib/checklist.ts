@@ -1,7 +1,7 @@
-import { and, asc, count, eq, gte, inArray, lte, ne, or, isNull, lt } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, lte, ne, or, isNull, lt, sql } from "drizzle-orm";
 import { auditLogTable, checklistStepsTable, checklistTicksTable, cohoActionsTable, getDb, shortStayBookingsTable } from "@workspace/db";
 import { ukToday } from "./performance";
-import { addDays } from "./stays";
+import { addDays, guestMessages } from "./stays";
 
 // Staff daily checklist (/checklist). The list is shared by the office: anyone
 // can tick a step for today, and each tick, untick and change to the steps is
@@ -15,12 +15,28 @@ export class ChecklistError extends Error {
 type Staff = { email: string; userId: string | null };
 type RequestInfo = { requestId: string | null; ipAddress: string | null };
 
-// The office's checklist as first written (Nov 2026); staff can change it on the page.
-const DEFAULT_STEPS = [
-  { title: "Check Smoobu for today and tomorrow", detail: "Check-outs, check-ins and same-day changeovers for each property.", link: "/stays#today", live: "stays" },
-  { title: "Update the tracker", detail: "Update items, or add new ones to the tracker straight away.", link: "/actions", live: null },
-  { title: "Finish outstanding actions", detail: "Work with guests, the team and maintenance until each action is complete.", link: "/actions", live: "actions" },
+// The office's checklists as first written (Nov 2026); staff can change them on
+// the page. A section is added once, when no step of it exists yet (so a section
+// whose steps were all removed isn't put back).
+const SMOOBU_INBOX = "https://login.smoobu.com";
+const DEFAULT_SECTIONS: { section: string; steps: { title: string; detail: string | null; link: string | null; live: string | null }[] }[] = [
+  { section: "Daily operations", steps: [
+    { title: "Check Smoobu for today and tomorrow", detail: "Check-outs, check-ins and same-day changeovers for each property.", link: "/stays#today", live: "stays" },
+    { title: "Update the tracker", detail: "Update items, or add new ones to the tracker straight away.", link: "/actions", live: null },
+    { title: "Finish outstanding actions", detail: "Work with guests, the team and maintenance until each action is complete.", link: "/actions", live: "actions" },
+  ] },
+  { section: "Guest comms", steps: [
+    { title: "Airbnb: check and reply", detail: "Routine check of Airbnb guest messages, and reply.", link: SMOOBU_INBOX, live: "guest_messages" },
+    { title: "Booking.com: check and reply", detail: "Routine check of Booking.com guest messages, and reply.", link: SMOOBU_INBOX, live: null },
+    { title: "WhatsApp: check and reply", detail: "Routine check of WhatsApp messages, and reply.", link: "https://web.whatsapp.com", live: null },
+    { title: "OpenRent: check and reply", detail: "Routine check of OpenRent messages, and reply.", link: "https://www.openrent.co.uk", live: null },
+    { title: "Email: check and reply", detail: "Routine check of the email inbox, and reply.", link: "https://outlook.office.com/mail/", live: null },
+    { title: "Sort and assign mail in the inbox", detail: "File each email and assign it to the right person.", link: "https://outlook.office.com/mail/", live: null },
+    { title: "No message left without action", detail: "Before ticking, make sure no message on any channel above is left unanswered or not actioned.", link: null, live: null },
+  ] },
 ];
+const SECTION_ORDER = DEFAULT_SECTIONS.map((item) => item.section);
+const sectionRank = (section: string) => { const index = SECTION_ORDER.indexOf(section); return index === -1 ? SECTION_ORDER.length : index; };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -33,12 +49,19 @@ export function checkLink(link: string | null | undefined): string | null {
 
 async function steps() {
   const db = getDb();
-  let rows = await db.select().from(checklistStepsTable).orderBy(asc(checklistStepsTable.position));
-  if (!rows.length) {
-    await db.insert(checklistStepsTable).values(DEFAULT_STEPS.map((step, position) => ({ ...step, position })));
-    rows = await db.select().from(checklistStepsTable).orderBy(asc(checklistStepsTable.position));
+  const read = () => db.select().from(checklistStepsTable).orderBy(asc(checklistStepsTable.position));
+  let rows = await read();
+  if (DEFAULT_SECTIONS.some((item) => !rows.some((row) => row.section === item.section))) {
+    await db.transaction(async (tx) => {
+      // One request adds missing sections at a time.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('checklist_steps_seed'))`);
+      const present = new Set((await tx.selectDistinct({ section: checklistStepsTable.section }).from(checklistStepsTable)).map((row) => row.section));
+      const missing = DEFAULT_SECTIONS.filter((item) => !present.has(item.section));
+      if (missing.length) await tx.insert(checklistStepsTable).values(missing.flatMap((item) => item.steps.map((step, position) => ({ ...step, section: item.section, position }))));
+    });
+    rows = await read();
   }
-  return rows;
+  return rows.sort((a, b) => sectionRank(a.section) - sectionRank(b.section) || a.section.localeCompare(b.section) || a.position - b.position);
 }
 
 // Arrivals, departures and same-day changeovers today and tomorrow, from the Smoobu bookings the app keeps.
@@ -70,8 +93,16 @@ async function actionsFigure(): Promise<string> {
   return `${plural(Number(row?.open ?? 0), "open action")} in COHO`;
 }
 
+// Smoobu's unread total covers Airbnb, Booking.com and direct guests together (cached in lib/stays.ts).
+async function guestMessagesFigure(): Promise<string | null> {
+  const messages = await guestMessages();
+  if (messages.error) return null;
+  return `${plural(messages.unreadMessages, "unread message")} in Smoobu (Airbnb and Booking.com) · ${plural(messages.threadsToday, "conversation")} today`;
+}
+
 async function liveFigure(live: string | null, today: string): Promise<string | null> {
   try {
+    if (live === "guest_messages") return await guestMessagesFigure();
     if (live === "stays") return await staysFigure(today);
     if (live === "actions") return await actionsFigure();
   } catch {
@@ -90,19 +121,22 @@ export async function checklist(requestedDay?: string) {
   const shown = all.filter((step) => step.isActive || tickOf.has(step.id));
   const items = await Promise.all(shown.map(async (step) => {
     const tick = tickOf.get(step.id);
+    const live = day === today ? await liveFigure(step.live, today) : null;
     return {
       id: step.id,
+      section: step.section,
       title: step.title,
       detail: step.detail,
       link: step.link,
-      live: day === today ? await liveFigure(step.live, today) : null,
-      liveWarn: false,
+      live,
+      liveWarn: step.live === "guest_messages" && /^[1-9]/.test(live ?? ""),
       doneBy: tick?.doneBy ?? null,
       doneAt: tick?.doneAt.toISOString() ?? null,
       note: tick?.note ?? null,
     };
   }));
-  return { day, today, done: items.filter((item) => item.doneBy).length, total: items.length, steps: items };
+  const sections = [...new Set([...all.filter((step) => step.isActive).map((step) => step.section), ...items.map((item) => item.section)])];
+  return { day, today, done: items.filter((item) => item.doneBy).length, total: items.length, sections, steps: items };
 }
 
 export async function tickStep(input: { stepId: string; day: string; done: boolean; note?: string | null }, staff: Staff, request: RequestInfo) {
@@ -132,11 +166,14 @@ export async function tickStep(input: { stepId: string; day: string; done: boole
   return checklist(today);
 }
 
-export async function saveSteps(input: { steps: { id?: string | null; title: string; detail?: string | null; link?: string | null }[] }, staff: Staff, request: RequestInfo) {
+// Replaces the steps of one section; other sections are left as they are.
+export async function saveSteps(input: { section: string; steps: { id?: string | null; title: string; detail?: string | null; link?: string | null }[] }, staff: Staff, request: RequestInfo) {
   const db = getDb();
+  const section = input.section.trim();
+  if (!section) throw new ChecklistError("The list needs a name.");
   const cleaned = input.steps.map((step) => ({ id: step.id ?? null, title: step.title.trim(), detail: step.detail?.trim() || null, link: checkLink(step.link) }));
   if (cleaned.some((step) => !step.title)) throw new ChecklistError("Every step needs a title.");
-  const existing = await steps();
+  const existing = (await steps()).filter((step) => step.section === section);
   const known = new Set(existing.map((step) => step.id));
   if (cleaned.some((step) => step.id && !known.has(step.id))) throw new ChecklistError("One of the steps no longer exists. Reload the page and try again.", 409);
   await db.transaction(async (tx) => {
@@ -146,15 +183,15 @@ export async function saveSteps(input: { steps: { id?: string | null; title: str
         kept.add(step.id);
         await tx.update(checklistStepsTable).set({ position, title: step.title, detail: step.detail, link: step.link, isActive: true }).where(eq(checklistStepsTable.id, step.id));
       } else {
-        await tx.insert(checklistStepsTable).values({ position, title: step.title, detail: step.detail, link: step.link });
+        await tx.insert(checklistStepsTable).values({ section, position, title: step.title, detail: step.detail, link: step.link });
       }
     }
     const dropped = existing.filter((step) => step.isActive && !kept.has(step.id)).map((step) => step.id);
     if (dropped.length) await tx.update(checklistStepsTable).set({ isActive: false }).where(inArray(checklistStepsTable.id, dropped));
     await tx.insert(auditLogTable).values({
-      actorEmail: staff.email, actorUserId: staff.userId, action: "checklist.steps.update", tableName: "checklist_steps", recordId: "all",
-      before: { steps: existing.filter((step) => step.isActive).map(({ title, detail, link }) => ({ title, detail, link })) },
-      after: { steps: cleaned.map(({ title, detail, link }) => ({ title, detail, link })) },
+      actorEmail: staff.email, actorUserId: staff.userId, action: "checklist.steps.update", tableName: "checklist_steps", recordId: section,
+      before: { section, steps: existing.filter((step) => step.isActive).map(({ title, detail, link }) => ({ title, detail, link })) },
+      after: { section, steps: cleaned.map(({ title, detail, link }) => ({ title, detail, link })) },
       requestId: request.requestId, ipAddress: request.ipAddress,
     });
   });

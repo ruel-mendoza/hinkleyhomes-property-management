@@ -1438,7 +1438,7 @@ paths:
     put:
       operationId: updateChecklistSteps
       tags: [checklist]
-      summary: Replace the list of steps (order as sent; steps left out are switched off)
+      summary: Replace one section's steps (order as sent; steps left out are switched off)
       requestBody:
         required: true
         content:
@@ -5072,15 +5072,22 @@ components:
           type: integer
         total:
           type: integer
+        sections:
+          description: Section names in the order they are shown
+          type: array
+          items:
+            type: string
         steps:
           type: array
           items:
             $ref: "#/components/schemas/ChecklistItem"
-      required: [day, today, done, total, steps]
+      required: [day, today, done, total, sections, steps]
     ChecklistItem:
       type: object
       properties:
         id:
+          type: string
+        section:
           type: string
         title:
           type: string
@@ -5101,7 +5108,7 @@ components:
           type: ["string", "null"]
         note:
           type: ["string", "null"]
-      required: [id, title, detail, link, live, liveWarn, doneBy, doneAt, note]
+      required: [id, section, title, detail, link, live, liveWarn, doneBy, doneAt, note]
     ChecklistTickUpdate:
       type: object
       properties:
@@ -5120,6 +5127,11 @@ components:
     ChecklistStepsUpdate:
       type: object
       properties:
+        section:
+          description: The section whose steps are replaced; other sections are left as they are
+          type: string
+          minLength: 1
+          maxLength: 80
         steps:
           type: array
           minItems: 1
@@ -5141,7 +5153,7 @@ components:
                 type: ["string", "null"]
                 maxLength: 500
             required: [id, title, detail, link]
-      required: [steps]
+      required: [section, steps]
     NoticeSettings:
       type: object
       properties:

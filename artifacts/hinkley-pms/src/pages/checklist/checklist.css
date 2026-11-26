@@ -28,3 +28,6 @@
 .hh-ck-strip-next strong{font-size:14px !important;font-weight:700 !important;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:760px){.hh-ck-list li{grid-template-columns:auto 1fr}.hh-ck-list li .hh-ck-actions{grid-column:2}.hh-ck-actions .button span{display:none}}
 @media(max-width:460px){.hh-ck-edit li{grid-template-columns:1fr}.hh-ck-num{display:none}.hh-ck-edit-foot{flex-wrap:wrap}}
+.hh-ck + .hh-ck{margin-top:14px}
+.hh-ck-name{padding:0 17px 6px;display:flex;flex-direction:column;gap:4px}
+.hh-ck-name input{background:#111c2b;border:1px solid #344157;border-radius:7px;padding:8px 10px;color:#e2e9f1;font-size:14px;font-weight:600;max-width:420px}

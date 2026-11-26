@@ -161,11 +161,13 @@ export const staffNoticeSettingsTable = pgTable("staff_notice_settings", {
 
 export type StaffNoticeSettings = typeof staffNoticeSettingsTable.$inferSelect;
 
-// Staff daily checklist (/checklist). The steps are edited on the page; a step
-// taken off the list is switched off rather than deleted, so past days still
-// show it. `live` names a figure the app works out for the step (stays, actions).
+// Staff daily checklist (/checklist), in sections (e.g. Daily operations, Guest
+// comms). The steps are edited on the page; a step taken off the list is
+// switched off rather than deleted, so past days still show it. `live` names a
+// figure the app works out for the step (stays, actions, guest_messages).
 export const checklistStepsTable = pgTable("checklist_steps", {
   id: id(),
+  section: text("section").notNull().default("Daily operations"),
   position: integer("position").notNull().default(0),
   title: text("title").notNull(),
   detail: text("detail"),

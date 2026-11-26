@@ -14,5 +14,7 @@ export interface Checklist {
   today: string;
   done: number;
   total: number;
+  /** Section names in the order they are shown */
+  sections: string[];
   steps: ChecklistItem[];
 }

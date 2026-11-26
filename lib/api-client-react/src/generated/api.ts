@@ -5525,7 +5525,7 @@ export const getUpdateChecklistStepsUrl = () => {
 }
 
 /**
- * @summary Replace the list of steps (order as sent; steps left out are switched off)
+ * @summary Replace one section's steps (order as sent; steps left out are switched off)
  */
 export const updateChecklistSteps = async (checklistStepsUpdate: ChecklistStepsUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Checklist> => {
 
@@ -5591,7 +5591,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateChecklistStepsMutationVariables = {data: BodyType<ChecklistStepsUpdate>}
 
     /**
- * @summary Replace the list of steps (order as sent; steps left out are switched off)
+ * @summary Replace one section's steps (order as sent; steps left out are switched off)
  */
 export const useUpdateChecklistSteps = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateChecklistSteps>>, TError,UpdateChecklistStepsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
