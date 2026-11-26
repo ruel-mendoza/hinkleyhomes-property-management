@@ -1,5 +1,5 @@
-import { and, asc, count, eq, gte, inArray, lte, ne, or, isNull, lt, sql } from "drizzle-orm";
-import { auditLogTable, checklistStepsTable, checklistTicksTable, cohoActionsTable, getDb, shortStayBookingsTable } from "@workspace/db";
+import { and, asc, count, eq, gte, inArray, lte, ne, notInArray, or, isNull, lt, sql } from "drizzle-orm";
+import { auditLogTable, checklistStepsTable, checklistTicksTable, cohoActionsTable, getDb, rentMatchActionsTable, shortStayBookingsTable, xeroInvoiceFollowUpsTable } from "@workspace/db";
 import { ukToday } from "./performance";
 import { addDays, guestMessages } from "./stays";
 
@@ -33,6 +33,12 @@ const DEFAULT_SECTIONS: { section: string; steps: { title: string; detail: strin
     { title: "Email: check and reply", detail: "Routine check of the email inbox, and reply.", link: "https://outlook.office.com/mail/", live: null },
     { title: "Sort and assign mail in the inbox", detail: "File each email and assign it to the right person.", link: "https://outlook.office.com/mail/", live: null },
     { title: "No message left without action", detail: "Before ticking, make sure no message on any channel above is left unanswered or not actioned.", link: null, live: null },
+  ] },
+  { section: "Payments and invoices", steps: [
+    { title: "Reconcile payments", detail: "Match payments received to rent and invoices.", link: "/rent?tab=bank", live: "rent_match" },
+    { title: "Check and chase overdue invoices", detail: "Chase each overdue invoice and record the outcome.", link: "/receivables", live: "chases" },
+    { title: "Raise new invoices, check Smoobu for stays that need extending", detail: "Raise invoices for new and extended stays.", link: "/stays#today", live: "stays_ending" },
+    { title: "Update the leads tracker", detail: null, link: null, live: null },
   ] },
 ];
 const SECTION_ORDER = DEFAULT_SECTIONS.map((item) => item.section);
@@ -100,8 +106,34 @@ async function guestMessagesFigure(): Promise<string | null> {
   return `${plural(messages.unreadMessages, "unread message")} in Smoobu (Airbnb and Booking.com) · ${plural(messages.threadsToday, "conversation")} today`;
 }
 
+// Rent payments the app has found for overdue tenancies, waiting to be matched in COHO.
+async function rentMatchFigure(): Promise<string> {
+  const [row] = await getDb().select({ open: count() }).from(rentMatchActionsTable).where(isNull(rentMatchActionsTable.closedAt));
+  return `${plural(Number(row?.open ?? 0), "rent payment")} ready to match in COHO`;
+}
+
+// Invoice follow-ups whose next chase date has come, from the app's follow-up records.
+async function chasesFigure(today: string): Promise<string> {
+  const f = xeroInvoiceFollowUpsTable;
+  const [row] = await getDb()
+    .select({ due: count() })
+    .from(f)
+    .where(and(lte(f.nextChaseDate, today), notInArray(f.outcome, ["paid_elsewhere", "write_off_review"])));
+  return `${plural(Number(row?.due ?? 0), "chase")} due by today`;
+}
+
+// Stays ending today or tomorrow, the ones a guest may ask to extend.
+async function staysEndingFigure(today: string): Promise<string> {
+  const t = shortStayBookingsTable;
+  const [row] = await getDb().select({ ending: count() }).from(t).where(and(ne(t.status, "cancelled"), gte(t.departureDate, today), lte(t.departureDate, addDays(today, 1))));
+  return `${plural(Number(row?.ending ?? 0), "stay")} ending today or tomorrow`;
+}
+
 async function liveFigure(live: string | null, today: string): Promise<string | null> {
   try {
+    if (live === "stays_ending") return await staysEndingFigure(today);
+    if (live === "rent_match") return await rentMatchFigure();
+    if (live === "chases") return await chasesFigure(today);
     if (live === "guest_messages") return await guestMessagesFigure();
     if (live === "stays") return await staysFigure(today);
     if (live === "actions") return await actionsFigure();
