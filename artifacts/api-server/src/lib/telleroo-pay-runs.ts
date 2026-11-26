@@ -13,6 +13,18 @@ const LIMIT = 100;
 
 const amount = (value: string | null) => (value === null ? null : Number(value));
 const round = (value: number) => Math.round(value * 100) / 100;
+// Telleroo's field names in a rejected payment's info, in plain words.
+const FIELDS: Record<string, string> = { recipient_name: "Name", payee_name: "Name", account_no: "Account number", sort_code: "Sort code", amount: "Amount", reference: "Reference", legal_type: "Payee type", idempotent_key: "Payment key" };
+function rejectionReason(info: Record<string, unknown> | null): string {
+  const parts = Object.entries(info ?? {}).flatMap(([field, messages]) => {
+    const list = (Array.isArray(messages) ? messages : [messages]).map(String).filter(Boolean);
+    if (!list.length) return [];
+    const text = list.join("; ");
+    return [field === "base" ? text.charAt(0).toUpperCase() + text.slice(1) : `${FIELDS[field] ?? field.replace(/_/g, " ")} ${text}`];
+  });
+  return parts.length ? parts.join(". ") + "." : "Telleroo didn't say why.";
+}
+
 const ukMonth = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date()).slice(0, 7);
 const ukMonthOf = (date: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(date).slice(0, 7);
 
@@ -53,6 +65,7 @@ export async function payRuns() {
       paidAmount: amount(row.paidAmount),
       payments: row.payments.length,
       rejected: row.payments.filter((payment) => payment.state === "rejected").length,
+      rejections: row.payments.filter((payment) => payment.state === "rejected").map((payment) => ({ payeeName: payment.payeeName, amount: amount(payment.amount), reference: payment.reference, reason: rejectionReason(payment.info) })),
       tellerooUrl: row.tellerooUrl,
       createdAt: row.tellerooCreatedAt?.toISOString() ?? null,
       lastCheckedAt: row.lastCheckedAt.toISOString(),

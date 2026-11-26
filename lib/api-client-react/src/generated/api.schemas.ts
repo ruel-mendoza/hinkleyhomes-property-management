@@ -303,6 +303,16 @@ export interface TellerooFile {
   skipped: TellerooFileBill[];
 }
 
+export type PayRunRejectionsItem = {
+  /** @nullable */
+  payeeName: string | null;
+  /** @nullable */
+  amount: number | null;
+  /** @nullable */
+  reference: string | null;
+  reason: string;
+};
+
 export interface PayRun {
   /** Telleroo's pay run id */
   id: string;
@@ -322,6 +332,8 @@ export interface PayRun {
   payments: number;
   /** Payments Telleroo rejected */
   rejected: number;
+  /** Each rejected payment with Telleroo's reason in plain words */
+  rejections: PayRunRejectionsItem[];
   /** @nullable */
   tellerooUrl: string | null;
   /**

@@ -43,6 +43,12 @@ export const GetPayRunsResponse = zod.object({
   "paidAmount": zod.number().nullable(),
   "payments": zod.number().int().describe('Number of payments in the pay run'),
   "rejected": zod.number().int().describe('Payments Telleroo rejected'),
+  "rejections": zod.array(zod.object({
+  "payeeName": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "reference": zod.string().nullable(),
+  "reason": zod.string()
+})).describe('Each rejected payment with Telleroo\'s reason in plain words'),
   "tellerooUrl": zod.string().nullable(),
   "createdAt": zod.string().nullable().describe('When the pay run was made in Telleroo (ISO date-time)'),
   "lastCheckedAt": zod.string()

@@ -21,8 +21,27 @@ const REPEAT_DAYS = 30;
 // hyphens; other characters become a hyphen, and a longer reference rejects the row.
 // The same replacement is done here so the reference recorded matches what is sent.
 const REFERENCE_MAX = 18;
+// Telleroo takes 1p to £250,000 per payment.
+const PAYMENT_MAX = 250_000;
 const reference = (number: string | null) =>
   (number ?? "").replace(/[^A-Za-z0-9 -]+/g, "-").replace(/\s+/g, " ").replace(/-{2,}/g, "-").replace(/^[\s-]+|[\s-]+$/g, "").slice(0, REFERENCE_MAX).replace(/[\s-]+$/g, "") || "HINKLEY HOMES";
+
+// Telleroo's payee name rules (partner docs, "Payee Validations"): a business
+// with a common one-word name ("Andrew", "Charlie") can be rejected unless the
+// business type follows it ("Andrew Ltd"); a person needs a first and last name
+// of at least 2 letters each, in letters, hyphens, underscores, brackets,
+// apostrophes, asterisks, commas and dots only. The payee type is picked per
+// file at upload, so these are warnings rather than reasons to leave a bill out.
+const NAME_MAX = 255;
+const BUSINESS_WORDS = /\b(ltd|limited|llp|plc|cic|inc|co|company|group|services?|trading|t\/a|solutions|uk|partners(hip)?|associates|contractors?|builders?|electrical|plumbing|heating|cleaning|maintenance|properties|lettings|estates?)\b|&/i;
+export function payeeNameWarning(name: string): string | null {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (BUSINESS_WORDS.test(name)) return null;
+  if (words.length === 1) return `Telleroo may reject the one-word payee name "${name}" as too common. If it does, add the business type in Telleroo (e.g. "${name} Ltd").`;
+  if (words.some((word) => /^\p{L}\.?$/u.test(word))) return `If uploaded as Supplier - Person, Telleroo may reject "${name}": each name needs at least 2 letters, so initials aren't enough.`;
+  if (/[^\p{L}\s\-_()'*,.]/u.test(name)) return `If uploaded as Supplier - Person, Telleroo may reject "${name}": a person's name can only have letters and - _ ( ) ' * , .`;
+  return null;
+}
 
 type RecordValue = Record<string, unknown>;
 const asRecord = (value: unknown): RecordValue => (value !== null && typeof value === "object" && !Array.isArray(value) ? (value as RecordValue) : {});
@@ -96,6 +115,7 @@ export async function buildTellerooFile(input: { bills: { tenantId: string; bill
     if (bill.Status !== "AUTHORISED") { skip(bill.Status === "PAID" ? "Already paid in Xero." : "Not approved in Xero yet."); continue; }
     if (!base.amount || base.amount <= 0) { skip("Nothing left to pay in Xero."); continue; }
     if (str(bill.CurrencyCode) && bill.CurrencyCode !== "GBP") { skip(`Bill is in ${String(bill.CurrencyCode)}, not pounds.`); continue; }
+    if (base.amount > PAYMENT_MAX) { skip("Over Telleroo's £250,000 limit for one payment."); continue; }
 
     const supplierId = (str(contact.ContactID) ? byContact.get(String(contact.ContactID).toLowerCase()) : undefined) ?? byKey.get(supplierKey(base.supplier));
     const bank = supplierId ? verified.get(supplierId) : undefined;
@@ -107,10 +127,15 @@ export async function buildTellerooFile(input: { bills: { tenantId: string; bill
     const before = earlier.find((row) => row.xeroTenantId === choice.tenantId && row.xeroBillId === choice.billId.toLowerCase());
     if (before && !input.includeRepeats) { skip(`Already in a Telleroo file on ${when(before.createdAt)}${before.downloadedBy ? ` by ${before.downloadedBy}` : ""}.`, true); continue; }
 
-    const paid = lastPaid.get(bank.supplierId);
-    if (paid && paid.status !== "match") base.warning = `Telleroo last paid this supplier to account ${paid.tellerooAccount}${paid.sortCodeDiffers ? " (different sort code)" : ""}, not ${paid.fileAccount ?? `…${accountNo.slice(-4)}`} on file. Check before approving.`;
-    const ref = reference(base.number);
     const recipient = bank.accountName.trim() || base.supplier;
+    if (recipient.length > NAME_MAX) { skip("The bank account name is longer than Telleroo allows (255 characters)."); continue; }
+    const paid = lastPaid.get(bank.supplierId);
+    const warnings = [
+      paid && paid.status !== "match" ? `Telleroo last paid this supplier to account ${paid.tellerooAccount}${paid.sortCodeDiffers ? " (different sort code)" : ""}, not ${paid.fileAccount ?? `…${accountNo.slice(-4)}`} on file. Check before approving.` : null,
+      payeeNameWarning(recipient),
+    ].filter(Boolean);
+    base.warning = warnings.length ? warnings.join(" ") : null;
+    const ref = reference(base.number);
     included.push({ ...base, amount: base.amount, reason: null, reference: ref, row: [base.amount.toFixed(2), recipient, accountNo, sortCode, ref].map(cell).join(",") });
   }
 

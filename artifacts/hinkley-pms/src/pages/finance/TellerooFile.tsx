@@ -54,7 +54,7 @@ export function TellerooFileResult({ result, pending, onRepeat, onClose }: { res
       </div>
       {warned.length > 0 && (
         <>
-          <p className="hh-tfile-lead bad">Check before approving ({warned.length}):</p>
+          <p className="hh-tfile-lead bad">In the file, but check these ({warned.length}):</p>
           <ul className="hh-tfile-list">
             {warned.map((bill) => <li key={`${bill.tenantId}|${bill.billId}`}><strong>{bill.supplier}</strong> {bill.number ?? ""} — {bill.warning}</li>)}
           </ul>

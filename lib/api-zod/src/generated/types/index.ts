@@ -192,6 +192,7 @@ export * from './payableBill';
 export * from './payeeCheck';
 export * from './payeeCheckStatus';
 export * from './payRun';
+export * from './payRunRejectionsItem';
 export * from './payRuns';
 export * from './performance';
 export * from './performanceMonth';

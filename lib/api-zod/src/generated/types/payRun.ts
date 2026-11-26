@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PayRunRejectionsItem } from './payRunRejectionsItem';
 
 export interface PayRun {
   /** Telleroo's pay run id */
@@ -25,6 +26,8 @@ export interface PayRun {
   payments: number;
   /** Payments Telleroo rejected */
   rejected: number;
+  /** Each rejected payment with Telleroo's reason in plain words */
+  rejections: PayRunRejectionsItem[];
   /** @nullable */
   tellerooUrl: string | null;
   /**

@@ -2179,6 +2179,21 @@ components:
         rejected:
           description: Payments Telleroo rejected
           type: integer
+        rejections:
+          description: Each rejected payment with Telleroo's reason in plain words
+          type: array
+          items:
+            type: object
+            properties:
+              payeeName:
+                type: ["string", "null"]
+              amount:
+                type: ["number", "null"]
+              reference:
+                type: ["string", "null"]
+              reason:
+                type: string
+            required: [payeeName, amount, reference, reason]
         tellerooUrl:
           type: ["string", "null"]
         createdAt:
@@ -2186,7 +2201,7 @@ components:
           type: ["string", "null"]
         lastCheckedAt:
           type: string
-      required: [id, name, status, payeesType, scheduledFor, requestedAmount, paidAmount, payments, rejected, tellerooUrl, createdAt, lastCheckedAt]
+      required: [id, name, status, payeesType, scheduledFor, requestedAmount, paidAmount, payments, rejected, rejections, tellerooUrl, createdAt, lastCheckedAt]
     PayRuns:
       type: object
       properties:

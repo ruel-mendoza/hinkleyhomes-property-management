@@ -113,6 +113,7 @@ export function PayRunsTab() {
                       <td className="hh-chk-summary">
                         <strong>{run.payments}</strong>
                         {run.rejected > 0 && <small className="hh-fin-sub bad">{run.rejected} rejected by Telleroo</small>}
+                        {run.rejections.map((payment, index) => <small key={index} className="hh-fin-sub">{payment.payeeName || "No name"}{payment.amount !== null ? ` · ${pounds.format(payment.amount)}` : ""}: {payment.reason}</small>)}
                       </td>
                       <td className="num">
                         {run.requestedAmount !== null ? pounds.format(run.requestedAmount) : "—"}
