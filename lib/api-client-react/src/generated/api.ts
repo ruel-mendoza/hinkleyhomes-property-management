@@ -30,6 +30,9 @@ import type {
   BuildingSummary,
   CheckRun,
   CheckRunList,
+  Checklist,
+  ChecklistStepsUpdate,
+  ChecklistTickUpdate,
   CohoActionAssign,
   CohoActionAssigneeList,
   CohoActionCreate,
@@ -64,6 +67,7 @@ import type {
   FinanceBankFeed,
   FinanceIncome,
   GetAttentionParams,
+  GetChecklistParams,
   GetComplianceParams,
   GetOwnerStatementsParams,
   GetPerformanceParams,
@@ -5338,6 +5342,266 @@ export const useClearNoticeHistory = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getClearNoticeHistoryMutationOptions(options));
+    }
+
+export const getGetChecklistUrl = (params?: GetChecklistParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/checklist?${stringifiedParams}` : `/api/checklist`
+}
+
+/**
+ * @summary The daily checklist for a UK day (today by default), with live figures for today
+ */
+export const getChecklist = async (params?: GetChecklistParams, options?: Parameters<typeof customFetch>[1]): Promise<Checklist> => {
+
+  return customFetch<Checklist>(getGetChecklistUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChecklistQueryKey = (params?: GetChecklistParams,) => {
+    return [
+    `/api/checklist`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetChecklistQueryOptions = <TData = Awaited<ReturnType<typeof getChecklist>>, TError = ErrorType<void>>(params?: GetChecklistParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChecklist>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChecklistQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChecklist>>> = ({ signal }) => getChecklist(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChecklist>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChecklistQueryResult = NonNullable<Awaited<ReturnType<typeof getChecklist>>>
+export type GetChecklistQueryError = ErrorType<void>
+
+
+/**
+ * @summary The daily checklist for a UK day (today by default), with live figures for today
+ */
+
+export function useGetChecklist<TData = Awaited<ReturnType<typeof getChecklist>>, TError = ErrorType<void>>(
+ params?: GetChecklistParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChecklist>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChecklistQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getTickChecklistStepUrl = () => {
+
+
+
+
+  return `/api/checklist/ticks`
+}
+
+/**
+ * @summary Tick or untick a step for today (UK)
+ */
+export const tickChecklistStep = async (checklistTickUpdate: ChecklistTickUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Checklist> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Checklist>(getTickChecklistStepUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(checklistTickUpdate)
+  }
+);}
+
+
+
+
+
+export const getTickChecklistStepMutationKey = () => ['tickChecklistStep'] as const;
+
+export const getTickChecklistStepMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof tickChecklistStep>>, TError,TickChecklistStepMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof tickChecklistStep>>, TError,TickChecklistStepMutationVariables, TContext> => {
+
+const mutationKey = getTickChecklistStepMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof tickChecklistStep>>, TickChecklistStepMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  tickChecklistStep(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TickChecklistStepMutationResult = NonNullable<Awaited<ReturnType<typeof tickChecklistStep>>>
+    export type TickChecklistStepMutationBody = BodyType<ChecklistTickUpdate>
+    export type TickChecklistStepMutationError = ErrorType<void>
+    export type TickChecklistStepMutationVariables = {data: BodyType<ChecklistTickUpdate>}
+
+    /**
+ * @summary Tick or untick a step for today (UK)
+ */
+export const useTickChecklistStep = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof tickChecklistStep>>, TError,TickChecklistStepMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof tickChecklistStep>>,
+        TError,
+        TickChecklistStepMutationVariables,
+        TContext
+      > => {
+      return useMutation(getTickChecklistStepMutationOptions(options));
+    }
+
+export const getUpdateChecklistStepsUrl = () => {
+
+
+
+
+  return `/api/checklist/steps`
+}
+
+/**
+ * @summary Replace the list of steps (order as sent; steps left out are switched off)
+ */
+export const updateChecklistSteps = async (checklistStepsUpdate: ChecklistStepsUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Checklist> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Checklist>(getUpdateChecklistStepsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(checklistStepsUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateChecklistStepsMutationKey = () => ['updateChecklistSteps'] as const;
+
+export const getUpdateChecklistStepsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateChecklistSteps>>, TError,UpdateChecklistStepsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateChecklistSteps>>, TError,UpdateChecklistStepsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateChecklistStepsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateChecklistSteps>>, UpdateChecklistStepsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateChecklistSteps(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateChecklistStepsMutationResult = NonNullable<Awaited<ReturnType<typeof updateChecklistSteps>>>
+    export type UpdateChecklistStepsMutationBody = BodyType<ChecklistStepsUpdate>
+    export type UpdateChecklistStepsMutationError = ErrorType<void>
+    export type UpdateChecklistStepsMutationVariables = {data: BodyType<ChecklistStepsUpdate>}
+
+    /**
+ * @summary Replace the list of steps (order as sent; steps left out are switched off)
+ */
+export const useUpdateChecklistSteps = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateChecklistSteps>>, TError,UpdateChecklistStepsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateChecklistSteps>>,
+        TError,
+        UpdateChecklistStepsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateChecklistStepsMutationOptions(options));
     }
 
 export const getGetNoticeSettingsUrl = () => {

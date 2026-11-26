@@ -19,6 +19,7 @@ import staysRouter from "./stays";
 import ownerStatementsRouter from "./owner-statements";
 import noticesRouter from "./notices";
 import paymentsRouter from "./payments";
+import checklistRouter from "./checklist";
 import { propertiesRouter, publicListingsRouter } from "./properties";
 import { requireStaffAccess } from "../middlewares/requireStaffAccess";
 
@@ -49,5 +50,6 @@ router.use(staysRouter);
 router.use(ownerStatementsRouter);
 router.use(noticesRouter);
 router.use(paymentsRouter);
+router.use(checklistRouter);
 
 export default router;

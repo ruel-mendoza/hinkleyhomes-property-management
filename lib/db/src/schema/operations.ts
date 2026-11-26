@@ -1,4 +1,4 @@
-import { bigserial, boolean, date, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { bigserial, boolean, date, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -160,3 +160,36 @@ export const staffNoticeSettingsTable = pgTable("staff_notice_settings", {
 }).enableRLS();
 
 export type StaffNoticeSettings = typeof staffNoticeSettingsTable.$inferSelect;
+
+// Staff daily checklist (/checklist). The steps are edited on the page; a step
+// taken off the list is switched off rather than deleted, so past days still
+// show it. `live` names a figure the app works out for the step (stays, actions).
+export const checklistStepsTable = pgTable("checklist_steps", {
+  id: id(),
+  position: integer("position").notNull().default(0),
+  title: text("title").notNull(),
+  detail: text("detail"),
+  // An app path (/stays) or a full https link to another system.
+  link: text("link"),
+  live: text("live"),
+  isActive: boolean("is_active").notNull().default(true),
+  ...timestamps,
+}).enableRLS();
+
+export type ChecklistStep = typeof checklistStepsTable.$inferSelect;
+
+// One row per step ticked per UK day; unticking deletes the row (audit_log keeps the history).
+export const checklistTicksTable = pgTable(
+  "checklist_ticks",
+  {
+    id: id(),
+    stepId: uuid("step_id").notNull().references(() => checklistStepsTable.id, { onDelete: "cascade" }),
+    day: date("day").notNull(),
+    doneBy: text("done_by").notNull(),
+    note: text("note"),
+    doneAt: timestamp("done_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("checklist_ticks_step_day_uq").on(t.stepId, t.day), index("checklist_ticks_day_idx").on(t.day)],
+).enableRLS();
+
+export type ChecklistTick = typeof checklistTicksTable.$inferSelect;

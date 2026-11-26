@@ -1,4 +1,4 @@
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowLeftRight, BedDouble, CalendarDays, ChevronDown, ChevronUp, DoorOpen, ExternalLink, LogIn, LogOut, MessageSquare, PlugZap, RefreshCw, ShieldCheck } from "lucide-react";
@@ -39,6 +39,9 @@ export default function StaysPage() {
   const [filter, setFilter] = useState<BookingFilter | null>(null);
   const data = query.data;
   const availability = useGetStayAvailability(undefined, { query: { ...availabilityQueryOptions.query, enabled: !!data } });
+  // The daily checklist links to /stays#today.
+  const loaded = !!data;
+  useEffect(() => { if (loaded && window.location.hash === "#today") requestAnimationFrame(() => scrollToId("today")); }, [loaded]);
 
   const pick = (next: BookingFilter) => {
     const turnOff = filter === next;
@@ -97,6 +100,7 @@ export default function StaysPage() {
             {data.guestChecks && tile("notReady", <ShieldCheck size={17} />, data.counts.notReady, "not ready to arrive", data.counts.notReady ? "warn" : "")}
             {availability.data && <button type="button" onClick={() => scrollToId("stays-availability")} title="Go to availability"><DoorOpen size={17} /><strong>{availability.data.freeTonight}</strong> free tonight</button>}
           </div>
+          <TodayTomorrowPanel data={data} availability={availability.data} />
           <div className="hh-stay-grid">
             <BookingsPanel data={data} filter={filter} onClear={() => setFilter(null)} />
             <div className="hh-stay-side">
@@ -111,6 +115,75 @@ export default function StaysPage() {
         </>
       )}
     </>
+  );
+}
+
+// What happens at each apartment today and tomorrow: one row per apartment,
+// busiest first, so the daily check of Smoobu can be done from one place.
+type DayState = { kind: "same" | "out" | "in" | "staying" | "empty"; out?: StayBooking; in?: StayBooking; stay?: StayBooking };
+const DAY_LABEL: Record<DayState["kind"], [string, string]> = { same: ["Same-day changeover", "pending"], out: ["Check-out", "upcoming"], in: ["Check-in", "upcoming"], staying: ["Staying", "paid"], empty: ["Empty", "na"] };
+const RANK: Record<DayState["kind"], number> = { same: 0, out: 1, in: 1, staying: 2, empty: 3 };
+
+function dayState(bookings: StayBooking[], date: string): DayState {
+  const out = bookings.find((b) => b.departure === date);
+  const arriving = bookings.find((b) => b.arrival === date);
+  const stay = bookings.find((b) => b.arrival < date && b.departure > date);
+  return out && arriving ? { kind: "same", out, in: arriving } : out ? { kind: "out", out } : arriving ? { kind: "in", in: arriving } : stay ? { kind: "staying", stay } : { kind: "empty" };
+}
+
+function DayCell({ state, today }: { state: DayState; today: string }) {
+  const [label, tone] = DAY_LABEL[state.kind];
+  const arriving = state.in;
+  const notReady = !!arriving?.checks?.issues.length && arriving.arrival >= today;
+  return (
+    <td className={`hh-tt-cell ${state.kind}`}>
+      <span className={`status ${tone}`}>{label}</span>
+      {state.out && <small>Out: {state.out.guestName ?? "Guest"}{state.out.checkOutTime && ` by ${state.out.checkOutTime}`}</small>}
+      {arriving && <small>In: {arriving.guestName ?? "Guest"}{arriving.checkInTime && ` from ${arriving.checkInTime}`}{arriving.guests ? ` · ${arriving.guests} ${arriving.guests === 1 ? "guest" : "guests"}` : ""}</small>}
+      {notReady && <small className="warn">Not ready: {arriving!.checks!.issues[0]}</small>}
+      {state.stay && <small>{state.stay.guestName ?? "Guest"} until {formatDate(state.stay.departure)}</small>}
+    </td>
+  );
+}
+
+function TodayTomorrowPanel({ data, availability }: { data: StaysOverview; availability?: StayAvailability }) {
+  const today = data.asOf;
+  const tomorrow = nextDay(today);
+  const keyOf = (id: number | null, name: string) => (id !== null ? `id:${id}` : `name:${name}`);
+  const apartments = new Map<string, { name: string; bookings: StayBooking[] }>();
+  for (const apartment of availability?.apartments ?? []) apartments.set(keyOf(apartment.smoobuApartmentId, apartment.name), { name: apartment.name, bookings: [] });
+  for (const booking of data.bookings) {
+    const key = keyOf(booking.apartmentId, booking.apartmentName);
+    if (!apartments.has(key)) apartments.set(key, { name: booking.apartmentName, bookings: [] });
+    apartments.get(key)!.bookings.push(booking);
+  }
+  const rows = [...apartments.entries()].map(([key, apartment]) => ({ key, name: apartment.name, today: dayState(apartment.bookings, today), tomorrow: dayState(apartment.bookings, tomorrow) }))
+    .sort((a, b) => RANK[a.today.kind] - RANK[b.today.kind] || RANK[a.tomorrow.kind] - RANK[b.tomorrow.kind] || a.name.localeCompare(b.name));
+  const count = (kind: DayState["kind"], day: "today" | "tomorrow") => rows.filter((row) => row[day].kind === kind).length;
+  const summary = (day: "today" | "tomorrow") => `${count("in", day) + count("same", day)} in, ${count("out", day) + count("same", day)} out, ${count("same", day)} same day`;
+  return (
+    <section className="panel table-panel hh-stay-panel" id="today">
+      <div className="panel-head">
+        <div><div className="panel-title">Today and tomorrow</div><div className="panel-caption">Each apartment, busiest first. Today: {summary("today")}. Tomorrow: {summary("tomorrow")}.</div></div>
+        <Link href="/checklist" className="button">Daily checklist</Link>
+      </div>
+      {!rows.length ? <div className="empty-state"><BedDouble size={21} /><h3>No apartments yet</h3><p>Run Sync now to read apartments from Smoobu.</p></div> : (
+        <div className="table-wrap">
+          <table className="hh-tt">
+            <thead><tr><th>Apartment</th><th>Today · {formatDate(today)}</th><th>Tomorrow · {formatDate(tomorrow)}</th></tr></thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.key} className={row.today.kind === "empty" && row.tomorrow.kind === "empty" ? "quiet" : ""}>
+                  <td><strong>{row.name}</strong></td>
+                  <DayCell state={row.today} today={today} />
+                  <DayCell state={row.tomorrow} today={today} />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 

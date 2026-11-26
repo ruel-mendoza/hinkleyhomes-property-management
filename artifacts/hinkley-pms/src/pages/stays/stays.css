@@ -68,3 +68,10 @@ ul.hh-stay-list{margin:0;padding:0;list-style:none}
 .hh-stay-issues{display:flex;flex-wrap:wrap;gap:4px}
 .hh-stay-strip-links{display:flex;gap:8px}
 .hh-stay-foot a{color:#79cdb0}
+/* Today and tomorrow (per apartment) */
+#today{margin-bottom:14px;scroll-margin-top:72px}
+.hh-tt td{vertical-align:top}
+.hh-tt-cell{min-width:220px}
+.hh-tt-cell small{display:block;margin-top:4px;font-size:12px;color:#a9b6c7}
+.hh-tt-cell small.warn{color:#edc16b}
+.hh-tt tr.quiet td{opacity:.55}

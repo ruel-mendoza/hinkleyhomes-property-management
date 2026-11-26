@@ -2780,6 +2780,80 @@ export interface Notice {
   at: string;
 }
 
+export interface ChecklistItem {
+  id: string;
+  title: string;
+  /** @nullable */
+  detail: string | null;
+  /**
+     * An app path or a full https link
+     * @nullable
+     */
+  link: string | null;
+  /**
+     * A figure for the step worked out by the app (today only), e.g. "Today 3 in, 2 out"
+     * @nullable
+     */
+  live: string | null;
+  /** The live figure needs attention */
+  liveWarn: boolean;
+  /** @nullable */
+  doneBy: string | null;
+  /** @nullable */
+  doneAt: string | null;
+  /** @nullable */
+  note: string | null;
+}
+
+export interface Checklist {
+  /** The UK day shown (YYYY-MM-DD) */
+  day: string;
+  /** Today in the UK (YYYY-MM-DD) */
+  today: string;
+  done: number;
+  total: number;
+  steps: ChecklistItem[];
+}
+
+export interface ChecklistTickUpdate {
+  stepId: string;
+  day: string;
+  done: boolean;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  note?: string | null;
+}
+
+export type ChecklistStepsUpdateStepsItem = {
+  /** @nullable */
+  id: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  detail: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  link: string | null;
+};
+
+export interface ChecklistStepsUpdate {
+  /**
+     * @minItems 1
+     * @maxItems 40
+     */
+  steps: ChecklistStepsUpdateStepsItem[];
+}
+
 export interface NoticeSettings {
   /** False turns the popups off (the bell's list still shows updates) */
   enabled: boolean;
@@ -3457,6 +3531,10 @@ verdict?: IntakeCheckFilter;
 
 export type ListLatestNoticesParams = {
 since?: string;
+};
+
+export type GetChecklistParams = {
+day?: string;
 };
 
 export type ListBillReviewsParams = {

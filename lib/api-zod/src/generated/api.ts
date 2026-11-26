@@ -2302,6 +2302,106 @@ export const ClearNoticeHistoryResponse = zod.object({
 
 
 /**
+ * @summary The daily checklist for a UK day (today by default), with live figures for today
+ */
+export const GetChecklistQueryParams = zod.object({
+  "day": zod.date().optional()
+})
+
+export const GetChecklistResponse = zod.object({
+  "day": zod.string().describe('The UK day shown (YYYY-MM-DD)'),
+  "today": zod.string().describe('Today in the UK (YYYY-MM-DD)'),
+  "done": zod.number().int(),
+  "total": zod.number().int(),
+  "steps": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "detail": zod.string().nullable(),
+  "link": zod.string().nullable().describe('An app path or a full https link'),
+  "live": zod.string().nullable().describe('A figure for the step worked out by the app (today only), e.g. "Today 3 in, 2 out"'),
+  "liveWarn": zod.boolean().describe('The live figure needs attention'),
+  "doneBy": zod.string().nullable(),
+  "doneAt": zod.string().nullable(),
+  "note": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Tick or untick a step for today (UK)
+ */
+export const tickChecklistStepBodyNoteMax = 500;
+
+
+
+export const TickChecklistStepBody = zod.object({
+  "stepId": zod.string().uuid(),
+  "day": zod.coerce.date(),
+  "done": zod.boolean(),
+  "note": zod.string().max(tickChecklistStepBodyNoteMax).nullish()
+})
+
+export const TickChecklistStepResponse = zod.object({
+  "day": zod.string().describe('The UK day shown (YYYY-MM-DD)'),
+  "today": zod.string().describe('Today in the UK (YYYY-MM-DD)'),
+  "done": zod.number().int(),
+  "total": zod.number().int(),
+  "steps": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "detail": zod.string().nullable(),
+  "link": zod.string().nullable().describe('An app path or a full https link'),
+  "live": zod.string().nullable().describe('A figure for the step worked out by the app (today only), e.g. "Today 3 in, 2 out"'),
+  "liveWarn": zod.boolean().describe('The live figure needs attention'),
+  "doneBy": zod.string().nullable(),
+  "doneAt": zod.string().nullable(),
+  "note": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Replace the list of steps (order as sent; steps left out are switched off)
+ */
+export const updateChecklistStepsBodyStepsItemTitleMax = 200;
+
+export const updateChecklistStepsBodyStepsItemDetailMax = 1000;
+
+export const updateChecklistStepsBodyStepsItemLinkMax = 500;
+
+export const updateChecklistStepsBodyStepsMax = 40;
+
+
+
+export const UpdateChecklistStepsBody = zod.object({
+  "steps": zod.array(zod.object({
+  "id": zod.string().uuid().nullable(),
+  "title": zod.string().min(1).max(updateChecklistStepsBodyStepsItemTitleMax),
+  "detail": zod.string().max(updateChecklistStepsBodyStepsItemDetailMax).nullable(),
+  "link": zod.string().max(updateChecklistStepsBodyStepsItemLinkMax).nullable()
+})).min(1).max(updateChecklistStepsBodyStepsMax)
+})
+
+export const UpdateChecklistStepsResponse = zod.object({
+  "day": zod.string().describe('The UK day shown (YYYY-MM-DD)'),
+  "today": zod.string().describe('Today in the UK (YYYY-MM-DD)'),
+  "done": zod.number().int(),
+  "total": zod.number().int(),
+  "steps": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "detail": zod.string().nullable(),
+  "link": zod.string().nullable().describe('An app path or a full https link'),
+  "live": zod.string().nullable().describe('A figure for the step worked out by the app (today only), e.g. "Today 3 in, 2 out"'),
+  "liveWarn": zod.boolean().describe('The live figure needs attention'),
+  "doneBy": zod.string().nullable(),
+  "doneAt": zod.string().nullable(),
+  "note": zod.string().nullable()
+}))
+})
+
+
+/**
  * @summary The signed-in staff member's popup notice choices (all on until changed)
  */
 export const GetNoticeSettingsResponse = zod.object({
