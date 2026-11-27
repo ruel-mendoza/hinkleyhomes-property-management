@@ -10,3 +10,8 @@ export const n8nIntakeWriterRole = pgRole("n8n_intake_writer").existing();
 // and pay run status itself (the app may be asleep). Create it first with
 // lib/db/sql/n8n-telleroo-writer.sql.
 export const n8nTellerooWriterRole = pgRole("n8n_telleroo_writer").existing();
+
+// Database login for the Supabase Edge Function "whatsapp-inbound", which saves
+// the WhatsApp messages Ed's server forwards. It may only add messages. Create
+// it first with lib/db/sql/whatsapp-inbound-writer.sql.
+export const whatsappInboundWriterRole = pgRole("whatsapp_inbound_writer").existing();
