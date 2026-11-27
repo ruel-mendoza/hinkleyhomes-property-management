@@ -2,6 +2,7 @@ import { and, asc, count, eq, gte, inArray, lte, ne, notInArray, or, isNull, lt,
 import { auditLogTable, checklistStepsTable, checklistTicksTable, cohoActionsTable, getDb, rentMatchActionsTable, shortStayBookingsTable, xeroInvoiceFollowUpsTable } from "@workspace/db";
 import { ukToday } from "./performance";
 import { addDays, guestMessages } from "./stays";
+import { guestChecksFor, guestChecksReceived } from "./guest-checks";
 
 // Staff daily checklist (/checklist). The list is shared by the office: anyone
 // can tick a step for today, and each tick, untick and change to the steps is
@@ -43,6 +44,21 @@ const DEFAULT_SECTIONS: { section: string; steps: { title: string; detail: strin
     { title: "Follow up live enquiries", detail: "Each live enquiry should be on the leads tracker.", link: null, live: null },
     { title: "Add new leads and enquiries to the tracker", detail: "Keep the leads tracker up to date as each new lead or enquiry comes in.", link: null, live: null },
     { title: "Get back to old leads and existing partners", detail: "Contact old leads and existing partners about new business.", link: null, live: null },
+  ] },
+  { section: "ChargeAutomation and upcoming guests", steps: [
+    { title: "Check ChargeAutomation for the next 7 days", detail: "Make sure every guest arriving in the next 7 days is green for every check in ChargeAutomation.", link: "/stays#stays-bookings", live: "ca_upcoming" },
+    { title: "Contact guests arriving in the next 5 days", detail: "Make the first check-in contact: introduce yourself to the guest and make sure they're ready for arrival.", link: "/stays#stays-bookings", live: "arrivals_5" },
+  ] },
+  { section: "Rental Ninja and housekeeping", steps: [
+    { title: "Check booking tags and interim cleans", detail: "Full check in Rental Ninja that every booking has its tags, and interim cleans are scheduled and assigned.", link: null, live: null },
+    { title: "Review yesterday's cleans", detail: "Review each cleaning template, checklist and photos from yesterday against our standards, and act if needed.", link: null, live: null },
+  ] },
+  { section: "Guest reviews", steps: [
+    { title: "Review checked-out guests", detail: "Write a review for each guest who has checked out.", link: null, live: "checked_out" },
+    { title: "Follow up all outstanding reviews", detail: "Update the tracker and follow up straight away, as per the process, on every outstanding review.", link: null, live: null },
+  ] },
+  { section: "Third-party OTAs", steps: [
+    { title: "Check other OTAs and tender for business", detail: "Check other booking sites, such as Comfyworkers, and bid for work.", link: null, live: null },
   ] },
 ];
 const SECTION_ORDER = DEFAULT_SECTIONS.map((item) => item.section);
@@ -133,8 +149,38 @@ async function staysEndingFigure(today: string): Promise<string> {
   return `${plural(Number(row?.ending ?? 0), "stay")} ending today or tomorrow`;
 }
 
+// Guests who checked out yesterday or today, the ones due a review.
+async function checkedOutFigure(today: string): Promise<string> {
+  const t = shortStayBookingsTable;
+  const [row] = await getDb().select({ out: count() }).from(t).where(and(ne(t.status, "cancelled"), gte(t.departureDate, addDays(today, -1)), lte(t.departureDate, today)));
+  return `${plural(Number(row?.out ?? 0), "guest")} checked out yesterday or today`;
+}
+
+// Guests arriving in the next 7 days who aren't all green in ChargeAutomation:
+// a failed check, online check-in not done, or no ChargeAutomation record yet.
+async function caUpcomingFigure(today: string): Promise<string | null> {
+  if (!(await guestChecksReceived())) return null;
+  const t = shortStayBookingsTable;
+  const end = addDays(today, 7);
+  const rows = await getDb().select({ id: t.smoobuBookingId, arrival: t.arrivalDate }).from(t).where(and(ne(t.status, "cancelled"), gte(t.arrivalDate, today), lte(t.arrivalDate, end)));
+  const bookings = rows.flatMap((row) => (row.id ? [{ smoobuBookingId: row.id, arrival: row.arrival }] : []));
+  const checks = await guestChecksFor(bookings, today, end);
+  const notGreen = bookings.filter((booking) => { const found = checks.get(booking.smoobuBookingId); return !found || found.issues.length > 0; }).length;
+  return `${plural(rows.length, "guest")} arriving in the next 7 days · ${notGreen} not all green`;
+}
+
+// Guests arriving in the next 5 days, for the first check-in contact.
+async function arrivalsFigure(today: string): Promise<string> {
+  const t = shortStayBookingsTable;
+  const [row] = await getDb().select({ arriving: count() }).from(t).where(and(ne(t.status, "cancelled"), gte(t.arrivalDate, today), lte(t.arrivalDate, addDays(today, 5))));
+  return `${plural(Number(row?.arriving ?? 0), "guest")} arriving in the next 5 days`;
+}
+
 async function liveFigure(live: string | null, today: string): Promise<string | null> {
   try {
+    if (live === "ca_upcoming") return await caUpcomingFigure(today);
+    if (live === "arrivals_5") return await arrivalsFigure(today);
+    if (live === "checked_out") return await checkedOutFigure(today);
     if (live === "stays_ending") return await staysEndingFigure(today);
     if (live === "rent_match") return await rentMatchFigure();
     if (live === "chases") return await chasesFigure(today);
@@ -165,7 +211,7 @@ export async function checklist(requestedDay?: string) {
       detail: step.detail,
       link: step.link,
       live,
-      liveWarn: step.live === "guest_messages" && /^[1-9]/.test(live ?? ""),
+      liveWarn: (step.live === "guest_messages" && /^[1-9]/.test(live ?? "")) || (step.live === "ca_upcoming" && /· [1-9]/.test(live ?? "")),
       doneBy: tick?.doneBy ?? null,
       doneAt: tick?.doneAt.toISOString() ?? null,
       note: tick?.note ?? null,

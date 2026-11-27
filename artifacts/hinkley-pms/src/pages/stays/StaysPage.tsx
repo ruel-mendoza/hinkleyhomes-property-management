@@ -41,7 +41,7 @@ export default function StaysPage() {
   const availability = useGetStayAvailability(undefined, { query: { ...availabilityQueryOptions.query, enabled: !!data } });
   // The daily checklist links to /stays#today.
   const loaded = !!data;
-  useEffect(() => { if (loaded && window.location.hash === "#today") requestAnimationFrame(() => scrollToId("today")); }, [loaded]);
+  useEffect(() => { const id = window.location.hash.slice(1); if (loaded && id) requestAnimationFrame(() => scrollToId(id)); }, [loaded]);
 
   const pick = (next: BookingFilter) => {
     const turnOff = filter === next;
