@@ -94,6 +94,7 @@ import type {
   ListFinanceAlertsParams,
   ListIntakeChecksParams,
   ListLatestNoticesParams,
+  Messages,
   MoneyOverview,
   NoticeHistory,
   NoticeList,
@@ -5343,6 +5344,83 @@ export const useClearNoticeHistory = <TError = ErrorType<void>,
       > => {
       return useMutation(getClearNoticeHistoryMutationOptions(options));
     }
+
+export const getGetMessagesUrl = () => {
+
+
+
+
+  return `/api/messages`
+}
+
+/**
+ * @summary WhatsApp conversations from the last 30 days and the newest Smoobu guest threads
+ */
+export const getMessages = async ( options?: Parameters<typeof customFetch>[1]): Promise<Messages> => {
+
+  return customFetch<Messages>(getGetMessagesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMessagesQueryKey = () => {
+    return [
+    `/api/messages`
+    ] as const;
+    }
+
+
+export const getGetMessagesQueryOptions = <TData = Awaited<ReturnType<typeof getMessages>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMessagesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMessages>>> = ({ signal }) => getMessages({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMessages>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMessagesQueryResult = NonNullable<Awaited<ReturnType<typeof getMessages>>>
+export type GetMessagesQueryError = ErrorType<void>
+
+
+/**
+ * @summary WhatsApp conversations from the last 30 days and the newest Smoobu guest threads
+ */
+
+export function useGetMessages<TData = Awaited<ReturnType<typeof getMessages>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMessagesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetChecklistUrl = (params?: GetChecklistParams,) => {
   const normalizedParams = new URLSearchParams();

@@ -10,6 +10,8 @@ servers:
 tags:
   - name: checklist
     description: Staff daily checklist (steps, and who ticked each one each day)
+  - name: messages
+    description: Guest and tenant messages (WhatsApp forwarded by Ed's server, Smoobu threads), read-only
   - name: health
     description: Health operations
   - name: coho
@@ -1393,6 +1395,20 @@ paths:
                 $ref: "#/components/schemas/NoticeHistory"
         "503":
           description: Database is not configured
+  /messages:
+    get:
+      operationId: getMessages
+      tags: [messages]
+      summary: WhatsApp conversations from the last 30 days and the newest Smoobu guest threads
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Messages"
+        "503":
+          description: The database is not configured
   /checklist:
     get:
       operationId: getChecklist
@@ -2034,6 +2050,68 @@ components:
         error:
           type: ["string", "null"]
       required: [threadsToday, unreadMessages, threads, error]
+    WhatsappConversation:
+      type: object
+      description: One contact's WhatsApp conversation. The full phone number is never sent to the browser.
+      properties:
+        id:
+          description: Opaque key for the contact
+          type: string
+        name:
+          description: WhatsApp profile name, if the contact has one
+          type: ["string", "null"]
+        numberEnding:
+          description: Last 4 digits of the contact's number
+          type: string
+        lastMessageAt:
+          type: string
+          format: date-time
+        lastDirection:
+          type: string
+          enum: [in, out]
+        preview:
+          type: ["string", "null"]
+        messageType:
+          type: string
+        unanswered:
+          description: Messages from the contact since our last reply (all of them if we haven't replied)
+          type: integer
+        waitingSince:
+          description: When the oldest unanswered message arrived
+          type: ["string", "null"]
+          format: date-time
+      required: [id, name, numberEnding, lastMessageAt, lastDirection, preview, messageType, unanswered, waitingSince]
+    WhatsappInbox:
+      type: object
+      properties:
+        receiving:
+          description: True once any WhatsApp message has been saved
+          type: boolean
+        repliesTracked:
+          description: True once any reply sent from the phone app has been forwarded, so waiting counts are meaningful
+          type: boolean
+        lastReceivedAt:
+          type: ["string", "null"]
+          format: date-time
+        waiting:
+          description: Conversations whose latest message is from the contact
+          type: integer
+        today:
+          description: Conversations with a message today (UK)
+          type: integer
+        conversations:
+          type: array
+          items:
+            $ref: "#/components/schemas/WhatsappConversation"
+      required: [receiving, repliesTracked, lastReceivedAt, waiting, today, conversations]
+    Messages:
+      type: object
+      properties:
+        whatsapp:
+          $ref: "#/components/schemas/WhatsappInbox"
+        smoobu:
+          $ref: "#/components/schemas/GuestMessages"
+      required: [whatsapp, smoobu]
     StayNight:
       type: object
       properties:

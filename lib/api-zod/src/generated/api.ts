@@ -2302,6 +2302,43 @@ export const ClearNoticeHistoryResponse = zod.object({
 
 
 /**
+ * @summary WhatsApp conversations from the last 30 days and the newest Smoobu guest threads
+ */
+export const GetMessagesResponse = zod.object({
+  "whatsapp": zod.object({
+  "receiving": zod.boolean().describe('True once any WhatsApp message has been saved'),
+  "repliesTracked": zod.boolean().describe('True once any reply sent from the phone app has been forwarded, so waiting counts are meaningful'),
+  "lastReceivedAt": zod.coerce.date().nullable(),
+  "waiting": zod.number().int().describe('Conversations whose latest message is from the contact'),
+  "today": zod.number().int().describe('Conversations with a message today (UK)'),
+  "conversations": zod.array(zod.object({
+  "id": zod.string().describe('Opaque key for the contact'),
+  "name": zod.string().nullable().describe('WhatsApp profile name, if the contact has one'),
+  "numberEnding": zod.string().describe('Last 4 digits of the contact\'s number'),
+  "lastMessageAt": zod.coerce.date(),
+  "lastDirection": zod.enum(['in', 'out']),
+  "preview": zod.string().nullable(),
+  "messageType": zod.string(),
+  "unanswered": zod.number().int().describe('Messages from the contact since our last reply (all of them if we haven\'t replied)'),
+  "waitingSince": zod.coerce.date().nullable().describe('When the oldest unanswered message arrived')
+}).describe('One contact\'s WhatsApp conversation. The full phone number is never sent to the browser.'))
+}),
+  "smoobu": zod.object({
+  "threadsToday": zod.number().int().describe('Conversations among the newest 25 with a message today.'),
+  "unreadMessages": zod.number().int().describe('Smoobu\'s unread total for the whole account.'),
+  "threads": zod.array(zod.object({
+  "bookingId": zod.string().nullable(),
+  "guestName": zod.string().nullable(),
+  "apartmentName": zod.string().nullable(),
+  "lastMessageAt": zod.string().nullable(),
+  "preview": zod.string().nullable()
+})),
+  "error": zod.string().nullable()
+})
+})
+
+
+/**
  * @summary The daily checklist for a UK day (today by default), with live figures for today
  */
 export const GetChecklistQueryParams = zod.object({

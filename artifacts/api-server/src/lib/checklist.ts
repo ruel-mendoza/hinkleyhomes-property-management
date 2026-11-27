@@ -3,6 +3,7 @@ import { auditLogTable, checklistStepsTable, checklistTicksTable, cohoActionsTab
 import { ukToday } from "./performance";
 import { addDays, guestMessages } from "./stays";
 import { guestChecksFor, guestChecksReceived } from "./guest-checks";
+import { whatsappInbox } from "./messages";
 
 // Staff daily checklist (/checklist). The list is shared by the office: anyone
 // can tick a step for today, and each tick, untick and change to the steps is
@@ -29,7 +30,7 @@ const DEFAULT_SECTIONS: { section: string; steps: { title: string; detail: strin
   { section: "Guest comms", steps: [
     { title: "Airbnb: check and reply", detail: "Routine check of Airbnb guest messages, and reply.", link: SMOOBU_INBOX, live: "guest_messages" },
     { title: "Booking.com: check and reply", detail: "Routine check of Booking.com guest messages, and reply.", link: SMOOBU_INBOX, live: null },
-    { title: "WhatsApp: check and reply", detail: "Routine check of WhatsApp messages, and reply.", link: "https://web.whatsapp.com", live: null },
+    { title: "WhatsApp: check and reply", detail: "Routine check of WhatsApp messages, and reply.", link: "/messages", live: "whatsapp" },
     { title: "OpenRent: check and reply", detail: "Routine check of OpenRent messages, and reply.", link: "https://www.openrent.co.uk", live: null },
     { title: "Email: check and reply", detail: "Routine check of the email inbox, and reply.", link: "https://outlook.office.com/mail/", live: null },
     { title: "Sort and assign mail in the inbox", detail: "File each email and assign it to the right person.", link: "https://outlook.office.com/mail/", live: null },
@@ -73,8 +74,19 @@ export function checkLink(link: string | null | undefined): string | null {
   throw new ChecklistError("A link must be a page in the app (starting with /) or a full https:// address.");
 }
 
+// Steps first saved before a live figure existed for them get it once, if staff
+// haven't changed their link (Nov 2026: WhatsApp now opens the Messages page).
+let upgraded = false;
+async function upgradeSteps() {
+  if (upgraded) return;
+  await getDb().update(checklistStepsTable).set({ link: "/messages", live: "whatsapp" })
+    .where(and(eq(checklistStepsTable.title, "WhatsApp: check and reply"), isNull(checklistStepsTable.live), eq(checklistStepsTable.link, "https://web.whatsapp.com")));
+  upgraded = true;
+}
+
 async function steps() {
   const db = getDb();
+  await upgradeSteps();
   const read = () => db.select().from(checklistStepsTable).orderBy(asc(checklistStepsTable.position));
   let rows = await read();
   if (DEFAULT_SECTIONS.some((item) => !rows.some((row) => row.section === item.section))) {
@@ -176,8 +188,18 @@ async function arrivalsFigure(today: string): Promise<string> {
   return `${plural(Number(row?.arriving ?? 0), "guest")} arriving in the next 5 days`;
 }
 
+// WhatsApp conversations forwarded from the main number (lib/messages.ts). Waiting
+// counts only mean something once replies from the phone app are forwarded too.
+async function whatsappFigure(): Promise<string | null> {
+  const inbox = await whatsappInbox();
+  if (!inbox.receiving) return null;
+  const today = `${plural(inbox.today, "conversation")} today`;
+  return inbox.repliesTracked ? `${inbox.waiting} waiting for a reply · ${today}` : today;
+}
+
 async function liveFigure(live: string | null, today: string): Promise<string | null> {
   try {
+    if (live === "whatsapp") return await whatsappFigure();
     if (live === "ca_upcoming") return await caUpcomingFigure(today);
     if (live === "arrivals_5") return await arrivalsFigure(today);
     if (live === "checked_out") return await checkedOutFigure(today);
@@ -211,7 +233,7 @@ export async function checklist(requestedDay?: string) {
       detail: step.detail,
       link: step.link,
       live,
-      liveWarn: (step.live === "guest_messages" && /^[1-9]/.test(live ?? "")) || (step.live === "ca_upcoming" && /· [1-9]/.test(live ?? "")),
+      liveWarn: (step.live === "guest_messages" && /^[1-9]/.test(live ?? "")) || (step.live === "ca_upcoming" && /· [1-9]/.test(live ?? "")) || (step.live === "whatsapp" && /^[1-9]\d* waiting/.test(live ?? "")),
       doneBy: tick?.doneBy ?? null,
       doneAt: tick?.doneAt.toISOString() ?? null,
       note: tick?.note ?? null,

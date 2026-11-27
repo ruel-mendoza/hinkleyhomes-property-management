@@ -137,6 +137,60 @@ export interface GuestMessages {
   error: string | null;
 }
 
+export type WhatsappConversationLastDirection = typeof WhatsappConversationLastDirection[keyof typeof WhatsappConversationLastDirection];
+
+
+export const WhatsappConversationLastDirection = {
+  in: 'in',
+  out: 'out',
+} as const;
+
+/**
+ * One contact's WhatsApp conversation. The full phone number is never sent to the browser.
+ */
+export interface WhatsappConversation {
+  /** Opaque key for the contact */
+  id: string;
+  /**
+     * WhatsApp profile name, if the contact has one
+     * @nullable
+     */
+  name: string | null;
+  /** Last 4 digits of the contact's number */
+  numberEnding: string;
+  lastMessageAt: string;
+  lastDirection: WhatsappConversationLastDirection;
+  /** @nullable */
+  preview: string | null;
+  messageType: string;
+  /** Messages from the contact since our last reply (all of them if we haven't replied) */
+  unanswered: number;
+  /**
+     * When the oldest unanswered message arrived
+     * @nullable
+     */
+  waitingSince: string | null;
+}
+
+export interface WhatsappInbox {
+  /** True once any WhatsApp message has been saved */
+  receiving: boolean;
+  /** True once any reply sent from the phone app has been forwarded, so waiting counts are meaningful */
+  repliesTracked: boolean;
+  /** @nullable */
+  lastReceivedAt: string | null;
+  /** Conversations whose latest message is from the contact */
+  waiting: number;
+  /** Conversations with a message today (UK) */
+  today: number;
+  conversations: WhatsappConversation[];
+}
+
+export interface Messages {
+  whatsapp: WhatsappInbox;
+  smoobu: GuestMessages;
+}
+
 export interface StayNight {
   date: string;
   available: boolean;
