@@ -38,7 +38,11 @@ const DEFAULT_SECTIONS: { section: string; steps: { title: string; detail: strin
     { title: "Reconcile payments", detail: "Match payments received to rent and invoices.", link: "/rent?tab=bank", live: "rent_match" },
     { title: "Check and chase overdue invoices", detail: "Chase each overdue invoice and record the outcome.", link: "/receivables", live: "chases" },
     { title: "Raise new invoices, check Smoobu for stays that need extending", detail: "Raise invoices for new and extended stays.", link: "/stays#today", live: "stays_ending" },
-    { title: "Update the leads tracker", detail: null, link: null, live: null },
+  ] },
+  { section: "Leads and enquiries", steps: [
+    { title: "Follow up live enquiries", detail: "Each live enquiry should be on the leads tracker.", link: null, live: null },
+    { title: "Add new leads and enquiries to the tracker", detail: "Keep the leads tracker up to date as each new lead or enquiry comes in.", link: null, live: null },
+    { title: "Get back to old leads and existing partners", detail: "Contact old leads and existing partners about new business.", link: null, live: null },
   ] },
 ];
 const SECTION_ORDER = DEFAULT_SECTIONS.map((item) => item.section);
